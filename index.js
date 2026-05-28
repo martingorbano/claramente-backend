@@ -5,7 +5,11 @@ const Anthropic = require('@anthropic-ai/sdk');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.use(cors());
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST'],
+  allowedHeaders: ['Content-Type']
+}));
 app.use(express.json());
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
@@ -82,4 +86,5 @@ app.post('/chat', async (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`Claramente backend corriendo en puerto ${PORT}`);
+});onsole.log(`Claramente backend corriendo en puerto ${PORT}`);
 });
