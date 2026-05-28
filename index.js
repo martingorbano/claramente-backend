@@ -86,5 +86,4 @@ app.post('/chat', async (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`Claramente backend corriendo en puerto ${PORT}`);
-});onsole.log(`Claramente backend corriendo en puerto ${PORT}`);
 });
