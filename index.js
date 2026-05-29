@@ -62,6 +62,18 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', service: 'Claramente API' });
 });
 
+// Debug: ver profesionales desde Supabase
+app.get('/debug/profesionales', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('profesionales')
+      .select('id, nombre, activo, plan');
+    res.json({ data, error, url: process.env.SUPABASE_URL ? 'OK' : 'FALTA', key: process.env.SUPABASE_KEY ? 'OK' : 'FALTA' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Chat con agente
 app.post('/chat', async (req, res) => {
   const { messages } = req.body;
