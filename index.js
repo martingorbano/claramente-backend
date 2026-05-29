@@ -45,6 +45,8 @@ REGLAS:
 - Usá SOLO profesionales de la lista que se te provee
 - Mostrá SOLO los datos que realmente existen en el perfil — nunca inventes obras sociales, enfoques ni especializaciones que no estén en los datos
 - Si el campo obras_sociales está vacío o es null, no muestres ninguna obra social en la tarjeta
+- Si obras_sociales contiene solo "Particular", mostrá el tag como "Solo particular"
+- Si obras_sociales contiene "Particular" junto a otras obras sociales, mostrá las obras sociales normalmente sin mencionar "Particular"
 - Si el campo enfoques está vacío, no muestres enfoques
 - Si no hay profesionales en la base, avisá amablemente que todavía no hay profesionales disponibles para esa búsqueda
 - Orden: pro primero, free al final. Si spotlight_free es true: 1 free en posición 1 o 2
