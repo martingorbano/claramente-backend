@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Claramente · Mi panel</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --sage: #4A7C6F; --sage-light: #E8F2EF; --sage-mid: #A8C8C0; --sage-dark: #2C5048;
+  --warm: #F7F3EE; --warm-mid: #EDE6DC; --text: #1C2B28; --text-muted: #6B847E;
+  --text-faint: #9AAFAA; --border: #D8E8E4; --white: #FFFFFF; --radius: 16px;
+  --gold: #B8860B; --gold-light: #FDF8E8;
+}
+body { font-family: 'DM Sans', sans-serif; background: var(--warm); color: var(--text); min-height: 100vh; }
+
+/* NAV */
+nav { display: flex; align-items: center; justify-content: space-between; padding: 16px 36px; background: var(--white); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 100; }
+.logo { font-family: 'Lora', serif; font-size: 18px; color: var(--text); text-decoration: none; letter-spacing: -0.02em; }
+.logo span { color: var(--sage); font-style: italic; }
+.nav-right { display: flex; align-items: center; gap: 16px; }
+.nav-name { font-size: 13px; color: var(--text-muted); }
+.btn-logout { font-size: 12px; padding: 6px 14px; border-radius: 20px; border: 1px solid var(--border); background: transparent; color: var(--text-muted); cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.18s; }
+.btn-logout:hover { border-color: var(--sage-mid); color: var(--sage-dark); }
+
+/* LAYOUT */
+.layout { max-width: 860px; margin: 0 auto; padding: 36px 20px 60px; }
+.page-title { font-family: 'Lora', serif; font-size: 26px; font-weight: 400; margin-bottom: 6px; }
+.page-sub { font-size: 14px; color: var(--text-muted); margin-bottom: 32px; }
+
+/* TABS */
+.tabs { display: flex; gap: 4px; margin-bottom: 28px; border-bottom: 1px solid var(--border); }
+.tab { font-size: 14px; padding: 10px 20px; border: none; background: transparent; color: var(--text-muted); cursor: pointer; font-family: 'DM Sans', sans-serif; border-bottom: 2px solid transparent; margin-bottom: -1px; transition: all 0.18s; }
+.tab.active { color: var(--sage-dark); border-bottom-color: var(--sage); font-weight: 500; }
+.tab-panel { display: none; }
+.tab-panel.active { display: block; animation: fadeUp 0.3s ease; }
+@keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+/* STATS */
+.stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin-bottom: 28px; }
+.stat-card { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; }
+.stat-val { font-size: 36px; font-weight: 500; color: var(--sage-dark); line-height: 1; margin-bottom: 6px; }
+.stat-label { font-size: 13px; color: var(--text-muted); }
+.stat-period { font-size: 11px; color: var(--text-faint); margin-top: 4px; }
+
+/* PLAN */
+.plan-current { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px 24px; margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.plan-info { display: flex; flex-direction: column; gap: 4px; }
+.plan-badge { display: inline-flex; font-size: 11px; font-weight: 500; padding: 3px 10px; border-radius: 20px; letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 4px; }
+.badge-pro { background: var(--sage-light); color: var(--sage-dark); border: 1px solid var(--sage-mid); }
+.badge-free { background: var(--warm-mid); color: var(--text-muted); border: 1px solid var(--border); }
+.plan-name { font-size: 16px; font-weight: 500; color: var(--text); }
+.plan-desc { font-size: 13px; color: var(--text-muted); }
+.btn-upgrade { font-size: 13px; padding: 10px 22px; border-radius: 24px; border: none; background: var(--sage); color: white; cursor: pointer; font-family: 'DM Sans', sans-serif; font-weight: 500; transition: all 0.18s; white-space: nowrap; }
+.btn-upgrade:hover { background: var(--sage-dark); }
+.plan-features { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px 24px; }
+.plan-feat { display: flex; align-items: flex-start; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 13px; color: var(--text-muted); }
+.plan-feat:last-child { border-bottom: none; }
+.plan-feat-icon { color: var(--sage); flex-shrink: 0; margin-top: 1px; }
+
+/* FORM EDICION */
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.form-grid.single { grid-template-columns: 1fr; }
+@media (max-width: 560px) { .form-grid { grid-template-columns: 1fr; } nav { padding: 16px 20px; } }
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field.full { grid-column: 1 / -1; }
+label { font-size: 13px; font-weight: 500; color: var(--text); }
+input[type=text], input[type=email], input[type=tel], input[type=number], textarea, select {
+  font-family: 'DM Sans', sans-serif; font-size: 14px; padding: 10px 14px;
+  border: 1px solid var(--border); border-radius: 10px; background: var(--white);
+  color: var(--text); outline: none; transition: border-color 0.2s; width: 100%;
+}
+input:focus, textarea:focus, select:focus { border-color: var(--sage-mid); }
+textarea { resize: vertical; min-height: 80px; }
+.field-hint { font-size: 11px; color: var(--text-faint); }
+.tags-selector { display: flex; flex-wrap: wrap; gap: 8px; }
+.tag-opt { font-size: 12px; padding: 6px 14px; border-radius: 20px; border: 1px solid var(--border); background: var(--white); color: var(--text-muted); cursor: pointer; transition: all 0.18s; user-select: none; }
+.tag-opt.selected { background: var(--sage-light); border-color: var(--sage-mid); color: var(--sage-dark); font-weight: 500; }
+.section-label { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-faint); margin: 24px 0 14px; }
+.save-row { display: flex; align-items: center; justify-content: flex-end; gap: 12px; margin-top: 28px; }
+.btn-save { font-size: 14px; padding: 10px 28px; border-radius: 24px; border: none; background: var(--sage); color: white; cursor: pointer; font-family: 'DM Sans', sans-serif; font-weight: 500; transition: all 0.18s; }
+.btn-save:hover { background: var(--sage-dark); }
+.save-msg { font-size: 13px; color: var(--sage); display: none; }
+.save-msg.show { display: block; }
+
+/* PREVIEW TARJETA */
+.preview-label { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-faint); margin-bottom: 12px; }
+.pro-card-preview { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; max-width: 240px; position: relative; }
+.card-avatar { width: 44px; height: 44px; border-radius: 50%; background: var(--sage-light); color: var(--sage-dark); display: flex; align-items: center; justify-content: center; font-family: 'Lora', serif; font-size: 15px; font-weight: 500; flex-shrink: 0; }
+.card-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.card-name { font-size: 14px; font-weight: 500; }
+.card-sub { font-size: 12px; color: var(--text-muted); }
+.card-tags { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 10px; }
+.tag { font-size: 11px; padding: 3px 9px; border-radius: 20px; }
+.tag-sage { background: var(--sage-light); color: var(--sage-dark); }
+.tag-warm { background: var(--warm-mid); color: var(--text-muted); }
+.contact-btn-preview { width: 100%; font-size: 12px; padding: 8px; border-radius: 20px; border: none; background: #25D366; color: white; font-family: 'DM Sans', sans-serif; display: flex; align-items: center; justify-content: center; gap: 5px; }
+</style>
+</head>
+<body>
+
+<nav>
+  <a class="logo" href="/">clara<span>mente</span></a>
+  <div class="nav-right">
+    <span class="nav-name" id="navName"></span>
+    <button class="btn-logout" onclick="logout()">Cerrar sesión</button>
+  </div>
+</nav>
+
+<div class="layout">
+  <div class="page-title" id="pageTitle">Bienvenida</div>
+  <div class="page-sub">Este es tu panel de Claramente.</div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('stats')">Estadísticas</button>
+    <button class="tab" onclick="switchTab('perfil')">Mi perfil</button>
+    <button class="tab" onclick="switchTab('plan')">Plan</button>
+  </div>
+
+  <!-- ESTADÍSTICAS -->
+  <div class="tab-panel active" id="tab-stats">
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-val" id="statContactos">—</div>
+        <div class="stat-label">Contactos por WhatsApp</div>
+        <div class="stat-period">Total histórico</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-val" id="statVistas">—</div>
+        <div class="stat-label">Vistas de perfil</div>
+        <div class="stat-period">Total histórico</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-val" id="statConversion">—</div>
+        <div class="stat-label">Tasa de contacto</div>
+        <div class="stat-period">Contactos / vistas</div>
+      </div>
+    </div>
+    <div style="font-size:13px;color:var(--text-faint);line-height:1.65">
+      Las estadísticas se actualizan en tiempo real cada vez que alguien ve tu perfil o toca el botón de WhatsApp.
+    </div>
+  </div>
+
+  <!-- PERFIL -->
+  <div class="tab-panel" id="tab-perfil">
+    <div style="display:grid;grid-template-columns:1fr auto;gap:24px;align-items:start;flex-wrap:wrap">
+      <div>
+        <div class="section-label">Datos de contacto</div>
+        <div class="form-grid">
+          <div class="field">
+            <label>Nombre completo</label>
+            <input type="text" id="edit-nombre" />
+          </div>
+          <div class="field">
+            <label>WhatsApp</label>
+            <input type="tel" id="edit-whatsapp" />
+            <span class="field-hint">Sin el 0 ni el 15</span>
+          </div>
+          <div class="field">
+            <label>Ciudad/s</label>
+            <input type="text" id="edit-ciudad" />
+          </div>
+          <div class="field">
+            <label>Honorario por sesión</label>
+            <input type="number" id="edit-honorario" />
+          </div>
+          <div class="field full">
+            <label>Presentación</label>
+            <textarea id="edit-bio" maxlength="400"></textarea>
+            <span class="field-hint">Máx 400 caracteres</span>
+          </div>
+        </div>
+
+        <div class="section-label">Especialidad</div>
+        <div class="field" style="margin-bottom:16px">
+          <label>Enfoque terapéutico <span style="font-weight:400;color:var(--text-faint);font-size:12px">(máx. 3)</span></label>
+          <div class="tags-selector" id="edit-enfoques">
+            <span class="tag-opt" onclick="toggleTag(this,'enf')">TCC</span>
+            <span class="tag-opt" onclick="toggleTag(this,'enf')">Psicoanalítico</span>
+            <span class="tag-opt" onclick="toggleTag(this,'enf')">Sistémico</span>
+            <span class="tag-opt" onclick="toggleTag(this,'enf')">ACT</span>
+            <span class="tag-opt" onclick="toggleTag(this,'enf')">Integrativo</span>
+            <span class="tag-opt" onclick="toggleTag(this,'enf')">EMDR</span>
+            <span class="tag-opt" onclick="toggleTag(this,'enf')">Gestalt</span>
+            <span class="tag-opt" onclick="toggleTag(this,'enf')">Humanista</span>
+            <span class="tag-opt" onclick="toggleTag(this,'enf')">Mindfulness</span>
+            <span class="tag-opt" onclick="toggleTag(this,'enf')">Narrativo</span>
+          </div>
+        </div>
+        <div class="field" style="margin-bottom:16px">
+          <label>Especializaciones</label>
+          <div class="tags-selector" id="edit-especializaciones">
+            <span class="tag-opt" onclick="toggleTag(this,'esp')">Ansiedad</span>
+            <span class="tag-opt" onclick="toggleTag(this,'esp')">Depresión</span>
+            <span class="tag-opt" onclick="toggleTag(this,'esp')">Estrés</span>
+            <span class="tag-opt" onclick="toggleTag(this,'esp')">Pareja</span>
+            <span class="tag-opt" onclick="toggleTag(this,'esp')">Duelo</span>
+            <span class="tag-opt" onclick="toggleTag(this,'esp')">Trauma / PTSD</span>
+            <span class="tag-opt" onclick="toggleTag(this,'esp')">TOC</span>
+            <span class="tag-opt" onclick="toggleTag(this,'esp')">Fobias</span>
+            <span class="tag-opt" onclick="toggleTag(this,'esp')">Autoestima</span>
+            <span class="tag-opt" onclick="toggleTag(this,'esp')">Trastornos alimentarios</span>
+            <span class="tag-opt" onclick="toggleTag(this,'esp')">TDAH</span>
+            <span class="tag-opt" onclick="toggleTag(this,'esp')">Orientación vocacional</span>
+            <span class="tag-opt" onclick="toggleTag(this,'esp')">Sexualidad</span>
+            <span class="tag-opt" onclick="toggleTag(this,'esp')">Familia</span>
+            <span class="tag-opt" onclick="toggleTag(this,'esp')">Adicciones</span>
+          </div>
+        </div>
+        <div class="field" style="margin-bottom:16px">
+          <label>Modalidad</label>
+          <div class="tags-selector" id="edit-modalidades">
+            <span class="tag-opt" onclick="toggleTag(this,'mod')">Online</span>
+            <span class="tag-opt" onclick="toggleTag(this,'mod')">Presencial</span>
+          </div>
+        </div>
+        <div class="field">
+          <label>Obras sociales</label>
+          <div class="tags-selector" id="edit-obras">
+            <span class="tag-opt" onclick="toggleTag(this,'obra')">OSDE</span>
+            <span class="tag-opt" onclick="toggleTag(this,'obra')">Swiss Medical</span>
+            <span class="tag-opt" onclick="toggleTag(this,'obra')">Galeno</span>
+            <span class="tag-opt" onclick="toggleTag(this,'obra')">IOMA</span>
+            <span class="tag-opt" onclick="toggleTag(this,'obra')">PAMI</span>
+            <span class="tag-opt" onclick="toggleTag(this,'obra')">Medicus</span>
+            <span class="tag-opt" onclick="toggleTag(this,'obra')">Particular</span>
+          </div>
+        </div>
+
+        <div class="save-row">
+          <span class="save-msg" id="saveMsg">✓ Cambios guardados</span>
+          <button class="btn-save" onclick="guardarPerfil()">Guardar cambios</button>
+        </div>
+      </div>
+
+      <!-- Preview tarjeta -->
+      <div style="padding-top:8px">
+        <div class="preview-label">Así te ven los pacientes</div>
+        <div class="pro-card-preview">
+          <span class="plan-badge badge-pro" id="previewBadge" style="position:absolute;top:12px;right:12px">Pro</span>
+          <div class="card-head">
+            <div class="card-avatar" id="previewIniciales">ML</div>
+            <div>
+              <div class="card-name" id="previewNombre">Tu nombre</div>
+              <div class="card-sub" id="previewEspecialidad">Especialidad</div>
+            </div>
+          </div>
+          <div class="card-tags" id="previewTags"></div>
+          <div class="contact-btn-preview">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.125.558 4.122 1.532 5.856L.057 23.882l6.197-1.624A11.945 11.945 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.818 9.818 0 01-5.001-1.366l-.36-.214-3.716.974.992-3.623-.234-.373A9.818 9.818 0 012.182 12c0-5.422 4.396-9.818 9.818-9.818 5.422 0 9.818 4.396 9.818 9.818 0 5.422-4.396 9.818-9.818 9.818z"/></svg>
+            Contactar
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PLAN -->
+  <div class="tab-panel" id="tab-plan">
+    <div class="plan-current" id="planCurrent">
+      <div class="plan-info">
+        <span class="plan-badge badge-free" id="planBadge">Gratuito</span>
+        <div class="plan-name" id="planNombre">Plan Gratuito</div>
+        <div class="plan-desc" id="planDesc">Aparecés en los resultados pero después de los profesionales Pro.</div>
+      </div>
+      <button class="btn-upgrade" id="btnUpgrade" onclick="upgrade()">Activar Plan Pro</button>
+    </div>
+    <div class="plan-features">
+      <div class="plan-feat">
+        <span class="plan-feat-icon">✓</span>
+        <div><strong>Aparición inteligente</strong> — aparecés cuando alguien busca tu especialidad, enfoque y disponibilidad.</div>
+      </div>
+      <div class="plan-feat">
+        <span class="plan-feat-icon">✓</span>
+        <div><strong>Posición prioritaria</strong> — con el Plan Pro aparecés primero cuando sos el match correcto.</div>
+      </div>
+      <div class="plan-feat">
+        <span class="plan-feat-icon">✓</span>
+        <div><strong>Foto de perfil visible</strong> — los pacientes pueden verte antes del primer contacto.</div>
+      </div>
+      <div class="plan-feat">
+        <span class="plan-feat-icon">✓</span>
+        <div><strong>Estadísticas completas</strong> — sabés cuántas personas vieron tu perfil y te contactaron.</div>
+      </div>
+      <div class="plan-feat">
+        <span class="plan-feat-icon">✓</span>
+        <div><strong>$30.000/mes</strong> — menos de una consulta mensual. Cancelable cuando quieras.</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// Verificar sesión
+const profesional = JSON.parse(localStorage.getItem('clm_profesional') || 'null');
+if (!profesional) window.location.href = '/login.html';
+
+// Inicializar
+document.getElementById('navName').textContent = profesional.nombre?.split(' ').slice(-2).join(' ') || '';
+document.getElementById('pageTitle').textContent = `Hola, ${profesional.nombre?.split(' ')[1] || profesional.nombre}`;
+
+// Cargar estadísticas
+async function cargarStats() {
+  try {
+    const res = await fetch(`/stats/${profesional.id}`);
+    const data = await res.json();
+    const contactos = data.contactos || 0;
+    const vistas = data.vistas || 0;
+    document.getElementById('statContactos').textContent = contactos;
+    document.getElementById('statVistas').textContent = vistas;
+    document.getElementById('statConversion').textContent = vistas > 0 ? Math.round((contactos/vistas)*100) + '%' : '—';
+  } catch(e) {
+    console.error(e);
+  }
+}
+cargarStats();
+
+// Cargar datos del perfil en el formulario
+function cargarPerfil() {
+  document.getElementById('edit-nombre').value = profesional.nombre || '';
+  document.getElementById('edit-whatsapp').value = profesional.whatsapp || '';
+  document.getElementById('edit-ciudad').value = profesional.ciudad || '';
+  document.getElementById('edit-honorario').value = profesional.honorario || '';
+  document.getElementById('edit-bio').value = profesional.bio || '';
+
+  // Marcar tags
+  marcarTags('edit-enfoques', profesional.enfoques || []);
+  marcarTags('edit-especializaciones', profesional.especializaciones || []);
+  marcarTags('edit-modalidades', profesional.modalidades || []);
+  marcarTags('edit-obras', profesional.obras_sociales || []);
+
+  // Preview
+  actualizarPreview();
+}
+
+function marcarTags(containerId, valores) {
+  document.querySelectorAll(`#${containerId} .tag-opt`).forEach(t => {
+    if (valores.includes(t.textContent.trim())) t.classList.add('selected');
+  });
+}
+
+function toggleTag(el, grupo) {
+  if (grupo === 'enf') {
+    const selected = document.querySelectorAll('#edit-enfoques .tag-opt.selected');
+    if (!el.classList.contains('selected') && selected.length >= 3) return;
+  }
+  el.classList.toggle('selected');
+  actualizarPreview();
+}
+
+function actualizarPreview() {
+  const nombre = document.getElementById('edit-nombre').value || 'Tu nombre';
+  const iniciales = nombre.split(' ').filter(w => w.length > 1).slice(0,2).map(w => w[0].toUpperCase()).join('');
+  document.getElementById('previewNombre').textContent = nombre;
+  document.getElementById('previewIniciales').textContent = iniciales || 'TN';
+
+  const enfoques = Array.from(document.querySelectorAll('#edit-enfoques .tag-opt.selected')).map(t => t.textContent);
+  const modalidades = Array.from(document.querySelectorAll('#edit-modalidades .tag-opt.selected')).map(t => t.textContent);
+  const obras = Array.from(document.querySelectorAll('#edit-obras .tag-opt.selected')).map(t => t.textContent);
+
+  const tagsEl = document.getElementById('previewTags');
+  const tags = [...enfoques.slice(0,1), ...modalidades.slice(0,1), ...obras.slice(0,1)];
+  tagsEl.innerHTML = tags.map((t,i) => `<span class="tag ${i===0?'tag-sage':'tag-warm'}">${t}</span>`).join('');
+
+  const badge = document.getElementById('previewBadge');
+  if (profesional.plan === 'pro') {
+    badge.textContent = 'Pro'; badge.className = 'plan-badge badge-pro'; badge.style.cssText = 'position:absolute;top:12px;right:12px';
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
+// Guardar perfil
+async function guardarPerfil() {
+  const payload = {
+    nombre: document.getElementById('edit-nombre').value,
+    whatsapp: document.getElementById('edit-whatsapp').value,
+    ciudad: document.getElementById('edit-ciudad').value,
+    honorario: parseInt(document.getElementById('edit-honorario').value) || null,
+    bio: document.getElementById('edit-bio').value,
+    enfoques: Array.from(document.querySelectorAll('#edit-enfoques .tag-opt.selected')).map(t => t.textContent),
+    especializaciones: Array.from(document.querySelectorAll('#edit-especializaciones .tag-opt.selected')).map(t => t.textContent),
+    modalidades: Array.from(document.querySelectorAll('#edit-modalidades .tag-opt.selected')).map(t => t.textContent),
+    obras_sociales: Array.from(document.querySelectorAll('#edit-obras .tag-opt.selected')).map(t => t.textContent),
+  };
+
+  try {
+    const res = await fetch(`/profesional/${profesional.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (res.ok) {
+      Object.assign(profesional, payload);
+      localStorage.setItem('clm_profesional', JSON.stringify(profesional));
+      const msg = document.getElementById('saveMsg');
+      msg.classList.add('show');
+      setTimeout(() => msg.classList.remove('show'), 3000);
+    }
+  } catch(e) { console.error(e); }
+}
+
+// Plan
+function cargarPlan() {
+  const esPro = profesional.plan === 'pro';
+  document.getElementById('planBadge').textContent = esPro ? 'Pro' : 'Gratuito';
+  document.getElementById('planBadge').className = `plan-badge ${esPro ? 'badge-pro' : 'badge-free'}`;
+  document.getElementById('planNombre').textContent = esPro ? 'Plan Pro — $30.000/mes' : 'Plan Gratuito';
+  document.getElementById('planDesc').textContent = esPro
+    ? 'Aparecés primero cuando sos el match correcto para una búsqueda.'
+    : 'Aparecés en los resultados pero después de los profesionales Pro.';
+  const btn = document.getElementById('btnUpgrade');
+  if (esPro) { btn.textContent = 'Plan activo ✓'; btn.style.background = 'var(--sage-mid)'; btn.style.cursor = 'default'; }
+}
+
+function upgrade() {
+  alert('La pasarela de pago estará disponible próximamente. Por ahora contactanos a hola@claramente.com.ar para activar tu plan Pro.');
+}
+
+// Tabs
+function switchTab(tab) {
+  document.querySelectorAll('.tab').forEach((t, i) => {
+    const tabs = ['stats', 'perfil', 'plan'];
+    t.classList.toggle('active', tabs[i] === tab);
+  });
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById(`tab-${tab}`).classList.add('active');
+}
+
+function logout() {
+  localStorage.removeItem('clm_profesional');
+  window.location.href = '/';
+}
+
+// Init
+cargarPerfil();
+cargarPlan();
+
+document.getElementById('edit-nombre').addEventListener('input', actualizarPreview);
+</script>
+</body>
+</html>

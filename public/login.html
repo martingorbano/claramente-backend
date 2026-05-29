@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Claramente · Acceso profesionales</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --sage: #4A7C6F; --sage-light: #E8F2EF; --sage-mid: #A8C8C0; --sage-dark: #2C5048;
+  --warm: #F7F3EE; --warm-mid: #EDE6DC; --text: #1C2B28; --text-muted: #6B847E;
+  --text-faint: #9AAFAA; --border: #D8E8E4; --white: #FFFFFF; --radius: 16px;
+  --error: #C0392B; --error-light: #FDECEA;
+}
+body { font-family: 'DM Sans', sans-serif; background: var(--warm); color: var(--text); min-height: 100vh; display: flex; flex-direction: column; }
+nav { display: flex; align-items: center; justify-content: space-between; padding: 18px 36px; border-bottom: 1px solid var(--border); }
+.logo { font-family: 'Lora', serif; font-size: 20px; color: var(--text); text-decoration: none; letter-spacing: -0.02em; }
+.logo span { color: var(--sage); font-style: italic; }
+.wrap { flex: 1; display: flex; align-items: center; justify-content: center; padding: 40px 20px; }
+.card { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius); padding: 36px; width: 100%; max-width: 420px; box-shadow: 0 4px 24px rgba(44,80,72,0.06); }
+.card-title { font-family: 'Lora', serif; font-size: 22px; font-weight: 400; margin-bottom: 6px; }
+.card-sub { font-size: 14px; color: var(--text-muted); margin-bottom: 28px; }
+.field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
+label { font-size: 13px; font-weight: 500; color: var(--text); }
+input { font-family: 'DM Sans', sans-serif; font-size: 14px; padding: 11px 16px; border: 1px solid var(--border); border-radius: 10px; background: var(--white); color: var(--text); outline: none; transition: border-color 0.2s; }
+input:focus { border-color: var(--sage-mid); }
+input::placeholder { color: var(--text-faint); }
+.btn { width: 100%; font-size: 14px; padding: 12px; border-radius: 24px; border: none; background: var(--sage); color: white; cursor: pointer; font-family: 'DM Sans', sans-serif; font-weight: 500; transition: all 0.18s; margin-top: 8px; }
+.btn:hover { background: var(--sage-dark); }
+.btn:disabled { background: var(--sage-mid); cursor: default; }
+.error-msg { background: var(--error-light); color: var(--error); font-size: 13px; padding: 10px 14px; border-radius: 8px; margin-bottom: 16px; display: none; }
+.error-msg.show { display: block; }
+.divider { display: flex; align-items: center; gap: 12px; margin: 20px 0; }
+.divider-line { flex: 1; height: 1px; background: var(--border); }
+.divider-text { font-size: 12px; color: var(--text-faint); }
+.link-btn { width: 100%; font-size: 14px; padding: 12px; border-radius: 24px; border: 1px solid var(--border); background: transparent; color: var(--text-muted); cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.18s; text-align: center; text-decoration: none; display: block; }
+.link-btn:hover { border-color: var(--sage-mid); color: var(--sage-dark); }
+</style>
+</head>
+<body>
+<nav>
+  <a class="logo" href="/">clara<span>mente</span></a>
+</nav>
+<div class="wrap">
+  <div class="card">
+    <div class="card-title">Accedé a tu panel</div>
+    <div class="card-sub">Ingresá con tu email y contraseña profesional.</div>
+    <div class="error-msg" id="errorMsg"></div>
+    <div class="field">
+      <label>Email</label>
+      <input type="email" id="email" placeholder="tu@email.com" />
+    </div>
+    <div class="field">
+      <label>Contraseña</label>
+      <input type="password" id="password" placeholder="Tu contraseña" />
+    </div>
+    <button class="btn" id="btnLogin" onclick="login()">Ingresar</button>
+    <div class="divider">
+      <div class="divider-line"></div>
+      <div class="divider-text">¿Todavía no estás en la red?</div>
+      <div class="divider-line"></div>
+    </div>
+    <a class="link-btn" href="/claramentepsi-registro-profesional.html">Sumate a Claramente →</a>
+  </div>
+</div>
+<script>
+document.querySelectorAll('input').forEach(i => {
+  i.addEventListener('keydown', e => { if (e.key === 'Enter') login(); });
+});
+
+async function login() {
+  const email = document.getElementById('email').value.trim();
+  const password = document.getElementById('password').value;
+  const btn = document.getElementById('btnLogin');
+  const err = document.getElementById('errorMsg');
+
+  if (!email || !password) {
+    err.textContent = 'Completá email y contraseña.';
+    err.classList.add('show');
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Ingresando...';
+  err.classList.remove('show');
+
+  try {
+    const res = await fetch('/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      err.textContent = data.error || 'Error al ingresar.';
+      err.classList.add('show');
+      return;
+    }
+
+    localStorage.setItem('clm_profesional', JSON.stringify(data.profesional));
+    window.location.href = '/panel.html';
+  } catch (e) {
+    err.textContent = 'Error de conexión. Intentá de nuevo.';
+    err.classList.add('show');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Ingresar';
+  }
+}
+</script>
+</body>
+</html>
