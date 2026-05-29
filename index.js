@@ -171,6 +171,23 @@ app.post('/login', async (req, res) => {
   }
 });
 
+// Actualizar perfil del profesional
+app.put('/profesional/:id', async (req, res) => {
+  const { id } = req.params;
+  const { nombre, whatsapp, ciudad, honorario, bio, enfoques, especializaciones, modalidades, obras_sociales } = req.body;
+  try {
+    const { error } = await supabase
+      .from('profesionales')
+      .update({ nombre, whatsapp, ciudad, honorario, bio, enfoques, especializaciones, modalidades, obras_sociales })
+      .eq('id', id);
+    if (error) throw error;
+    res.json({ ok: true });
+  } catch (error) {
+    console.error('Error update:', error.message);
+    res.status(500).json({ error: 'Error al actualizar perfil' });
+  }
+});
+
 // Estadísticas del profesional
 app.get('/stats/:psy_id', async (req, res) => {
   const { psy_id } = req.params;
