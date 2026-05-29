@@ -29,9 +29,9 @@ Cuando tengas suficiente info (1-2 intercambios alcanza), respondé ÚNICAMENTE 
       "nombre": "Lic. Nombre Apellido",
       "especialidad": "Especialidad principal",
       "enfoque": "primer enfoque del profesional",
-      "modalidad": "Online / Presencial / Ambas",
+      "modalidad": "Online / Presencial / Online y Presencial",
       "obras_sociales": ["OSDE"],
-      "descripcion": "Una frase breve y cálida (máx 10 palabras)",
+      "descripcion": "Una frase concreta sobre su especialidad (máx 10 palabras, sin frases genéricas como 'acompaña con calidez' o similares)",
       "match": 95,
       "iniciales": "ML",
       "color": "sage",
@@ -60,18 +60,6 @@ Si falta info clave, hacé UNA sola pregunta antes del JSON.`;
 // Health check
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', service: 'Claramente API' });
-});
-
-// Debug: ver profesionales desde Supabase
-app.get('/debug/profesionales', async (req, res) => {
-  try {
-    const { data, error } = await supabase
-      .from('profesionales')
-      .select('id, nombre, activo, plan');
-    res.json({ data, error, url: process.env.SUPABASE_URL ? 'OK' : 'FALTA', key: process.env.SUPABASE_KEY ? 'OK' : 'FALTA' });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
 });
 
 // Chat con agente
