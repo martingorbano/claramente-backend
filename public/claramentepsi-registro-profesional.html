@@ -222,8 +222,17 @@ select { cursor: pointer; appearance: none; background-image: url("data:image/sv
     <div class="panel-title">Creá tu cuenta</div>
     <div class="panel-sub">Estos datos son para acceder a tu panel. No son visibles para los pacientes.</div>
     <div class="form-grid">
+      <div class="field" id="f-titulo">
+        <label>Título</label>
+        <select id="titulo">
+          <option value="Lic.">Lic. (Licenciado/a)</option>
+          <option value="Dr.">Dr. (Doctor/a)</option>
+          <option value="Mg.">Mg. (Magíster)</option>
+          <option value="Prof.">Prof. (Profesor/a)</option>
+        </select>
+      </div>
       <div class="field" id="f-nombre">
-        <label>Nombre completo</label>
+        <label>Nombre y apellido</label>
         <input type="text" id="nombre" placeholder="Ej: María López" />
         <span class="field-error">Ingresá tu nombre completo</span>
       </div>
@@ -631,7 +640,12 @@ function validate(fieldId, inputId, fn) {
 
 function collectStep(step) {
   if (step === 0) {
-    formData.nombre = v('nombre');
+    const titulo = document.getElementById('titulo')?.value || 'Lic.';
+    const nombreRaw = v('nombre');
+    // Agregar título si no lo tiene ya
+    formData.nombre = nombreRaw.startsWith(titulo) || nombreRaw.startsWith('Lic.') || nombreRaw.startsWith('Dr.') || nombreRaw.startsWith('Mg.') || nombreRaw.startsWith('Prof.')
+      ? nombreRaw
+      : `${titulo} ${nombreRaw}`;
     formData.matricula = v('matricula');
     formData.email = v('email');
     formData.whatsapp = v('whatsapp');
