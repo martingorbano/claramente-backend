@@ -555,7 +555,7 @@ select { cursor: pointer; appearance: none; background-image: url("data:image/sv
       <div class="success-icon">✓</div>
       <h2>¡Tu perfil está publicado!</h2>
       <p>Ya aparecés en claramentepsi. Cuando alguien busque un profesional con tu perfil, el agente te va a sugerir y los pacientes podrán contactarte por WhatsApp.</p>
-      <button class="success-btn" onclick="window.location.href='claramentepsi.html'">Ver cómo quedó mi perfil →</button>
+      <button class="success-btn" onclick="window.location.href='claramentepsi.html'">Ir a mi panel →</button>
     </div>
   </div>
 
@@ -751,9 +751,65 @@ function previewPhoto(input) {
   }
 }
 
-function submit() {
-  collectStep(5);
-  showStep(6);
+async function submit() {
+  collectStep(6);
+
+  const btn = document.querySelector('#panel-6 .btn-next');
+  btn.disabled = true;
+  btn.textContent = 'Publicando...';
+
+  const payload = {
+    nombre: formData.nombre,
+    matricula: formData.matricula,
+    email: formData.email,
+    whatsapp: '549' + formData.whatsapp.replace(/\D/g, ''),
+    password: document.getElementById('pass').value,
+    bio: formData.bio || '',
+    ciudad: formData.ciudad || '',
+    experiencia: parseInt(formData.experiencia) || null,
+    honorario: parseInt(formData.honorario) || null,
+    obras_sociales: formData.obrasSociales || [],
+    enfoques: formData.enfoques || [],
+    especializaciones: formData.especializaciones || [],
+    modalidades: formData.modalidades || [],
+    edades: formData.edades || [],
+    dias: formData.dias || [],
+    franjas: formData.franjas || [],
+    plan: formData.plan || 'free'
+  };
+
+  try {
+    const res = await fetch('/registro', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      alert(data.error || 'Error al registrarse. Intentá de nuevo.');
+      btn.disabled = false;
+      btn.textContent = 'Publicar perfil →';
+      return;
+    }
+
+    // Login automático después del registro
+    const loginRes = await fetch('/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: payload.email, password: document.getElementById('pass').value })
+    });
+    const loginData = await loginRes.json();
+    if (loginData.profesional) {
+      localStorage.setItem('clm_profesional', JSON.stringify(loginData.profesional));
+    }
+
+    showStep(7);
+  } catch(e) {
+    alert('Error de conexión. Intentá de nuevo.');
+    btn.disabled = false;
+    btn.textContent = 'Publicar perfil →';
+  }
 }
 
 // Enfoque: máximo 3
