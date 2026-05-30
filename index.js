@@ -25,7 +25,7 @@ Cuando tengas suficiente info (1-2 intercambios alcanza), respondé ÚNICAMENTE 
   "respuesta": "Mensaje breve y cálido (1-2 oraciones)",
   "profesionales": [
     {
-      "id": "uuid del profesional",
+      "id": "EXACTAMENTE el campo id (UUID) del profesional de la base de datos — este campo es OBLIGATORIO",
       "nombre": "Lic. Nombre Apellido",
       "especialidad": "Especialidad principal",
       "enfoque": "primer enfoque del profesional",
@@ -43,6 +43,7 @@ Cuando tengas suficiente info (1-2 intercambios alcanza), respondé ÚNICAMENTE 
 
 REGLAS:
 - Usá SOLO profesionales de la lista que se te provee
+- El campo "id" es OBLIGATORIO — copialo exactamente del campo id de la base de datos sin modificarlo
 - Mostrá SOLO los datos que realmente existen en el perfil — nunca inventes obras sociales, enfoques ni especializaciones que no estén en los datos
 - Si el campo obras_sociales está vacío o es null, no muestres ninguna obra social en la tarjeta
 - Si obras_sociales contiene solo "Particular", mostrá el tag como "Solo particular"
