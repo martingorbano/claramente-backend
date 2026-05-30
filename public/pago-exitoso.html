@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Claramente · Pago recibido</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root { --sage: #4A7C6F; --sage-light: #E8F2EF; --sage-dark: #2C5048; --warm: #F7F3EE; --text: #1C2B28; --text-muted: #6B847E; --border: #D8E8E4; --white: #FFFFFF; --radius: 16px; }
+body { font-family: 'DM Sans', sans-serif; background: var(--warm); color: var(--text); min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px; }
+.card { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius); padding: 48px 40px; max-width: 440px; width: 100%; text-align: center; box-shadow: 0 4px 24px rgba(44,80,72,0.06); }
+.icon { width: 64px; height: 64px; border-radius: 50%; background: var(--sage-light); display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; font-size: 28px; }
+h1 { font-family: 'Lora', serif; font-size: 24px; font-weight: 400; margin-bottom: 10px; }
+p { font-size: 14px; color: var(--text-muted); line-height: 1.7; margin-bottom: 24px; }
+.btn { display: inline-block; font-size: 14px; padding: 12px 28px; border-radius: 24px; border: none; background: var(--sage); color: white; cursor: pointer; font-family: 'DM Sans', sans-serif; font-weight: 500; text-decoration: none; transition: background 0.18s; }
+.btn:hover { background: var(--sage-dark); }
+.status { font-size: 13px; color: var(--text-muted); margin-top: 16px; }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="icon" id="icon">⏳</div>
+  <h1 id="title">Verificando tu pago...</h1>
+  <p id="desc">Estamos confirmando tu suscripción con MercadoPago. Esto toma unos segundos.</p>
+  <div id="action"></div>
+  <div class="status" id="status"></div>
+</div>
+<script>
+const params = new URLSearchParams(window.location.search);
+const session_id = params.get('session_id');
+const email = params.get('email');
+
+async function verificar(intentos = 0) {
+  if (!session_id) {
+    mostrarError();
+    return;
+  }
+  try {
+    const res = await fetch(`/verificar-pago?session_id=${session_id}`);
+    const data = await res.json();
+
+    if (data.procesado) {
+      mostrarExito();
+    } else if (intentos < 10) {
+      document.getElementById('status').textContent = `Verificando... (intento ${intentos + 1}/10)`;
+      setTimeout(() => verificar(intentos + 1), 3000);
+    } else {
+      mostrarPendiente();
+    }
+  } catch(e) {
+    mostrarError();
+  }
+}
+
+function mostrarExito() {
+  document.getElementById('icon').textContent = '✓';
+  document.getElementById('icon').style.background = '#E8F2EF';
+  document.getElementById('title').textContent = '¡Tu perfil está publicado!';
+  document.getElementById('desc').textContent = 'Tu pago fue confirmado y tu perfil ya está activo en Claramente. Ingresá con tu email y contraseña para ver tu panel.';
+  document.getElementById('action').innerHTML = `<a class="btn" href="/login.html">Ir a mi panel →</a>`;
+  document.getElementById('status').textContent = '';
+}
+
+function mostrarPendiente() {
+  document.getElementById('icon').textContent = '🕐';
+  document.getElementById('title').textContent = 'Pago en proceso';
+  document.getElementById('desc').textContent = 'Tu pago está siendo procesado por MercadoPago. Te llegará un mail cuando tu perfil esté activo. Puede tardar unos minutos.';
+  document.getElementById('action').innerHTML = `<a class="btn" href="/">Volver al inicio</a>`;
+}
+
+function mostrarError() {
+  document.getElementById('icon').textContent = '⚠️';
+  document.getElementById('title').textContent = 'Algo salió mal';
+  document.getElementById('desc').textContent = 'No pudimos verificar tu pago. Si realizaste el pago, contactanos a claramentepsisoporte@gmail.com con tu comprobante.';
+  document.getElementById('action').innerHTML = `<a class="btn" href="/">Volver al inicio</a>`;
+}
+
+verificar();
+</script>
+</body>
+</html>
