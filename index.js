@@ -10,14 +10,7 @@ const PORT = process.env.PORT || 3000;
 
 app.use(cors({ origin: '*', methods: ['GET', 'POST', 'PUT'], allowedHeaders: ['Content-Type'] }));
 app.use(express.json());
-// Servir archivos estáticos excepto HTML
-app.use(express.static(path.join(__dirname, 'public'), { index: false }));
-
-// Rutas HTML explícitas
-app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
-app.get('/login.html', (req, res) => res.sendFile(path.join(__dirname, 'public', 'login.html')));
-app.get('/panel.html', (req, res) => res.sendFile(path.join(__dirname, 'public', 'panel.html')));
-app.get('/claramentepsi-registro-profesional.html', (req, res) => res.sendFile(path.join(__dirname, 'public', 'claramentepsi-registro-profesional.html')));
+app.use(express.static(path.join(__dirname, 'public')));
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
