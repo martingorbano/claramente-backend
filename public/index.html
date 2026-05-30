@@ -50,7 +50,7 @@ nav {
 @media (max-width: 600px) { .hero h1 { font-size: 30px; } }
 .hero h1 em { font-style: italic; color: var(--sage); }
 .hero p { font-size: 16px; color: var(--text-muted); line-height: 1.7; max-width: 440px; margin: 0 auto 36px; }
- 
+
 /* CHAT */
 .chat-container { max-width: 600px; margin: 0 auto; width: 100%; padding: 0 20px; }
 .chat-window { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; box-shadow: 0 8px 40px rgba(44,80,72,0.14); }
@@ -402,9 +402,17 @@ function showToast(msg) {
   setTimeout(() => t.classList.remove('show'), 2500);
 }
 
-function trackContact(psy, query) {
-  console.log('Contacto:', { psy: psy.nombre, plan: psy.plan, query, ts: new Date().toISOString() });
-  showToast('Contacto registrado · abriendo WhatsApp...');
+async function trackContact(psy, query) {
+  showToast('Abriendo WhatsApp...');
+  try {
+    await fetch('/contacto', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ psy_id: psy.id, query_texto: query })
+    });
+  } catch(e) {
+    console.error('Error tracking:', e);
+  }
 }
 
 function openWhatsapp(psyJson, query) {
