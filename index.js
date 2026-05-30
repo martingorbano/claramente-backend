@@ -1,4 +1,5 @@
 const express = require('express');
+const crypto = require('crypto');
 const cors = require('cors');
 const Anthropic = require('@anthropic-ai/sdk');
 const { createClient } = require('@supabase/supabase-js');
@@ -225,6 +226,152 @@ app.get('/stats/:psy_id', async (req, res) => {
     res.status(500).json({ error: 'Error al obtener estadísticas' });
   }
 });
+
+// Guardar registro pendiente (antes del pago)
+app.post('/registro-pendiente', async (req, res) => {
+  const { datos, plan } = req.body;
+  if (!datos || !plan) return res.status(400).json({ error: 'Faltan datos' });
+  try {
+    const session_id = crypto.randomUUID();
+    const { error } = await supabase
+      .from('registros_pendientes')
+      .insert({ session_id, datos, plan });
+    if (error) throw error;
+    res.json({ ok: true, session_id });
+  } catch (e) {
+    console.error('Error registro pendiente:', e.message);
+    res.status(500).json({ error: 'Error al guardar registro' });
+  }
+});
+
+// Webhook de MercadoPago
+app.post('/webhook/mp', async (req, res) => {
+  try {
+    const { type, data } = req.body;
+    if (type !== 'payment' && type !== 'preapproval') return res.sendStatus(200);
+
+    const paymentId = data?.id;
+    if (!paymentId) return res.sendStatus(200);
+
+    // Verificar el pago con la API de MP
+    const mpRes = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
+      headers: { 'Authorization': `Bearer ${process.env.MP_ACCESS_TOKEN}` }
+    });
+    const payment = await mpRes.json();
+
+    if (payment.status !== 'approved') return res.sendStatus(200);
+
+    const session_id = payment.external_reference;
+    if (!session_id) return res.sendStatus(200);
+
+    // Buscar el registro pendiente
+    const { data: pendiente } = await supabase
+      .from('registros_pendientes')
+      .select('*')
+      .eq('session_id', session_id)
+      .single();
+
+    if (!pendiente) return res.sendStatus(200);
+
+    // Crear el profesional
+    const d = pendiente.datos;
+    const password_hash = await bcrypt.hash(d.password, 10);
+    await supabase.from('profesionales').insert({
+      nombre: d.nombre, matricula: d.matricula, email: d.email,
+      whatsapp: d.whatsapp, password_hash, bio: d.bio || '',
+      ciudad: d.ciudad || '', experiencia: d.experiencia || null,
+      honorario: d.honorario || null, obras_sociales: d.obras_sociales || [],
+      enfoques: d.enfoques || [], especializaciones: d.especializaciones || [],
+      modalidades: d.modalidades || [], edades: d.edades || [],
+      dias: d.dias || [], franjas: d.franjas || [],
+      plan: pendiente.plan, activo: true,
+      plan_activo_desde: new Date().toISOString()
+    });
+
+    // Borrar el registro pendiente
+    await supabase.from('registros_pendientes').delete().eq('session_id', session_id);
+
+    res.sendStatus(200);
+  } catch (e) {
+    console.error('Error webhook MP:', e.message);
+    res.sendStatus(500);
+  }
+});
+
+// Webhook de suscripciones de MP (preapproval)
+app.post('/webhook/mp-sub', async (req, res) => {
+  try {
+    const { type, data } = req.body;
+    if (type !== 'preapproval') return res.sendStatus(200);
+
+    const subId = data?.id;
+    if (!subId) return res.sendStatus(200);
+
+    const mpRes = await fetch(`https://api.mercadopago.com/preapproval/${subId}`, {
+      headers: { 'Authorization': `Bearer ${process.env.MP_ACCESS_TOKEN}` }
+    });
+    const sub = await mpRes.json();
+
+    if (sub.status !== 'authorized') return res.sendStatus(200);
+
+    const session_id = sub.external_reference;
+    if (!session_id) return res.sendStatus(200);
+
+    const { data: pendiente } = await supabase
+      .from('registros_pendientes')
+      .select('*')
+      .eq('session_id', session_id)
+      .single();
+
+    if (!pendiente) return res.sendStatus(200);
+
+    const d = pendiente.datos;
+    const password_hash = await bcrypt.hash(d.password, 10);
+    await supabase.from('profesionales').insert({
+      nombre: d.nombre, matricula: d.matricula, email: d.email,
+      whatsapp: d.whatsapp, password_hash, bio: d.bio || '',
+      ciudad: d.ciudad || '', experiencia: d.experiencia || null,
+      honorario: d.honorario || null, obras_sociales: d.obras_sociales || [],
+      enfoques: d.enfoques || [], especializaciones: d.especializaciones || [],
+      modalidades: d.modalidades || [], edades: d.edades || [],
+      dias: d.dias || [], franjas: d.franjas || [],
+      plan: pendiente.plan, activo: true,
+      plan_activo_desde: new Date().toISOString()
+    });
+
+    await supabase.from('registros_pendientes').delete().eq('session_id', session_id);
+    res.sendStatus(200);
+  } catch (e) {
+    console.error('Error webhook MP sub:', e.message);
+    res.sendStatus(500);
+  }
+});
+
+// Verificar estado del pago (el frontend consulta esto después del redirect)
+app.get('/verificar-pago', async (req, res) => {
+  const { session_id } = req.query;
+  if (!session_id) return res.status(400).json({ error: 'session_id requerido' });
+  try {
+    // Si el registro pendiente ya no existe, el pago fue procesado
+    const { data: pendiente } = await supabase
+      .from('registros_pendientes')
+      .select('id')
+      .eq('session_id', session_id)
+      .single();
+
+    if (!pendiente) {
+      // Buscar el profesional recién creado por email no es posible sin el email
+      // Devolvemos ok: true y el frontend redirige al login
+      return res.json({ ok: true, procesado: true });
+    }
+    res.json({ ok: true, procesado: false });
+  } catch(e) {
+    // Si no encuentra el registro pendiente (error de single()), está procesado
+    res.json({ ok: true, procesado: true });
+  }
+});
+
+app.get('/pago-exitoso.html', (req, res) => res.sendFile(path.join(__dirname, 'public', 'pago-exitoso.html')));
 
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
