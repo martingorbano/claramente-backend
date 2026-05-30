@@ -207,6 +207,18 @@ app.get('/stats/:psy_id', async (req, res) => {
   }
 });
 
+app.get('/login.html', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'login.html'));
+});
+
+app.get('/panel.html', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'panel.html'));
+});
+
+app.get('/claramentepsi-registro-profesional.html', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'claramentepsi-registro-profesional.html'));
+});
+
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
