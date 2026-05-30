@@ -833,12 +833,12 @@ function previewPhoto(input) {
 
 async function submit() {
   collectStep(6);
-
+  const plan = formData.plan || 'gratuito';
   const btn = document.querySelector('#panel-6 .btn-next');
   btn.disabled = true;
   btn.textContent = 'Publicando...';
 
-  const payload = {
+  const datos = {
     nombre: formData.nombre,
     matricula: formData.matricula,
     email: formData.email,
@@ -855,36 +855,60 @@ async function submit() {
     edades: formData.edades || [],
     dias: formData.dias || [],
     franjas: formData.franjas || [],
-    plan: formData.plan || 'free'
   };
 
   try {
-    const res = await fetch('/registro', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-    const data = await res.json();
+    if (plan === 'gratuito') {
+      // Plan gratuito: crear perfil directo
+      const res = await fetch('/registro', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...datos, plan: 'gratuito' })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || 'Error al registrarse.');
+        btn.disabled = false;
+        btn.textContent = 'Publicar perfil →';
+        return;
+      }
+      // Login automático
+      const loginRes = await fetch('/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: datos.email, password: datos.password })
+      });
+      const loginData = await loginRes.json();
+      if (loginData.profesional) localStorage.setItem('clm_profesional', JSON.stringify(loginData.profesional));
+      showStep(7);
 
-    if (!res.ok) {
-      alert(data.error || 'Error al registrarse. Intentá de nuevo.');
-      btn.disabled = false;
-      btn.textContent = 'Publicar perfil →';
-      return;
+    } else {
+      // Plan pago: guardar registro pendiente y redirigir a MP
+      const res = await fetch('/registro-pendiente', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ datos, plan })
+      });
+      const data = await res.json();
+      if (!res.ok || !data.session_id) {
+        alert('Error al procesar. Intentá de nuevo.');
+        btn.disabled = false;
+        btn.textContent = 'Publicar perfil →';
+        return;
+      }
+
+      const links = {
+        premium: 'https://www.mercadopago.com.ar/subscriptions/checkout?preapproval_plan_id=7cd85b4484f942e2a500303ce9a4f434',
+        flex: 'https://www.mercadopago.com.ar/subscriptions/checkout?preapproval_plan_id=7b2754ae1b744bdc85d1f828c778f6be'
+      };
+
+      // Guardar session_id para verificar después
+      localStorage.setItem('clm_session_id', data.session_id);
+
+      // Redirigir a MercadoPago
+      // MP va a redirigir a /pago-exitoso?session_id=... cuando termine
+      window.location.href = links[plan] + `&external_reference=${data.session_id}&back_url=${encodeURIComponent(window.location.origin + '/pago-exitoso.html?session_id=' + data.session_id)}`;
     }
-
-    // Login automático después del registro
-    const loginRes = await fetch('/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: payload.email, password: document.getElementById('pass').value })
-    });
-    const loginData = await loginRes.json();
-    if (loginData.profesional) {
-      localStorage.setItem('clm_profesional', JSON.stringify(loginData.profesional));
-    }
-
-    showStep(7);
   } catch(e) {
     alert('Error de conexión. Intentá de nuevo.');
     btn.disabled = false;
