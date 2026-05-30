@@ -35,7 +35,7 @@ Cuando tengas suficiente info (1-2 intercambios alcanza), respondé ÚNICAMENTE 
       "match": 95,
       "iniciales": "ML",
       "color": "sage",
-      "plan": "pro",
+      "plan": "premium / flex / gratuito",
       "whatsapp": "numero de whatsapp"
     }
   ]
@@ -50,7 +50,9 @@ REGLAS:
 - Si obras_sociales contiene "Particular" junto a otras obras sociales, mostrá las obras sociales normalmente sin mencionar "Particular"
 - Si el campo enfoques está vacío, no muestres enfoques
 - Si no hay profesionales en la base, avisá amablemente que todavía no hay profesionales disponibles para esa búsqueda
-- Orden: pro primero, free al final. Si spotlight_free es true: 1 free en posición 1 o 2
+- Orden: premium primero, luego flex, luego gratuito
+- Los profesionales "gratuito" NO tienen whatsapp — poné null en ese campo
+- Si TODOS los disponibles son "gratuito", devolvé solo 1 con campo "solo_gratuitos": true en el JSON raíz e invitá a ampliar la búsqueda
 - color: "sage", "warm" o "purple" según tu criterio
 - match: qué tan afín es realmente el profesional a la búsqueda (80-98)
 
@@ -81,7 +83,7 @@ app.post('/chat', async (req, res) => {
       .from('profesionales')
       .select('id, nombre, matricula, whatsapp, bio, ciudad, experiencia, honorario, obras_sociales, enfoques, especializaciones, modalidades, edades, dias, franjas, foto_url, plan')
       .eq('activo', true)
-      .order('plan', { ascending: false }); // pro primero
+      .order('plan', { ascending: false }); // premium > flex > gratuito
 
     const listaProfesionales = profesionales && profesionales.length > 0
       ? `\n\nPROFESIONALES DISPONIBLES EN LA BASE DE DATOS:\n${JSON.stringify(profesionales, null, 2)}`
@@ -121,6 +123,22 @@ app.post('/contacto', async (req, res) => {
   }
 });
 
+// Verificar si email ya existe
+app.get('/check-email', async (req, res) => {
+  const { email } = req.query;
+  if (!email) return res.json({ exists: false });
+  try {
+    const { data } = await supabase
+      .from('profesionales')
+      .select('id')
+      .eq('email', email)
+      .single();
+    res.json({ exists: !!data });
+  } catch(e) {
+    res.json({ exists: false });
+  }
+});
+
 // Registrar profesional
 app.post('/registro', async (req, res) => {
   const { nombre, matricula, email, whatsapp, password, bio, ciudad, experiencia,
@@ -137,7 +155,7 @@ app.post('/registro', async (req, res) => {
       nombre, matricula, email, whatsapp, password_hash, bio, ciudad,
       experiencia, honorario, obras_sociales, enfoques, especializaciones,
       modalidades, edades, dias, franjas,
-      plan: plan || 'free',
+      plan: plan || 'gratuito',
       activo: true
     }).select().single();
 
