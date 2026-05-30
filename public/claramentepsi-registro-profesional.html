@@ -456,13 +456,13 @@ select { cursor: pointer; appearance: none; background-image: url("data:image/sv
     <div class="panel-title">Elegí tu plan</div>
     <div class="panel-sub">Podés empezar gratis. Cuando veas que llegan consultas, el plan Pro te asegura aparecer primero.</div>
 
-    <div class="plan-card" id="planPro" style="cursor:pointer" onclick="selectPlan('pro')">
+    <div class="plan-card" id="planPro" style="cursor:pointer" onclick="selectPlan('premium')">
       <div class="plan-header">
         <div>
-          <div class="plan-name">Plan Pro</div>
-          <div style="font-size:13px;color:var(--text-muted);margin-top:2px">El más elegido por profesionales activos</div>
+          <div class="plan-name">Plan Premium</div>
+          <div style="font-size:13px;color:var(--text-muted);margin-top:2px">Máxima visibilidad y estadísticas completas</div>
         </div>
-        <div class="plan-price">$30.000 <small>/ mes</small></div>
+        <div class="plan-price">$59.900 <small>/ mes</small></div>
       </div>
       <div class="divider" style="margin:0"></div>
       <div class="plan-features">
@@ -477,9 +477,27 @@ select { cursor: pointer; appearance: none; background-image: url("data:image/sv
 
     <div style="margin:16px 0"></div>
 
-    <div class="plan-free" id="planFree" style="cursor:pointer" onclick="selectPlan('free')">
+    <!-- Flex -->
+    <div class="plan-card" id="planFlex" style="cursor:pointer;border-color:var(--sage-mid);margin-bottom:12px" onclick="selectPlan('flex')">
+      <div class="plan-header">
+        <div>
+          <div class="plan-name" style="font-size:17px">Plan Flex</div>
+          <div style="font-size:13px;color:var(--text-muted);margin-top:2px">Foto, contacto directo y segunda posición</div>
+        </div>
+        <div class="plan-price" style="color:var(--sage-dark)">$59.900 <small>/ mes</small></div>
+      </div>
+      <div class="divider" style="margin:0"></div>
+      <div class="plan-features">
+        <div class="plan-feat">Foto de perfil visible para los pacientes</div>
+        <div class="plan-feat">Botón de WhatsApp directo en tu tarjeta</div>
+        <div class="plan-feat">Aparecés después de los Premium</div>
+      </div>
+    </div>
+
+    <!-- Gratuito -->
+    <div class="plan-free" id="planFree" style="cursor:pointer" onclick="selectPlan('gratuito')">
       <div class="plan-free-label">Plan gratuito</div>
-      <div class="plan-free-desc">Tu perfil aparece en los resultados con botón de contacto. Aparecés después de los profesionales Pro, pero igualmente podés recibir consultas. Ideal para evaluar la plataforma antes de suscribirte.</div>
+      <div class="plan-free-desc">Tu perfil aparece en los resultados sin foto ni contacto directo. Cuando alguien te encuentre pero no pueda contactarte, te avisamos por mail para que puedas evaluar si vale la pena suscribirte.</div>
     </div>
 
     <div id="planSelected" style="font-size:13px;color:var(--sage);margin-top:14px;font-weight:500;display:none"></div>
@@ -506,7 +524,7 @@ select { cursor: pointer; appearance: none; background-image: url("data:image/sv
             <div class="pago-monto-sub">Suscripcion mensual · cancelable en cualquier momento</div>
           </div>
           <div style="text-align:right">
-            <div class="pago-monto-val">$30.000</div>
+            <div class="pago-monto-val">$59.900</div>
             <div class="pago-monto-sub">/ mes</div>
           </div>
         </div>
@@ -690,7 +708,7 @@ function selectPlan(plan) {
   document.getElementById('planFree').style.borderColor = plan === 'free' ? 'var(--sage-mid)' : 'transparent';
   document.getElementById('planFree').style.borderWidth = plan === 'free' ? '1.5px' : '1px';
   const lbl = document.getElementById('planSelected');
-  lbl.textContent = plan === 'pro' ? '✓ Seleccionaste Plan Pro — $30.000/mes' : '✓ Seleccionaste Plan Gratuito';
+  lbl.textContent = plan === 'pro' ? '✓ Seleccionaste Plan Pro — $59.900/mes' : '✓ Seleccionaste Plan Gratuito';
   lbl.style.display = 'block';
   document.getElementById('btnPlan').disabled = false;
 }
@@ -720,7 +738,7 @@ function buildResumen() {
     ['Edades', formData.edades?.join(', ') || '—'],
     ['Disponibilidad', formData.dias?.join(', ') || '—'],
     ['Franjas', formData.franjas?.join(', ') || '—'],
-    ['Plan', formData.plan === 'pro' ? 'Pro — $30.000/mes' : 'Gratuito'],
+    ['Plan', formData.plan === 'pro' ? 'Pro — $59.900/mes' : 'Gratuito'],
   ];
 
   r.innerHTML = rows.map(([k, val]) => `
