@@ -94,7 +94,10 @@ select { cursor: pointer; appearance: none; background-image: url("data:image/sv
 .photo-upload-btn:hover { border-color: var(--sage-mid); color: var(--sage-dark); }
 
 /* Plan */
-.plan-card { background: var(--white); border: 1.5px solid var(--sage); border-radius: var(--radius); padding: 24px; display: flex; flex-direction: column; gap: 14px; }
+.plan-card { background: var(--white); border: 1.5px solid var(--sage); border-radius: var(--radius); padding: 24px; display: flex; flex-direction: column; gap: 14px; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s; }
+.plan-card:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(44,80,72,0.1); }
+.plan-free { transition: border-color 0.2s, box-shadow 0.2s; cursor: pointer; }
+.plan-free:hover { border-color: var(--sage-mid) !important; box-shadow: 0 4px 12px rgba(74,124,111,0.1); }
 .plan-header { display: flex; align-items: center; justify-content: space-between; }
 .plan-name { font-family: 'Lora', serif; font-size: 20px; font-weight: 400; }
 .plan-price { font-size: 24px; font-weight: 500; color: var(--sage); }
@@ -723,12 +726,28 @@ function toggleFranja(el) { el.classList.toggle('selected'); }
 
 function selectPlan(plan) {
   selectedPlan = plan;
-  document.getElementById('planPro').style.borderColor = plan === 'pro' ? 'var(--sage)' : 'var(--border)';
-  document.getElementById('planPro').style.borderWidth = plan === 'pro' ? '2px' : '1px';
-  document.getElementById('planFree').style.borderColor = plan === 'free' ? 'var(--sage-mid)' : 'transparent';
-  document.getElementById('planFree').style.borderWidth = plan === 'free' ? '1.5px' : '1px';
+
+  // Reset todos los estilos
+  const planPro  = document.getElementById('planPro');
+  const planFlex = document.getElementById('planFlex');
+  const planFree = document.getElementById('planFree');
+
+  if (planPro)  { planPro.style.borderColor  = '#E8D48A'; planPro.style.borderWidth  = '2px'; planPro.style.boxShadow  = 'none'; planPro.style.transform  = 'none'; }
+  if (planFlex) { planFlex.style.borderColor = 'var(--sage-mid)'; planFlex.style.borderWidth = '1px'; planFlex.style.boxShadow = 'none'; planFlex.style.transform = 'none'; }
+  if (planFree) { planFree.style.borderColor = 'var(--border)'; planFree.style.boxShadow = 'none'; planFree.style.transform = 'none'; }
+
+  // Resaltar el seleccionado
+  if (plan === 'premium' && planPro)  { planPro.style.borderColor  = '#B8860B'; planPro.style.borderWidth  = '3px'; planPro.style.boxShadow  = '0 6px 24px rgba(184,134,11,0.2)'; planPro.style.transform  = 'translateY(-2px)'; }
+  if (plan === 'flex'    && planFlex) { planFlex.style.borderColor = 'var(--sage)'; planFlex.style.borderWidth = '2px'; planFlex.style.boxShadow = '0 6px 24px rgba(74,124,111,0.2)'; planFlex.style.transform = 'translateY(-2px)'; }
+  if (plan === 'gratuito'&& planFree) { planFree.style.borderColor = 'var(--sage-mid)'; planFree.style.boxShadow = '0 4px 12px rgba(74,124,111,0.1)'; }
+
+  const labels = {
+    premium:  '✓ Seleccionaste Plan Premium — $79.900/mes',
+    flex:     '✓ Seleccionaste Plan Flex — $59.900/mes',
+    gratuito: '✓ Seleccionaste Plan Gratuito'
+  };
   const lbl = document.getElementById('planSelected');
-  lbl.textContent = plan === 'pro' ? '✓ Seleccionaste Plan Pro — $59.900/mes' : '✓ Seleccionaste Plan Gratuito';
+  lbl.textContent = labels[plan] || '';
   lbl.style.display = 'block';
   document.getElementById('btnPlan').disabled = false;
 }
