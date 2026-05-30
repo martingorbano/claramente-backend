@@ -85,6 +85,20 @@ textarea { resize: vertical; min-height: 80px; }
 .save-msg { font-size: 13px; color: var(--sage); display: none; }
 .save-msg.show { display: block; }
 
+/* Stats blur para Flex */
+.stats-locked { position: relative; }
+.stats-locked .stat-card { filter: blur(4px); user-select: none; pointer-events: none; }
+.stats-lock-overlay { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; z-index: 10; }
+.stats-lock-icon { font-size: 28px; }
+.stats-lock-msg { font-size: 14px; font-weight: 500; color: var(--text); text-align: center; }
+.stats-lock-sub { font-size: 12px; color: var(--text-muted); text-align: center; max-width: 260px; line-height: 1.5; }
+.btn-upgrade-inline { font-size: 13px; padding: 9px 22px; border-radius: 24px; border: none; background: var(--sage); color: white; cursor: pointer; font-family: "DM Sans", sans-serif; font-weight: 500; margin-top: 4px; }
+
+/* Badges de plan */
+.badge-premium { background: #FDF8E8; color: #B8860B; border: 1px solid #E8D48A; }
+.badge-flex { background: var(--sage-light); color: var(--sage-dark); border: 1px solid var(--sage-mid); }
+.badge-gratuito { background: var(--warm-mid); color: var(--text-muted); border: 1px solid var(--border); }
+
 /* PREVIEW TARJETA */
 .preview-label { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-faint); margin-bottom: 12px; }
 .pro-card-preview { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; max-width: 240px; position: relative; }
@@ -265,29 +279,32 @@ textarea { resize: vertical; min-height: 80px; }
         <div class="plan-name" id="planNombre">Plan Gratuito</div>
         <div class="plan-desc" id="planDesc">Aparecés en los resultados pero después de los profesionales Pro.</div>
       </div>
-      <button class="btn-upgrade" id="btnUpgrade" onclick="upgrade()">Activar Plan Pro</button>
+      <button class="btn-upgrade" id="btnUpgrade" onclick="upgrade()">Activar plan</button>
     </div>
     <div class="plan-features">
-      <div class="plan-feat">
-        <span class="plan-feat-icon">✓</span>
-        <div><strong>Aparición inteligente</strong> — aparecés cuando alguien busca tu especialidad, enfoque y disponibilidad.</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:16px;text-align:center;flex-wrap:wrap">
+        <div style="padding:14px;border-radius:12px;border:1px solid var(--border)">
+          <div style="font-size:12px;font-weight:500;color:var(--text-muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.05em">Gratuito</div>
+          <div style="font-size:20px;font-weight:500;color:var(--text)">$0</div>
+          <div style="font-size:11px;color:var(--text-faint)">/mes</div>
+        </div>
+        <div style="padding:14px;border-radius:12px;border:1px solid var(--sage-mid);background:var(--sage-light)">
+          <div style="font-size:12px;font-weight:500;color:var(--sage-dark);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.05em">Flex</div>
+          <div style="font-size:20px;font-weight:500;color:var(--sage-dark)">$59.900</div>
+          <div style="font-size:11px;color:var(--sage)">/mes</div>
+        </div>
+        <div style="padding:14px;border-radius:12px;border:1.5px solid #B8860B;background:#FDF8E8">
+          <div style="font-size:12px;font-weight:500;color:#B8860B;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.05em">Premium</div>
+          <div style="font-size:20px;font-weight:500;color:#B8860B">$79.900</div>
+          <div style="font-size:11px;color:#B8860B">/mes</div>
+        </div>
       </div>
-      <div class="plan-feat">
-        <span class="plan-feat-icon">✓</span>
-        <div><strong>Posición prioritaria</strong> — con el Plan Pro aparecés primero cuando sos el match correcto.</div>
-      </div>
-      <div class="plan-feat">
-        <span class="plan-feat-icon">✓</span>
-        <div><strong>Foto de perfil visible</strong> — los pacientes pueden verte antes del primer contacto.</div>
-      </div>
-      <div class="plan-feat">
-        <span class="plan-feat-icon">✓</span>
-        <div><strong>Estadísticas completas</strong> — sabés cuántas personas vieron tu perfil y te contactaron.</div>
-      </div>
-      <div class="plan-feat">
-        <span class="plan-feat-icon">✓</span>
-        <div><strong>$30.000/mes</strong> — menos de una consulta mensual. Cancelable cuando quieras.</div>
-      </div>
+      <div class="plan-feat"><span class="plan-feat-icon">✓</span><div><strong>Aparición en resultados</strong> — los tres planes aparecen cuando sos afín a la búsqueda.</div></div>
+      <div class="plan-feat"><span class="plan-feat-icon">✓</span><div><strong>Botón de contacto por WhatsApp</strong> — disponible en Flex y Premium.</div></div>
+      <div class="plan-feat"><span class="plan-feat-icon">✓</span><div><strong>Foto de perfil visible</strong> — disponible en Flex y Premium.</div></div>
+      <div class="plan-feat"><span class="plan-feat-icon">✓</span><div><strong>Tarjeta destacada y grande</strong> — exclusiva del plan Premium, primero en los resultados.</div></div>
+      <div class="plan-feat"><span class="plan-feat-icon">✓</span><div><strong>Estadísticas de vistas y contactos</strong> — exclusivas del plan Premium.</div></div>
+      <div class="plan-feat"><span class="plan-feat-icon">✓</span><div><strong>Mail cuando no podés ser contactado</strong> — el plan Gratuito recibe aviso cuando alguien buscó tu perfil.</div></div>
     </div>
   </div>
 
@@ -295,15 +312,42 @@ textarea { resize: vertical; min-height: 80px; }
 
 <script>
 // Verificar sesión
-const profesional = JSON.parse(localStorage.getItem('clm_profesional') || 'null');
-if (!profesional) window.location.href = '/login.html';
+let profesional = null;
+try {
+  profesional = JSON.parse(localStorage.getItem('clm_profesional') || 'null');
+} catch(e) {}
+if (!profesional) { window.location.href = '/login.html'; throw new Error('No session'); }
 
 // Inicializar
 document.getElementById('navName').textContent = profesional.nombre?.split(' ').slice(-2).join(' ') || '';
-document.getElementById('pageTitle').textContent = `Hola, ${profesional.nombre?.split(' ')[1] || profesional.nombre}`;
+document.getElementById('pageTitle').textContent = \`Hola, \${profesional.nombre?.split(' ')[1] || profesional.nombre || ''}\`;
 
 // Cargar estadísticas
 async function cargarStats() {
+  const esPremium = profesional.plan === 'premium';
+
+  if (!esPremium) {
+    // Mostrar blur con mensaje de upgrade
+    const statsGrid = document.querySelector('.stats-grid');
+    statsGrid.classList.add('stats-locked');
+    statsGrid.style.position = 'relative';
+
+    // Poner números falsos para que el blur se vea bien
+    document.getElementById('statContactos').textContent = '12';
+    document.getElementById('statVistas').textContent = '47';
+    document.getElementById('statConversion').textContent = '25%';
+
+    const overlay = document.createElement('div');
+    overlay.className = 'stats-lock-overlay';
+    overlay.innerHTML = `
+      <div class="stats-lock-icon">🔒</div>
+      <div class="stats-lock-msg">Las estadísticas son exclusivas del plan Premium</div>
+      <div class="stats-lock-sub">Actualizá tu plan para ver cuántas personas vieron tu perfil y te contactaron.</div>
+      <button class="btn-upgrade-inline" onclick="switchTab('plan')">Ver planes →</button>`;
+    statsGrid.appendChild(overlay);
+    return;
+  }
+
   try {
     const res = await fetch(`/stats/${profesional.id}`);
     const data = await res.json();
@@ -405,19 +449,40 @@ async function guardarPerfil() {
 
 // Plan
 function cargarPlan() {
-  const esPro = profesional.plan === 'pro';
-  document.getElementById('planBadge').textContent = esPro ? 'Pro' : 'Gratuito';
-  document.getElementById('planBadge').className = `plan-badge ${esPro ? 'badge-pro' : 'badge-free'}`;
-  document.getElementById('planNombre').textContent = esPro ? 'Plan Pro — $30.000/mes' : 'Plan Gratuito';
-  document.getElementById('planDesc').textContent = esPro
-    ? 'Aparecés primero cuando sos el match correcto para una búsqueda.'
-    : 'Aparecés en los resultados pero después de los profesionales Pro.';
+  const plan = profesional.plan || 'gratuito';
+  const planes = {
+    premium: { label: 'Premium', badge: 'badge-premium', nombre: 'Plan Premium — $79.900/mes', desc: 'Tarjeta grande, primera posición, foto, estadísticas completas.' },
+    flex:    { label: 'Flex',    badge: 'badge-flex',    nombre: 'Plan Flex — $59.900/mes',    desc: 'Aparecés después de los Premium, con foto y botón de contacto.' },
+    gratuito:{ label: 'Gratuito',badge: 'badge-gratuito',nombre: 'Plan Gratuito',               desc: 'Aparecés en resultados sin foto ni contacto directo.' },
+  };
+  const p = planes[plan] || planes.gratuito;
+  document.getElementById('planBadge').textContent = p.label;
+  document.getElementById('planBadge').className = `plan-badge ${p.badge}`;
+  document.getElementById('planNombre').textContent = p.nombre;
+  document.getElementById('planDesc').textContent = p.desc;
   const btn = document.getElementById('btnUpgrade');
-  if (esPro) { btn.textContent = 'Plan activo ✓'; btn.style.background = 'var(--sage-mid)'; btn.style.cursor = 'default'; }
+  if (plan === 'premium') {
+    btn.textContent = 'Plan activo ✓';
+    btn.style.background = '#B8860B';
+    btn.style.cursor = 'default';
+  } else {
+    btn.textContent = plan === 'flex' ? 'Subir a Premium' : 'Activar plan';
+  }
 }
 
 function upgrade() {
-  alert('La pasarela de pago estará disponible próximamente. Por ahora contactanos a hola@claramente.com.ar para activar tu plan Pro.');
+  const plan = profesional.plan || 'gratuito';
+  if (plan === 'gratuito') {
+    // Mostrar opciones de plan
+    const elegir = confirm('¿Qué plan querés activar?\n\n✨ Premium — $79.900/mes (tarjeta grande, primera posición, estadísticas)\n\nFlex — $59.900/mes (foto, contacto, segunda posición)\n\nAceptar = Premium · Cancelar = Flex');
+    if (elegir) {
+      window.open('https://www.mercadopago.com.ar/subscriptions/checkout?preapproval_plan_id=7cd85b4484f942e2a500303ce9a4f434', '_blank');
+    } else {
+      window.open('https://www.mercadopago.com.ar/subscriptions/checkout?preapproval_plan_id=7b2754ae1b744bdc85d1f828c778f6be', '_blank');
+    }
+  } else if (plan === 'flex') {
+    window.open('https://www.mercadopago.com.ar/subscriptions/checkout?preapproval_plan_id=7cd85b4484f942e2a500303ce9a4f434', '_blank');
+  }
 }
 
 // Tabs
