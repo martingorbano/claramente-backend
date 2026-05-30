@@ -640,7 +640,17 @@ async function next(step) {
 
   if (step === 4) { setupPago(); }
   if (step === 5) {
-    if (window._mpLink) window.open(window._mpLink, '_blank');
+    const plan = formData.plan || 'gratuito';
+    if ((plan === 'premium' || plan === 'flex') && window._mpLink) {
+      // Abrir MercadoPago y cambiar el botón a "Ya pagué, continuar"
+      window.open(window._mpLink, '_blank');
+      const btn = document.getElementById('btnPago');
+      btn.disabled = false;
+      btn.textContent = 'Ya pagué · Continuar →';
+      // Esperar que el usuario confirme que pagó
+      btn.onclick = () => { buildResumen(); showStep(7); };
+      return; // No avanzar automáticamente
+    }
     buildResumen();
   }
   showStep(step + 1);
@@ -946,6 +956,7 @@ function setupPago() {
     pagoPro.style.display = 'block';
     pagoFree.style.display = 'none';
     btnPago.disabled = true;
+    btnPago.textContent = 'Ir a pagar →';
 
     // Actualizar el monto según el plan
     const monto = plan === 'premium' ? '$79.900' : '$59.900';
