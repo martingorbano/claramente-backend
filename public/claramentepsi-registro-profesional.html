@@ -513,8 +513,8 @@ select { cursor: pointer; appearance: none; background-image: url("data:image/sv
 
   <!-- PASO 6: Pago -->
   <div class="panel" id="panel-5">
-    <div class="panel-title">Activá tu suscripcion</div>
-    <div class="panel-sub" id="pagoSub">Elegí como queres pagar el Plan Pro. Podes cancelar cuando quieras.</div>
+    <div class="panel-title">Activá tu suscripción</div>
+    <div class="panel-sub" id="pagoSub">Completá tu suscripción según el plan que elegiste.</div>
     <div id="pagoPro">
       <div class="pago-card">
         <div class="pago-header">
@@ -558,7 +558,7 @@ select { cursor: pointer; appearance: none; background-image: url("data:image/sv
     <div id="pagoFree" style="display:none">
       <div class="pago-free-notice">
         <strong>Empezas con el plan gratuito</strong>
-        Tu perfil se publica sin costo. Cuando quieras activar el Plan Pro para aparecer primero y mostrar tu foto, podes hacerlo desde tu panel en cualquier momento.
+        Tu perfil se publica sin costo. Cuando quieras activar Premium o Flex para aparecer primero y ser contactado, podés hacerlo desde tu panel en cualquier momento.
       </div>
     </div>
     <div class="nav-btns">
@@ -617,12 +617,29 @@ function showStep(step) {
 
 function prev(step) { showStep(step - 1); }
 
-function next(step) {
+async function next(step) {
   if (!validateStep(step)) return;
   collectStep(step);
-  if (step === 5) { submit(); return; }
+
+  if (step === 0) {
+    const email = document.getElementById('email').value.trim();
+    try {
+      const res = await fetch(`/check-email?email=${encodeURIComponent(email)}`);
+      const data = await res.json();
+      if (data.exists) {
+        const field = document.getElementById('f-email');
+        field.classList.add('has-error');
+        field.querySelector('.field-error').textContent = 'Este email ya está registrado. ¿Querés ingresar a tu panel?';
+        return;
+      }
+    } catch(e) {}
+  }
+
   if (step === 4) { setupPago(); }
-  if (step === 5) { buildResumen(); }
+  if (step === 5) {
+    if (window._mpLink) window.open(window._mpLink, '_blank');
+    buildResumen();
+  }
   showStep(step + 1);
 }
 
@@ -899,12 +916,38 @@ function addOtraObra(e) {
 
 // Setup panel de pago segun plan
 function setupPago() {
-  const esPro = formData.plan === 'pro';
-  document.getElementById('pagoPro').style.display = esPro ? 'block' : 'none';
-  document.getElementById('pagoFree').style.display = esPro ? 'none' : 'block';
+  const plan = formData.plan || 'gratuito';
+  const esPago = plan === 'premium' || plan === 'flex';
+  const pagoPro = document.getElementById('pagoPro');
+  const pagoFree = document.getElementById('pagoFree');
   const btnPago = document.getElementById('btnPago');
-  btnPago.disabled = esPro;
-  if (!esPro) btnPago.disabled = false;
+  const pagoSub = document.getElementById('pagoSub');
+
+  if (esPago) {
+    pagoPro.style.display = 'block';
+    pagoFree.style.display = 'none';
+    btnPago.disabled = true;
+
+    // Actualizar el monto según el plan
+    const monto = plan === 'premium' ? '$79.900' : '$59.900';
+    const nombrePlan = plan === 'premium' ? 'Plan Premium · claramentepsi' : 'Plan Flex · claramentepsi';
+    const linkMP = plan === 'premium'
+      ? 'https://www.mercadopago.com.ar/subscriptions/checkout?preapproval_plan_id=7cd85b4484f942e2a500303ce9a4f434'
+      : 'https://www.mercadopago.com.ar/subscriptions/checkout?preapproval_plan_id=7b2754ae1b744bdc85d1f828c778f6be';
+
+    document.querySelector('.pago-monto-label').textContent = nombrePlan;
+    document.querySelector('.pago-monto-val').textContent = monto;
+    pagoSub.textContent = `Elegí cómo querés pagar el ${plan === 'premium' ? 'Plan Premium' : 'Plan Flex'}. Podés cancelar cuando quieras.`;
+
+    // Guardar link de MP para usar al continuar
+    window._mpLink = linkMP;
+  } else {
+    pagoPro.style.display = 'none';
+    pagoFree.style.display = 'block';
+    btnPago.disabled = false;
+    pagoSub.textContent = 'Empezás gratis, sin necesidad de pagar nada ahora.';
+    window._mpLink = null;
+  }
 }
 
 let metodoSeleccionado = null;
