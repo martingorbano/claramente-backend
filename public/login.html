@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Claramente · Acceso profesionales</title>
+<title>Claramente · La red de psicólogos de Argentina</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
@@ -12,102 +12,509 @@
   --sage: #4A7C6F; --sage-light: #E8F2EF; --sage-mid: #A8C8C0; --sage-dark: #2C5048;
   --warm: #F7F3EE; --warm-mid: #EDE6DC; --text: #1C2B28; --text-muted: #6B847E;
   --text-faint: #9AAFAA; --border: #D8E8E4; --white: #FFFFFF; --radius: 16px;
-  --error: #C0392B; --error-light: #FDECEA;
 }
-body { font-family: 'DM Sans', sans-serif; background: var(--warm); color: var(--text); min-height: 100vh; display: flex; flex-direction: column; }
-nav { display: flex; align-items: center; justify-content: space-between; padding: 18px 36px; border-bottom: 1px solid var(--border); }
-.logo { font-family: 'Lora', serif; font-size: 20px; color: var(--text); text-decoration: none; letter-spacing: -0.02em; }
+html { scroll-behavior: smooth; }
+body { font-family: 'DM Sans', sans-serif; background: var(--warm); color: var(--text); min-height: 100vh; }
+
+/* NAV */
+nav {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 36px; background: var(--warm); border-bottom: 1px solid var(--border);
+  position: sticky; top: 0; z-index: 100;
+}
+.logo { font-family: 'Lora', serif; font-size: 20px; color: var(--text); letter-spacing: -0.02em; text-decoration: none; }
 .logo span { color: var(--sage); font-style: italic; }
-.wrap { flex: 1; display: flex; align-items: center; justify-content: center; padding: 40px 20px; }
-.card { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius); padding: 36px; width: 100%; max-width: 420px; box-shadow: 0 4px 24px rgba(44,80,72,0.06); }
-.card-title { font-family: 'Lora', serif; font-size: 22px; font-weight: 400; margin-bottom: 6px; }
-.card-sub { font-size: 14px; color: var(--text-muted); margin-bottom: 28px; }
-.field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
-label { font-size: 13px; font-weight: 500; color: var(--text); }
-input { font-family: 'DM Sans', sans-serif; font-size: 14px; padding: 11px 16px; border: 1px solid var(--border); border-radius: 10px; background: var(--white); color: var(--text); outline: none; transition: border-color 0.2s; }
-input:focus { border-color: var(--sage-mid); }
-input::placeholder { color: var(--text-faint); }
-.btn { width: 100%; font-size: 14px; padding: 12px; border-radius: 24px; border: none; background: var(--sage); color: white; cursor: pointer; font-family: 'DM Sans', sans-serif; font-weight: 500; transition: all 0.18s; margin-top: 8px; }
-.btn:hover { background: var(--sage-dark); }
-.btn:disabled { background: var(--sage-mid); cursor: default; }
-.error-msg { background: var(--error-light); color: var(--error); font-size: 13px; padding: 10px 14px; border-radius: 8px; margin-bottom: 16px; display: none; }
-.error-msg.show { display: block; }
-.divider { display: flex; align-items: center; gap: 12px; margin: 20px 0; }
-.divider-line { flex: 1; height: 1px; background: var(--border); }
-.divider-text { font-size: 12px; color: var(--text-faint); }
-.link-btn { width: 100%; font-size: 14px; padding: 12px; border-radius: 24px; border: 1px solid var(--border); background: transparent; color: var(--text-muted); cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.18s; text-align: center; text-decoration: none; display: block; }
-.link-btn:hover { border-color: var(--sage-mid); color: var(--sage-dark); }
+.nav-right { display: flex; align-items: center; gap: 12px; }
+.nav-link { font-size: 13px; color: var(--text-muted); cursor: pointer; text-decoration: none; transition: color 0.18s; }
+.nav-link:hover { color: var(--sage); }
+.nav-cta { font-size: 13px; padding: 8px 18px; border-radius: 20px; border: 1px solid var(--sage); background: transparent; color: var(--sage); cursor: pointer; font-family: 'DM Sans', sans-serif; font-weight: 500; transition: all 0.18s; text-decoration: none; }
+.nav-cta:hover { background: var(--sage); color: white; }
+.nav-cta-secondary { font-size: 13px; padding: 8px 18px; border-radius: 20px; border: 1px solid var(--border); background: var(--white); color: var(--text-muted); cursor: pointer; font-family: "DM Sans", sans-serif; font-weight: 500; transition: all 0.18s; text-decoration: none; }
+.nav-cta-secondary:hover { border-color: var(--sage-mid); color: var(--sage-dark); }
+
+/* HERO */
+.hero-section {
+  min-height: calc(100vh - 57px);
+  display: flex; flex-direction: column; justify-content: center;
+  padding: 0 0 40px;
+}
+.hero {
+  text-align: center; padding: 0 24px 24px;
+  max-width: 700px; margin: 0 auto;
+}
+.hero-eyebrow { font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--sage); margin-bottom: 14px; }
+.hero h1 {
+  font-family: 'Lora', serif; font-size: 46px; font-weight: 400;
+  line-height: 1.18; color: var(--text); margin-bottom: 20px; letter-spacing: -0.03em;
+}
+@media (max-width: 600px) { .hero h1 { font-size: 30px; } }
+.hero h1 em { font-style: italic; color: var(--sage); }
+.hero p { font-size: 16px; color: var(--text-muted); line-height: 1.7; max-width: 440px; margin: 0 auto 36px; }
+
+/* CHAT */
+.chat-container { max-width: 600px; margin: 0 auto; width: 100%; padding: 0 20px; }
+.chat-window { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; box-shadow: 0 8px 40px rgba(44,80,72,0.14); }
+.messages { padding: 20px; display: flex; flex-direction: column; gap: 14px; min-height: 140px; max-height: 300px; overflow-y: auto; scroll-behavior: smooth; }
+.messages::-webkit-scrollbar { width: 4px; }
+.messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+.msg { display: flex; gap: 10px; align-items: flex-start; animation: fadeUp 0.3s ease both; }
+.msg.user { flex-direction: row-reverse; }
+@keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+.avatar { width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 500; flex-shrink: 0; }
+.avatar.ai { background: var(--sage-light); color: var(--sage-dark); font-family: 'Lora', serif; font-style: italic; font-size: 13px; }
+.avatar.user { background: var(--warm-mid); color: var(--text-muted); font-size: 10px; }
+.bubble { max-width: 82%; padding: 10px 14px; border-radius: 16px; font-size: 14px; line-height: 1.6; }
+.bubble.ai { background: var(--sage-light); color: var(--text); border-bottom-left-radius: 4px; }
+.bubble.user { background: var(--sage); color: white; border-bottom-right-radius: 4px; }
+.bubble.typing { background: var(--sage-light); border-bottom-left-radius: 4px; display: flex; gap: 5px; align-items: center; padding: 13px 15px; }
+.dot { width: 6px; height: 6px; background: var(--sage-mid); border-radius: 50%; animation: blink 1.2s infinite; }
+.dot:nth-child(2) { animation-delay: 0.2s; }
+.dot:nth-child(3) { animation-delay: 0.4s; }
+@keyframes blink { 0%,100%{ opacity:.3; transform:scale(.85); } 50%{ opacity:1; transform:scale(1); } }
+.input-row { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-top: 2px solid var(--sage-light); background: var(--white); }
+.chat-input { flex: 1; font-family: 'DM Sans', sans-serif; font-size: 15px; padding: 13px 20px; border: 1.5px solid var(--sage-mid); border-radius: 28px; background: var(--white); color: var(--text); outline: none; transition: all 0.2s; box-shadow: 0 2px 8px rgba(44,80,72,0.06); }
+.chat-input:focus { border-color: var(--sage); box-shadow: 0 0 0 3px rgba(74,124,111,0.12); }
+.chat-input::placeholder { color: var(--text-muted); }
+.send-btn { width: 46px; height: 46px; border-radius: 50%; background: var(--sage); border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; color: white; transition: background 0.2s, transform 0.1s; flex-shrink: 0; box-shadow: 0 2px 8px rgba(44,80,72,0.25); }
+.send-btn:hover { background: var(--sage-dark); }
+.send-btn:active { transform: scale(0.95); }
+.send-btn:disabled { background: var(--sage-mid); cursor: default; }
+.send-btn svg { width: 17px; height: 17px; }
+
+/* CHIPS */
+.suggestions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; max-width: 640px; margin: 0 auto 60px; padding: 0 20px; }
+.chip { font-size: 12px; padding: 7px 15px; border-radius: 20px; border: 1px solid var(--border); background: var(--white); color: var(--text-muted); cursor: pointer; transition: all 0.18s; white-space: nowrap; }
+.chip:hover { border-color: var(--sage-mid); color: var(--sage-dark); background: var(--sage-light); }
+
+/* RESULTADOS */
+.results-section { max-width: 640px; margin: 0 auto 60px; padding: 32px 20px 0; width: 100%; }
+.results-label { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-faint); margin-bottom: 6px; }
+.results-hint { font-size: 12px; color: var(--text-faint); margin-bottom: 14px; }
+.cards-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+.pro-card { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; display: flex; flex-direction: column; gap: 12px; animation: fadeUp 0.35s ease both; transition: box-shadow 0.2s, transform 0.2s; position: relative; }
+.pro-card:hover { box-shadow: 0 6px 24px rgba(44,80,72,0.08); transform: translateY(-2px); }
+.pro-card:nth-child(2) { animation-delay: 0.08s; }
+.pro-card:nth-child(3) { animation-delay: 0.16s; }
+.pro-card.is-free { opacity: 0.88; }
+.plan-badge { position: absolute; top: 12px; right: 12px; font-size: 10px; font-weight: 500; padding: 3px 8px; border-radius: 20px; letter-spacing: 0.04em; text-transform: uppercase; }
+.badge-pro { background: var(--sage-light); color: var(--sage-dark); border: 1px solid var(--sage-mid); }
+.card-head { display: flex; align-items: center; gap: 12px; }
+.card-avatar { width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: 'Lora', serif; font-size: 15px; font-weight: 500; flex-shrink: 0; }
+.card-name { font-size: 14px; font-weight: 500; color: var(--text); line-height: 1.3; }
+.card-sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+.card-tags { display: flex; flex-wrap: wrap; gap: 5px; }
+.tag { font-size: 11px; padding: 3px 9px; border-radius: 20px; }
+.tag-sage { background: var(--sage-light); color: var(--sage-dark); }
+.tag-warm { background: var(--warm-mid); color: var(--text-muted); }
+.card-desc { font-size: 12px; color: var(--text-muted); line-height: 1.5; }
+.card-footer { display: flex; align-items: center; justify-content: space-between; margin-top: auto; }
+.match-score { font-size: 12px; color: var(--sage); font-weight: 500; }
+.contact-btn { font-size: 12px; padding: 7px 14px; border-radius: 20px; border: none; background: #25D366; color: white; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.18s; display: flex; align-items: center; gap: 5px; }
+.contact-btn:hover { background: #1DA851; transform: scale(1.03); }
+.contact-btn svg { width: 13px; height: 13px; }
+
+
+.areas-section { padding: 60px 24px; background: var(--warm); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+.areas-section .section-title em { font-style: italic; color: var(--sage); }
+.areas-grid { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 4px; }
+.area-chip { display: flex; align-items: center; gap: 8px; padding: 10px 18px; border-radius: 24px; border: 1px solid var(--border); background: var(--white); cursor: pointer; transition: all 0.18s; font-size: 14px; color: var(--text-muted); font-family: "DM Sans", sans-serif; }
+.area-chip:hover { border-color: var(--sage-mid); background: var(--sage-light); color: var(--sage-dark); }
+.area-chip i { font-size: 16px; color: var(--sage); }
+
+/* COMO FUNCIONA */
+.como-funciona {
+  background: var(--white); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);
+  padding: 72px 24px;
+}
+.section-inner { max-width: 760px; margin: 0 auto; }
+.section-eyebrow { font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--sage); margin-bottom: 12px; }
+.section-title { font-family: 'Lora', serif; font-size: 28px; font-weight: 400; color: var(--text); margin-bottom: 10px; letter-spacing: -0.02em; }
+.section-sub { font-size: 15px; color: var(--text-muted); line-height: 1.7; max-width: 480px; margin-bottom: 48px; }
+.steps-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 32px 48px; }
+@media (max-width: 560px) { .steps-grid { grid-template-columns: 1fr; } }
+.step-card { display: flex; flex-direction: column; gap: 12px; }
+.step-num { width: 36px; height: 36px; border-radius: 50%; background: var(--sage-light); color: var(--sage-dark); display: flex; align-items: center; justify-content: center; font-family: 'Lora', serif; font-size: 16px; font-weight: 500; flex-shrink: 0; }
+.step-title { font-size: 15px; font-weight: 500; color: var(--text); }
+.step-desc { font-size: 13px; color: var(--text-muted); line-height: 1.65; }
+
+/* PARA PROFESIONALES */
+.para-profesionales { padding: 72px 24px; }
+.prof-inner { max-width: 760px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1fr; gap: 48px; align-items: center; }
+@media (max-width: 600px) { .prof-inner { grid-template-columns: 1fr; } .hero h1 { font-size: 28px; } nav { padding: 16px 20px; } }
+.prof-features { display: flex; flex-direction: column; gap: 16px; margin: 24px 0 32px; }
+.prof-feat { display: flex; align-items: flex-start; gap: 12px; }
+.prof-feat-icon { width: 32px; height: 32px; border-radius: 8px; background: var(--sage-light); display: flex; align-items: center; justify-content: center; font-size: 15px; flex-shrink: 0; margin-top: 1px; }
+.prof-feat-title { font-size: 14px; font-weight: 500; color: var(--text); margin-bottom: 3px; }
+.prof-feat-desc { font-size: 13px; color: var(--text-muted); line-height: 1.55; }
+.prof-card-preview { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; box-shadow: 0 4px 24px rgba(44,80,72,0.06); }
+.prof-card-head { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+.prof-card-av { width: 48px; height: 48px; border-radius: 50%; background: var(--sage-light); color: var(--sage-dark); display: flex; align-items: center; justify-content: center; font-family: 'Lora', serif; font-size: 16px; }
+.prof-card-name { font-size: 15px; font-weight: 500; }
+.prof-card-sub { font-size: 12px; color: var(--text-muted); }
+.prof-card-tags { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 14px; }
+.prof-card-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px; }
+.stat-box { background: var(--warm); border-radius: 8px; padding: 10px 12px; }
+.stat-val { font-size: 18px; font-weight: 500; color: var(--sage-dark); }
+.stat-label { font-size: 11px; color: var(--text-faint); }
+.btn-unirse { display: inline-block; font-size: 14px; padding: 12px 28px; border-radius: 24px; border: none; background: var(--sage); color: white; cursor: pointer; font-family: 'DM Sans', sans-serif; font-weight: 500; transition: all 0.18s; text-decoration: none; }
+.btn-unirse:hover { background: var(--sage-dark); transform: translateY(-1px); }
+
+/* FOOTER */
+footer { border-top: 1px solid var(--border); padding: 28px 36px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+.footer-logo { font-family: 'Lora', serif; font-size: 16px; color: var(--text-muted); }
+.footer-logo span { color: var(--sage); font-style: italic; }
+.footer-note { font-size: 12px; color: var(--text-faint); }
+
+/* TOAST */
+.toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px); background: var(--sage-dark); color: white; font-size: 12px; padding: 10px 18px; border-radius: 20px; opacity: 0; transition: all 0.3s; z-index: 300; white-space: nowrap; }
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 </style>
 </head>
 <body>
+
+<!-- NAV -->
 <nav>
-  <a class="logo" href="/">clara<span>mente</span></a>
-</nav>
-<div class="wrap">
-  <div class="card">
-    <div class="card-title">Accedé a tu panel</div>
-    <div class="card-sub">Ingresá con tu email y contraseña profesional.</div>
-    <div class="error-msg" id="errorMsg"></div>
-    <div class="field">
-      <label>Email</label>
-      <input type="email" id="email" placeholder="tu@email.com" />
-    </div>
-    <div class="field">
-      <label>Contraseña</label>
-      <input type="password" id="password" placeholder="Tu contraseña" />
-    </div>
-    <button class="btn" id="btnLogin" onclick="login()">Ingresar</button>
-    <div class="divider">
-      <div class="divider-line"></div>
-      <div class="divider-text">¿Todavía no estás en la red?</div>
-      <div class="divider-line"></div>
-    </div>
-    <a class="link-btn" href="/claramentepsi-registro-profesional.html">Sumate a Claramente →</a>
+  <a class="logo" href="#">clara<span>mente</span></a>
+  <div class="nav-right">
+    <a class="nav-link" href="#como-funciona">Cómo funciona</a>
+    <a class="nav-cta-secondary" href="/login.html">Ingresar</a><a class="nav-cta" href="/claramentepsi-registro-profesional.html">Sumate a la red</a>
   </div>
-</div>
+</nav>
+
+<!-- HERO + CHAT -->
+<section class="hero-section">
+  <div class="hero">
+    <div class="hero-eyebrow">La red de psicólogos de Argentina</div>
+    <h1>Te derivamos con el especialista<br><em>que necesitás</em></h1>
+  </div>
+
+  <div class="chat-container">
+    <div class="chat-window">
+      <div class="messages" id="messages">
+        <div class="msg ai">
+          <div class="avatar ai">c</div>
+          <div class="bubble ai">Hola, contame qué necesitás y te encuentro el psicólogo ideal. Por ejemplo: "busco alguien para ansiedad, online, que atienda OSDE".</div>
+        </div>
+      </div>
+      <div class="input-row">
+        <input class="chat-input" id="chatInput" type="text" placeholder="Escribí lo que necesitás..." maxlength="500" />
+        <button class="send-btn" id="sendBtn" onclick="sendMessage()" aria-label="Enviar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="22" y1="2" x2="11" y2="13"></line>
+            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+
+
+  <div class="results-section" id="resultsSection" style="display:none">
+    <div class="results-label">Profesionales sugeridos</div>
+    <div class="results-hint" id="resultsHint"></div>
+    <div class="cards-grid" id="cardsGrid"></div>
+  </div>
+</section>
+
+
+<!-- AREAS DE ATENCION -->
+<section class="areas-section">
+  <div class="section-inner">
+    <div class="section-eyebrow">Áreas de atención</div>
+    <div class="section-title">¿En qué podemos <em>ayudarte?</em></div>
+    <div class="section-sub">Tocá un área y el asistente arranca la búsqueda por vos.</div>
+    <div class="areas-grid" id="areasGrid">
+      <div class="area-chip" onclick="startSearch('Busco psicólogo para ansiedad y estrés')"><i class="ti ti-brain" aria-hidden="true"></i>Ansiedad y estrés</div>
+      <div class="area-chip" onclick="startSearch('Busco psicólogo especializado en pareja y familia')"><i class="ti ti-heart" aria-hidden="true"></i>Pareja y familia</div>
+      <div class="area-chip" onclick="startSearch('Busco psicólogo para niños o adolescentes')"><i class="ti ti-mood-kid" aria-hidden="true"></i>Niños y adolescentes</div>
+      <div class="area-chip" onclick="startSearch('Busco psicólogo para trabajar duelo o pérdida')"><i class="ti ti-leaf" aria-hidden="true"></i>Duelo y pérdida</div>
+      <div class="area-chip" onclick="startSearch('Busco psicólogo para terapia individual de adultos')"><i class="ti ti-user" aria-hidden="true"></i>Terapia individual</div>
+      <div class="area-chip" onclick="startSearch('Busco psicólogo especializado en adicciones')"><i class="ti ti-ban" aria-hidden="true"></i>Adicciones</div>
+      <div class="area-chip" onclick="startSearch('Necesito una evaluación psicológica')"><i class="ti ti-clipboard-check" aria-hidden="true"></i>Evaluaciones</div>
+      <div class="area-chip" onclick="startSearch('Busco psicólogo para orientación vocacional')"><i class="ti ti-compass" aria-hidden="true"></i>Orientación vocacional</div>
+      <div class="area-chip" onclick="startSearch('Busco neuropsicólogo')"><i class="ti ti-activity" aria-hidden="true"></i>Neuropsicología</div>
+      <div class="area-chip" onclick="startSearch('Necesito psicólogo para causas judiciales o peritaje')"><i class="ti ti-scale" aria-hidden="true"></i>Causas judiciales</div>
+    </div>
+  </div>
+</section>
+
+<!-- COMO FUNCIONA -->
+<section class="como-funciona" id="como-funciona">
+  <div class="section-inner">
+    <div class="section-eyebrow">El proceso</div>
+    <div class="section-title">Simple como una conversación</div>
+    <div class="section-sub">No hay formularios, no hay filtros interminables. Contás lo que necesitás y el agente IA hace el trabajo.</div>
+    <div class="steps-grid">
+      <div class="step-card">
+        <div class="step-num">1</div>
+        <div class="step-title">Describís lo que buscás</div>
+        <div class="step-desc">Con tus palabras — especialidad, modalidad, obra social, horarios. Sin tecnicismos ni menús de opciones.</div>
+      </div>
+      <div class="step-card">
+        <div class="step-num">2</div>
+        <div class="step-title">La IA interpreta tu consulta</div>
+        <div class="step-desc">Nuestro agente entiende el contexto, hace una pregunta si necesita algo más, y busca en la red de profesionales.</div>
+      </div>
+      <div class="step-card">
+        <div class="step-num">3</div>
+        <div class="step-title">Recibís los mejores matches</div>
+        <div class="step-desc">Tres profesionales afines a tu búsqueda, ordenados por relevancia real — no por quién pagó más.</div>
+      </div>
+      <div class="step-card">
+        <div class="step-num">4</div>
+        <div class="step-title">Contactás directo por WhatsApp</div>
+        <div class="step-desc">Un toque y abrís una conversación con el profesional. Sin intermediarios, sin turnos online, sin burocracia.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PARA PROFESIONALES -->
+<section class="para-profesionales" id="profesionales">
+  <div class="prof-inner">
+    <div>
+      <div class="section-eyebrow">Para profesionales</div>
+      <div class="section-title">Llegá a los pacientes que te necesitan</div>
+      <div class="section-sub" style="margin-bottom:0">Claramente usa IA para matchearte con las personas que buscan exactamente lo que vos hacés.</div>
+      <div class="prof-features">
+        <div class="prof-feat">
+          <div class="prof-feat-icon">🎯</div>
+          <div>
+            <div class="prof-feat-title">Apareción inteligente</div>
+            <div class="prof-feat-desc">Aparecés cuando alguien busca tu especialidad, enfoque y disponibilidad — no en listas genéricas.</div>
+          </div>
+        </div>
+        <div class="prof-feat">
+          <div class="prof-feat-icon">📲</div>
+          <div>
+            <div class="prof-feat-title">Contacto directo por WhatsApp</div>
+            <div class="prof-feat-desc">Los pacientes te escriben a vos directamente. Vínculo tuyo, sin intermediarios.</div>
+          </div>
+        </div>
+        <div class="prof-feat">
+          <div class="prof-feat-icon">📊</div>
+          <div>
+            <div class="prof-feat-title">Estadísticas reales</div>
+            <div class="prof-feat-desc">Sabés cuántas personas vieron tu perfil y cuántas te contactaron cada semana.</div>
+          </div>
+        </div>
+      </div>
+      <a class="btn-unirse" href="claramentepsi-registro-profesional.html">Sumate a la red →</a>
+    </div>
+    <div>
+      <div class="prof-card-preview">
+        <div class="prof-card-head">
+          <div class="prof-card-av">ML</div>
+          <div>
+            <div class="prof-card-name">Lic. M. López</div>
+            <div class="prof-card-sub">Psicóloga clínica · Mendoza</div>
+          </div>
+        </div>
+        <div class="prof-card-tags">
+          <span class="tag tag-sage">TCC</span>
+          <span class="tag tag-sage">Ansiedad</span>
+          <span class="tag tag-warm">Online</span>
+          <span class="tag tag-warm">OSDE</span>
+        </div>
+        <div class="prof-card-stats">
+          <div class="stat-box">
+            <div class="stat-val">38</div>
+            <div class="stat-label">vistas esta semana</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-val">7</div>
+            <div class="stat-label">contactos este mes</div>
+          </div>
+        </div>
+        <button class="contact-btn" style="width:100%;justify-content:center">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.125.558 4.122 1.532 5.856L.057 23.882l6.197-1.624A11.945 11.945 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.818 9.818 0 01-5.001-1.366l-.36-.214-3.716.974.992-3.623-.234-.373A9.818 9.818 0 012.182 12c0-5.422 4.396-9.818 9.818-9.818 5.422 0 9.818 4.396 9.818 9.818 0 5.422-4.396 9.818-9.818 9.818z"/></svg>
+          Así ven tu perfil los pacientes
+        </button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-logo">clara<span>mente</span></div>
+  <div class="footer-note">La red de psicólogos de Argentina · Prototipo funcional</div>
+</footer>
+
+<div class="toast" id="toast"></div>
+
 <script>
-document.querySelectorAll('input').forEach(i => {
-  i.addEventListener('keydown', e => { if (e.key === 'Enter') login(); });
+let searchCount = parseInt(localStorage.getItem('clm_searches') || '0');
+
+// El system prompt vive en el backend (index.js)
+let history = [], isLoading = false, lastQuery = '';
+
+const messagesEl = document.getElementById('messages');
+const inputEl    = document.getElementById('chatInput');
+const sendBtn    = document.getElementById('sendBtn');
+
+inputEl.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
 });
 
-async function login() {
-  const email = document.getElementById('email').value.trim();
-  const password = document.getElementById('password').value;
-  const btn = document.getElementById('btnLogin');
-  const err = document.getElementById('errorMsg');
+function useChip(el) { inputEl.value = el.textContent; inputEl.focus(); }
 
-  if (!email || !password) {
-    err.textContent = 'Completá email y contraseña.';
-    err.classList.add('show');
-    return;
-  }
+function addMessage(role, text) {
+  const msg = document.createElement('div');
+  msg.className = `msg ${role}`;
+  const av = document.createElement('div');
+  av.className = `avatar ${role}`;
+  av.textContent = role === 'ai' ? 'c' : 'yo';
+  const bubble = document.createElement('div');
+  bubble.className = `bubble ${role}`;
+  bubble.textContent = text;
+  msg.appendChild(av); msg.appendChild(bubble);
+  messagesEl.appendChild(msg);
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+}
 
-  btn.disabled = true;
-  btn.textContent = 'Ingresando...';
-  err.classList.remove('show');
+function showTyping() {
+  const msg = document.createElement('div');
+  msg.className = 'msg ai'; msg.id = 'typing';
+  msg.innerHTML = `<div class="avatar ai">c</div><div class="bubble typing"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>`;
+  messagesEl.appendChild(msg);
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+}
+function removeTyping() { const t = document.getElementById('typing'); if (t) t.remove(); }
 
+function shouldSpotlightFree() {
+  searchCount++;
+  localStorage.setItem('clm_searches', searchCount);
+  return searchCount % 5 === 0;
+}
+
+const COLORS = {
+  sage:   { bg: '#E8F2EF', color: '#2C5048' },
+  warm:   { bg: '#F0EBE0', color: '#5C4A30' },
+  purple: { bg: '#EEEAF7', color: '#3D2F72' }
+};
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+async function trackContact(psy, query) {
+  showToast('Abriendo WhatsApp...');
   try {
-    const res = await fetch('/login', {
+    await fetch('/contacto', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password })
+      body: JSON.stringify({ psy_id: psy.id, query_texto: query })
+    });
+  } catch(e) {
+    console.error('Error tracking:', e);
+  }
+}
+
+function openWhatsapp(psyJson, query) {
+  const psy = JSON.parse(decodeURIComponent(psyJson));
+  trackContact(psy, query);
+  const nombre = psy.nombre.split(' ').slice(1).join(' ') || psy.nombre;
+  const msg = encodeURIComponent(`Hola ${nombre}, te contacto desde Claramente. Busco ayuda con: ${query}`);
+  setTimeout(() => window.open(`https://wa.me/${psy.whatsapp}?text=${msg}`, '_blank'), 600);
+}
+
+function renderCards(profesionales, query, spotlighted) {
+  const cardsEl   = document.getElementById('cardsGrid');
+  const resultsEl = document.getElementById('resultsSection');
+  const hint      = document.getElementById('resultsHint');
+  cardsEl.innerHTML = '';
+  hint.textContent = spotlighted
+    ? 'Los profesionales con plan aparecen primero · hoy también destacamos un perfil gratuito'
+    : 'Los profesionales con plan aparecen primero en los resultados';
+
+  profesionales.forEach((p, i) => {
+    const c = COLORS[p.color] || COLORS.sage;
+    const tags = [p.enfoque, p.modalidad, ...(p.obras_sociales || [])].filter(Boolean);
+    const isFree = p.plan === 'free';
+    const card = document.createElement('div');
+    card.className = `pro-card${isFree && !(spotlighted && i < 2) ? ' is-free' : ''}`;
+    const badgeHTML = !isFree ? `<span class="plan-badge badge-pro">Pro</span>` : '';
+    const psyEncoded = encodeURIComponent(JSON.stringify(p));
+    const queryEscaped = query.replace(/'/g,"\\'").replace(/"/g,'\\"');
+    card.innerHTML = `
+      ${badgeHTML}
+      <div class="card-head">
+        <div class="card-avatar" style="background:${c.bg};color:${c.color}">${p.iniciales}</div>
+        <div><div class="card-name">${p.nombre}</div><div class="card-sub">${p.especialidad}</div></div>
+      </div>
+      <div class="card-tags">${tags.slice(0,4).map((t,i)=>`<span class="tag ${i===0?'tag-sage':'tag-warm'}">${t}</span>`).join('')}</div>
+      <div class="card-desc">${p.descripcion}</div>
+      <div class="card-footer">
+        <span class="match-score">${p.match}% afín</span>
+        <button class="contact-btn" onclick="openWhatsapp('${psyEncoded}','${queryEscaped}')">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.125.558 4.122 1.532 5.856L.057 23.882l6.197-1.624A11.945 11.945 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.818 9.818 0 01-5.001-1.366l-.36-.214-3.716.974.992-3.623-.234-.373A9.818 9.818 0 012.182 12c0-5.422 4.396-9.818 9.818-9.818 5.422 0 9.818 4.396 9.818 9.818 0 5.422-4.396 9.818-9.818 9.818z"/></svg>
+          Contactar
+        </button>
+      </div>`;
+    cardsEl.appendChild(card);
+  });
+  resultsEl.style.display = 'block';
+  resultsEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function startSearch(text) {
+  const input = document.getElementById('chatInput');
+  input.value = text;
+  document.querySelector('.hero-section').scrollIntoView({ behavior: 'smooth' });
+  setTimeout(() => sendMessage(), 600);
+}
+
+async function sendMessage() {
+  const text = inputEl.value.trim();
+  if (!text || isLoading) return;
+  isLoading = true; sendBtn.disabled = true;
+  lastQuery = text; inputEl.value = '';
+  addMessage('user', text);
+  history.push({ role: 'user', content: text });
+  showTyping();
+  const spotlight = shouldSpotlightFree();
+  const messagesWithCtx = history.map((m, i) =>
+    i === history.length - 1 && m.role === 'user'
+      ? { ...m, content: m.content + (spotlight ? '\n\n[spotlight_free: true]' : '\n\n[spotlight_free: false]') }
+      : m
+  );
+  try {
+    // Reemplazá BACKEND_URL con tu URL de Railway una vez deployado
+    // Ej: https://claramente-backend.up.railway.app
+    const BACKEND_URL = 'https://claramente-backend.onrender.com';
+
+    const res = await fetch(`${BACKEND_URL}/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messages: messagesWithCtx })
     });
     const data = await res.json();
-
-    if (!res.ok) {
-      err.textContent = data.error || 'Error al ingresar.';
-      err.classList.add('show');
-      return;
+    const raw = data.content?.[0]?.text || '';
+    removeTyping();
+    const jsonMatch = raw.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      try {
+        const parsed = JSON.parse(jsonMatch[0]);
+        if (parsed.profesionales) {
+          addMessage('ai', parsed.respuesta || 'Encontré estas opciones para vos:');
+          history.push({ role: 'assistant', content: raw });
+          renderCards(parsed.profesionales, lastQuery, spotlight);
+          return;
+        }
+      } catch(e) {}
     }
-
-    localStorage.setItem('clm_profesional', JSON.stringify(data.profesional));
-    window.location.href = '/panel.html';
-  } catch (e) {
-    err.textContent = 'Error de conexión. Intentá de nuevo.';
-    err.classList.add('show');
+    addMessage('ai', raw);
+    history.push({ role: 'assistant', content: raw });
+  } catch(err) {
+    removeTyping();
+    addMessage('ai', 'Tuve un problema al conectarme. ¿Podés intentarlo de nuevo?');
   } finally {
-    btn.disabled = false;
-    btn.textContent = 'Ingresar';
+    isLoading = false; sendBtn.disabled = false; inputEl.focus();
   }
 }
 </script>
