@@ -58,7 +58,7 @@ REGLAS:
 - Si no hay profesionales en la base, avisá amablemente que todavía no hay profesionales disponibles para esa búsqueda
 - Orden: premium primero, luego flex, luego gratuito
 - Los profesionales "gratuito" NO tienen whatsapp — poné null en ese campo
-- Si TODOS los disponibles son "gratuito", devolvé solo 1 con campo "solo_gratuitos": true en el JSON raíz e invitá a ampliar la búsqueda
+- Si TODOS los disponibles son "gratuito", devolvé el JSON igual con "solo_gratuitos": true — NUNCA mezcles texto con el JSON, la respuesta debe ser SOLO el JSON sin nada antes ni después
 - color: "sage", "warm" o "purple" según tu criterio
 - match: qué tan afín es realmente el profesional a la búsqueda (80-98)
 
