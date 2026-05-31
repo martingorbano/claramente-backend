@@ -1,5 +1,8 @@
 const express = require('express');
 const crypto = require('crypto');
+const { MercadoPagoConfig, PreApprovalPlan, PreApproval } = require('mercadopago');
+
+const mp = new MercadoPagoConfig({ accessToken: process.env.MP_ACCESS_TOKEN });
 const cors = require('cors');
 const Anthropic = require('@anthropic-ai/sdk');
 const { createClient } = require('@supabase/supabase-js');
@@ -227,20 +230,42 @@ app.get('/stats/:psy_id', async (req, res) => {
   }
 });
 
-// Guardar registro pendiente (antes del pago)
+// Guardar registro pendiente y generar link de pago via API de MP
 app.post('/registro-pendiente', async (req, res) => {
   const { datos, plan } = req.body;
   if (!datos || !plan) return res.status(400).json({ error: 'Faltan datos' });
   try {
     const session_id = crypto.randomUUID();
+
+    // Guardar en Supabase
     const { error } = await supabase
       .from('registros_pendientes')
       .insert({ session_id, datos, plan });
     if (error) throw error;
-    res.json({ ok: true, session_id });
+
+    // IDs de los planes en MP
+    const planIds = {
+      premium: '7cd85b4484f942e2a500303ce9a4f434',
+      flex: '7b2754ae1b744bdc85d1f828c778f6be'
+    };
+
+    const backUrl = `${process.env.APP_URL || 'https://claramente-backend.onrender.com'}/pago-exitoso.html?session_id=${session_id}`;
+
+    // Crear suscripción via API de MP con external_reference
+    const preApproval = new PreApproval(mp);
+    const subscription = await preApproval.create({
+      body: {
+        preapproval_plan_id: planIds[plan],
+        payer_email: datos.email,
+        external_reference: session_id,
+        back_url: backUrl,
+      }
+    });
+
+    res.json({ ok: true, session_id, init_point: subscription.init_point });
   } catch (e) {
     console.error('Error registro pendiente:', e.message);
-    res.status(500).json({ error: 'Error al guardar registro' });
+    res.status(500).json({ error: 'Error al generar link de pago: ' + e.message });
   }
 });
 
