@@ -76,6 +76,7 @@ async function notificarGratuito(profesional, queryTexto) {
   try {
     await resend.emails.send({
       from: 'Claramente <soporte@claramentepsi.com>',
+      reply_to: 'claramentepsisoporte@gmail.com',
       to: profesional.email,
       subject: 'Alguien te buscó en Claramente pero no pudo contactarte',
       html: `
