@@ -529,7 +529,12 @@ async function sendMessage() {
         if (parsed.profesionales) {
           addMessage('ai', parsed.respuesta || 'Encontré estas opciones para vos:');
           history.push({ role: 'assistant', content: raw });
-          renderCards(parsed.profesionales, lastQuery);
+          if (parsed.solo_gratuitos) {
+            // Solo hay gratuitos — mostrar mensaje e invitar a ampliar
+            addMessage('ai', '¿Querés que amplíe la búsqueda para encontrar más profesionales disponibles para contactar?');
+          } else {
+            renderCards(parsed.profesionales, lastQuery);
+          }
           return;
         }
       } catch(e) {}
