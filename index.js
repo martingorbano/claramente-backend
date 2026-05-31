@@ -156,6 +156,7 @@ app.post('/chat', async (req, res) => {
     });
 
     const rawText = response.content?.[0]?.text || '';
+    console.log('RAW RESPONSE:', rawText.substring(0, 300));
     
     // Intentar extraer y limpiar JSON del texto
     const cleaned = rawText.replace(/```json|```/g, '').trim();
