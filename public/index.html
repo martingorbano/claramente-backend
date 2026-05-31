@@ -422,7 +422,7 @@ async function trackContact(psy, query) {
     await fetch('/contacto', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ psy_id: psy.id, query_texto: query })
+      body: JSON.stringify({ psy_id: psy.id, query_texto: query, plan: psy.plan })
     });
   } catch(e) {
     console.error('Error tracking:', e);
@@ -476,6 +476,16 @@ function renderCards(profesionales, query, spotlighted) {
   });
   resultsEl.style.display = 'block';
   resultsEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+  // Notificar a los profesionales gratuitos que aparecieron en la búsqueda
+  const gratuitos = profesionales.filter(p => p.plan === 'gratuito' && p.id);
+  gratuitos.forEach(p => {
+    fetch('/contacto', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ psy_id: p.id, query_texto: query, plan: 'gratuito' })
+    }).catch(() => {});
+  });
 }
 
 function startSearch(text) {
