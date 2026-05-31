@@ -155,6 +155,24 @@ app.post('/chat', async (req, res) => {
       messages: messagesConBase,
     });
 
+    const rawText = response.content?.[0]?.text || '';
+    
+    // Intentar extraer y limpiar JSON del texto
+    const cleaned = rawText.replace(/```json|```/g, '').trim();
+    const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+    
+    if (jsonMatch) {
+      try {
+        const parsed = JSON.parse(jsonMatch[0]);
+        if (parsed.profesionales) {
+          // Devolver solo el JSON limpio
+          return res.json({ 
+            content: [{ type: 'text', text: JSON.stringify(parsed) }] 
+          });
+        }
+      } catch(e) {}
+    }
+
     res.json({ content: response.content });
   } catch (error) {
     console.error('Error:', error.message);
