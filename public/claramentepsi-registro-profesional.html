@@ -897,17 +897,11 @@ async function submit() {
         return;
       }
 
-      const links = {
-        premium: 'https://www.mercadopago.com.ar/subscriptions/checkout?preapproval_plan_id=7cd85b4484f942e2a500303ce9a4f434',
-        flex: 'https://www.mercadopago.com.ar/subscriptions/checkout?preapproval_plan_id=7b2754ae1b744bdc85d1f828c778f6be'
-      };
-
       // Guardar session_id para verificar después
       localStorage.setItem('clm_session_id', data.session_id);
 
-      // Redirigir a MercadoPago
-      // MP va a redirigir a /pago-exitoso?session_id=... cuando termine
-      window.location.href = links[plan] + `&external_reference=${data.session_id}&back_url=${encodeURIComponent(window.location.origin + '/pago-exitoso.html?session_id=' + data.session_id)}`;
+      // Redirigir al init_point generado por la API de MP (incluye external_reference y back_url)
+      window.location.href = data.init_point;
     }
   } catch(e) {
     alert('Error de conexión. Intentá de nuevo.');
