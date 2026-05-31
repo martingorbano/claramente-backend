@@ -269,8 +269,33 @@ app.post('/registro-pendiente', async (req, res) => {
   }
 });
 
+// Verificar firma del webhook de MP
+function verificarFirmaMP(req) {
+  try {
+    const secret = process.env.MP_WEBHOOK_SECRET;
+    if (!secret) return true; // Si no hay secret configurado, dejar pasar
+    const xSignature = req.headers['x-signature'];
+    const xRequestId = req.headers['x-request-id'];
+    if (!xSignature) return false;
+    const parts = xSignature.split(',');
+    let ts, hash;
+    parts.forEach(part => {
+      const [key, val] = part.trim().split('=');
+      if (key === 'ts') ts = val;
+      if (key === 'v1') hash = val;
+    });
+    const dataId = req.query?.['data.id'] || req.body?.data?.id || '';
+    const manifest = `id:${dataId};request-id:${xRequestId};ts:${ts};`;
+    const expectedHash = crypto.createHmac('sha256', secret).update(manifest).digest('hex');
+    return hash === expectedHash;
+  } catch(e) {
+    return true; // En caso de error, dejar pasar
+  }
+}
+
 // Webhook de MercadoPago
 app.post('/webhook/mp', async (req, res) => {
+  if (!verificarFirmaMP(req)) return res.sendStatus(401);
   try {
     const { type, data } = req.body;
     if (type !== 'payment' && type !== 'preapproval') return res.sendStatus(200);
@@ -325,6 +350,7 @@ app.post('/webhook/mp', async (req, res) => {
 
 // Webhook de suscripciones de MP (preapproval)
 app.post('/webhook/mp-sub', async (req, res) => {
+  if (!verificarFirmaMP(req)) return res.sendStatus(401);
   try {
     const { type, data } = req.body;
     if (type !== 'preapproval') return res.sendStatus(200);
