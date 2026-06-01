@@ -522,12 +522,14 @@ async function sendMessage() {
     const data = await res.json();
     const raw = data.content?.[0]?.text || '';
     removeTyping();
-    // Limpiar backticks y extraer JSON
-    const cleanRaw = raw.replace(/```json|```/g, '').trim();
-    const jsonMatch = cleanRaw.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
+    // Extraer JSON buscando primer { y último }
+    const cleanRaw = raw.replace(/```json\s*/gi, '').replace(/```/g, '').trim();
+    const firstBrace = cleanRaw.indexOf('{');
+    const lastBrace = cleanRaw.lastIndexOf('}');
+    const jsonStr = firstBrace !== -1 && lastBrace !== -1 ? cleanRaw.substring(firstBrace, lastBrace + 1) : null;
+    if (jsonStr) {
       try {
-        const parsed = JSON.parse(jsonMatch[0]);
+        const parsed = JSON.parse(jsonStr);
         if (parsed.profesionales) {
           addMessage('ai', parsed.respuesta || 'Encontré estas opciones para vos:');
           history.push({ role: 'assistant', content: raw });
@@ -536,7 +538,7 @@ async function sendMessage() {
         }
       } catch(e) {}
     }
-    addMessage('ai', raw);
+    addMessage('ai', raw.replace(/```json\s*/gi,'').replace(/```/g,'').trim());
     history.push({ role: 'assistant', content: raw });
   } catch(err) {
     removeTyping();
