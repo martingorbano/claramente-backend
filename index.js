@@ -42,7 +42,8 @@ Cuando tengas suficiente info (1-2 intercambios alcanza), respondé ÚNICAMENTE 
       "iniciales": "ML",
       "color": "sage",
       "plan": "premium / flex / gratuito",
-      "whatsapp": "numero de whatsapp"
+      "whatsapp": "numero de whatsapp",
+      "ciudad": "ciudad donde atiende (copiala del campo ciudad de la base de datos)"
     }
   ]
 }
