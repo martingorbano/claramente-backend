@@ -276,7 +276,7 @@ app.post('/verificar-email', async (req, res) => {
     // Guardar o actualizar verificación pendiente
     await supabase.from('email_verifications').upsert({ email, token, datos, verified: false, expires_at }, { onConflict: 'email' });
 
-    const verifyUrl = `${process.env.APP_URL || 'https://claramente-backend.onrender.com'}/confirmar-email.html?token=${token}`;
+    const verifyUrl = `${process.env.APP_URL || 'https://claramente-backend.onrender.com'}/confirmar-email?token=${token}`;
 
     await resend.emails.send({
       from: 'Claramente <soporte@claramentepsi.com>',
