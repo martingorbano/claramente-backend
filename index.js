@@ -159,8 +159,11 @@ app.post('/chat', async (req, res) => {
     console.log('RAW RESPONSE:', rawText.substring(0, 300));
     
     // Intentar extraer y limpiar JSON del texto
-    const cleaned = rawText.replace(/```json|```/g, '').trim();
-    const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+    const cleaned = rawText.replace(/```json\s*/gi, '').replace(/```/g, '').trim();
+    const firstBrace = cleaned.indexOf('{');
+    const lastBrace = cleaned.lastIndexOf('}');
+    const jsonStr = firstBrace !== -1 && lastBrace !== -1 ? cleaned.substring(firstBrace, lastBrace + 1) : null;
+    const jsonMatch = jsonStr ? [jsonStr] : null;
     
     if (jsonMatch) {
       try {
