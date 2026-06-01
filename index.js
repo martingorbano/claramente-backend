@@ -216,6 +216,30 @@ app.post('/chat', async (req, res) => {
   }
 });
 
+// Registrar aparición en búsqueda
+app.post('/vista', async (req, res) => {
+  const { psy_id, query_texto, plan } = req.body;
+  if (!psy_id) return res.status(400).json({ error: 'psy_id requerido' });
+  try {
+    await supabase.from('vistas').insert({ psy_id });
+
+    // Si es gratuito, manejar el mail semanal
+    if (plan === 'gratuito') {
+      const { data: prof } = await supabase
+        .from('profesionales')
+        .select('email, nombre, id, ultimo_mail_gratuito, busquedas_semana, inicio_semana')
+        .eq('id', psy_id)
+        .single();
+      if (prof) await notificarGratuito({ ...prof }, query_texto);
+    }
+
+    res.json({ ok: true });
+  } catch (error) {
+    console.error('Error vista:', error.message);
+    res.status(500).json({ error: 'Error al registrar vista' });
+  }
+});
+
 // Trackear contacto de WhatsApp
 app.post('/contacto', async (req, res) => {
   const { psy_id, query_texto, plan } = req.body;
@@ -223,15 +247,7 @@ app.post('/contacto', async (req, res) => {
   try {
     await supabase.from('contactos').insert({ psy_id, query_texto });
 
-    // Si es gratuito, mandar mail notificando que apareció pero no pudo ser contactado
-    if (plan === 'gratuito') {
-      const { data: prof } = await supabase
-        .from('profesionales')
-        .select('email, nombre')
-        .eq('id', psy_id)
-        .single();
-      if (prof) await notificarGratuito({ ...prof, id: psy_id }, query_texto);
-    }
+    // El mail al gratuito se maneja desde /vista
 
     res.json({ ok: true });
   } catch (error) {
@@ -421,7 +437,37 @@ app.get('/stats/:psy_id', async (req, res) => {
       supabase.from('contactos').select('*', { count: 'exact', head: true }).eq('psy_id', psy_id),
       supabase.from('vistas').select('*', { count: 'exact', head: true }).eq('psy_id', psy_id)
     ]);
-    res.json({ contactos, vistas });
+
+    // Datos semanales para gráficos (últimas 8 semanas)
+    const hace8semanas = new Date();
+    hace8semanas.setDate(hace8semanas.getDate() - 56);
+
+    const [{ data: contactosSemana }, { data: vistasSemana }] = await Promise.all([
+      supabase.from('contactos').select('created_at').eq('psy_id', psy_id).gte('created_at', hace8semanas.toISOString()),
+      supabase.from('vistas').select('created_at').eq('psy_id', psy_id).gte('created_at', hace8semanas.toISOString())
+    ]);
+
+    // Agrupar por semana
+    const agruparPorSemana = (registros) => {
+      const semanas = {};
+      (registros || []).forEach(r => {
+        const fecha = new Date(r.created_at);
+        const inicioSemana = new Date(fecha);
+        inicioSemana.setDate(fecha.getDate() - fecha.getDay());
+        const key = inicioSemana.toISOString().split('T')[0];
+        semanas[key] = (semanas[key] || 0) + 1;
+      });
+      return semanas;
+    };
+
+    res.json({
+      contactos,
+      vistas,
+      grafico: {
+        contactos: agruparPorSemana(contactosSemana),
+        vistas: agruparPorSemana(vistasSemana)
+      }
+    });
   } catch (error) {
     res.status(500).json({ error: 'Error al obtener estadísticas' });
   }
