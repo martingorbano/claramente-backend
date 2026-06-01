@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Claramente · Verificá tu email</title>
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root { --sage: #4A7C6F; --sage-light: #E8F2EF; --sage-dark: #2C5048; --warm: #F7F3EE; --text: #1C2B28; --text-muted: #6B847E; --border: #D8E8E4; --white: #FFFFFF; --radius: 16px; }
+body { font-family: 'DM Sans', sans-serif; background: var(--warm); color: var(--text); min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px; }
+.card { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius); padding: 48px 40px; max-width: 440px; width: 100%; text-align: center; box-shadow: 0 4px 24px rgba(44,80,72,0.06); }
+.icon { font-size: 48px; margin-bottom: 20px; }
+h1 { font-family: 'Lora', serif; font-size: 24px; font-weight: 400; margin-bottom: 12px; }
+p { font-size: 14px; color: var(--text-muted); line-height: 1.7; margin-bottom: 8px; }
+.email { font-weight: 500; color: var(--text); }
+.hint { font-size: 12px; color: var(--text-faint); margin-top: 24px; }
+.btn-reenviar { font-size: 13px; padding: 8px 20px; border-radius: 20px; border: 1px solid var(--border); background: transparent; color: var(--text-muted); cursor: pointer; font-family: 'DM Sans', sans-serif; margin-top: 16px; transition: all 0.18s; }
+.btn-reenviar:hover { border-color: var(--sage); color: var(--sage); }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="icon">📬</div>
+  <h1>Revisá tu email</h1>
+  <p>Te mandamos un link de confirmación a</p>
+  <p class="email" id="emailMostrado"></p>
+  <p style="margin-top:12px">Tocá el link del mail para continuar con tu registro.</p>
+  <p class="hint">Si no aparece en bandeja de entrada, revisá spam o correo no deseado.</p>
+  <button class="btn-reenviar" onclick="reenviar()">Reenviar mail</button>
+</div>
+<script>
+const params = new URLSearchParams(window.location.search);
+const email = params.get('email') || '';
+document.getElementById('emailMostrado').textContent = email;
+
+async function reenviar() {
+  const datos = JSON.parse(localStorage.getItem('clm_reg_step1') || '{}');
+  const btn = document.querySelector('.btn-reenviar');
+  btn.textContent = 'Enviando...';
+  btn.disabled = true;
+  try {
+    await fetch('/verificar-email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, datos })
+    });
+    btn.textContent = 'Reenviado ✓';
+  } catch(e) {
+    btn.textContent = 'Error — intentá de nuevo';
+    btn.disabled = false;
+  }
+}
+</script>
+</body>
+</html>

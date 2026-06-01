@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Claramente · Confirmando email</title>
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root { --sage: #4A7C6F; --sage-light: #E8F2EF; --warm: #F7F3EE; --text: #1C2B28; --text-muted: #6B847E; --border: #D8E8E4; --white: #FFFFFF; --radius: 16px; }
+body { font-family: 'DM Sans', sans-serif; background: var(--warm); color: var(--text); min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
+.card { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius); padding: 48px 40px; max-width: 440px; width: 100%; text-align: center; }
+.icon { font-size: 48px; margin-bottom: 20px; }
+h1 { font-family: 'Lora', serif; font-size: 22px; font-weight: 400; margin-bottom: 10px; }
+p { font-size: 14px; color: var(--text-muted); line-height: 1.7; }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="icon" id="icon">⏳</div>
+  <h1 id="title">Confirmando...</h1>
+  <p id="desc">Un momento.</p>
+</div>
+<script>
+// Este archivo no se usa directamente — el backend redirige desde /confirmar-email
+// Si llegamos acá con parámetros, procesamos
+const params = new URLSearchParams(window.location.search);
+const verified = params.get('verified');
+const datos = params.get('datos');
+const error = params.get('error');
+
+if (verified && datos) {
+  document.getElementById('icon').textContent = '✓';
+  document.getElementById('title').textContent = '¡Email confirmado!';
+  document.getElementById('desc').textContent = 'Redirigiendo para continuar tu registro...';
+  // Guardar datos en localStorage para retomar el registro
+  try {
+    const datosObj = JSON.parse(decodeURIComponent(datos));
+    localStorage.setItem('clm_reg_verified', JSON.stringify(datosObj));
+  } catch(e) {}
+  setTimeout(() => window.location.href = '/claramentepsi-registro-profesional.html?retomar=true', 1500);
+} else if (error) {
+  document.getElementById('icon').textContent = '⚠️';
+  document.getElementById('title').textContent = error === 'token-expirado' ? 'Link expirado' : 'Link inválido';
+  document.getElementById('desc').textContent = 'Este link ya no es válido. Volvé al registro para solicitar uno nuevo.';
+  setTimeout(() => window.location.href = '/claramentepsi-registro-profesional.html', 3000);
+}
+</script>
+</body>
+</html>
