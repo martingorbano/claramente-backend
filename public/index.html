@@ -527,16 +527,18 @@ async function sendMessage() {
     const firstBrace = cleanRaw.indexOf('{');
     const lastBrace = cleanRaw.lastIndexOf('}');
     const jsonStr = firstBrace !== -1 && lastBrace !== -1 ? cleanRaw.substring(firstBrace, lastBrace + 1) : null;
+    console.log('jsonStr preview:', jsonStr ? jsonStr.substring(0, 100) : 'null');
     if (jsonStr) {
       try {
         const parsed = JSON.parse(jsonStr);
+        console.log('parsed ok:', !!parsed.profesionales);
         if (parsed.profesionales) {
           addMessage('ai', parsed.respuesta || 'Encontré estas opciones para vos:');
           history.push({ role: 'assistant', content: raw });
           renderCards(parsed.profesionales, lastQuery);
           return;
         }
-      } catch(e) {}
+      } catch(e) { console.error('JSON parse error:', e.message); }
     }
     addMessage('ai', raw.replace(/```json\s*/gi,'').replace(/```/g,'').trim());
     history.push({ role: 'assistant', content: raw });
