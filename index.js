@@ -75,11 +75,37 @@ Si falta info clave, hacé UNA sola pregunta antes del JSON.`;
 // Función para mandar mail al profesional gratuito
 async function notificarGratuito(profesional, queryTexto) {
   try {
+    // Traer datos actuales del profesional
+    const { data: prof } = await supabase
+      .from('profesionales')
+      .select('ultimo_mail_gratuito, busquedas_semana, inicio_semana')
+      .eq('id', profesional.id)
+      .single();
+
+    if (!prof) return;
+
+    const ahora = new Date();
+    const inicioSemana = prof.inicio_semana ? new Date(prof.inicio_semana) : new Date();
+    const diasDesdeInicio = (ahora.getTime() - inicioSemana.getTime()) / (1000 * 60 * 60 * 24);
+    const esMismaSemana = diasDesdeInicio < 7;
+
+    if (esMismaSemana) {
+      // Sumar al contador de la semana sin mandar mail
+      await supabase.from('profesionales')
+        .update({ busquedas_semana: (prof.busquedas_semana || 0) + 1 })
+        .eq('id', profesional.id);
+      console.log(`Búsqueda acumulada para ${profesional.email} — total semana: ${(prof.busquedas_semana || 0) + 1}`);
+      return;
+    }
+
+    // Pasó una semana — mandar mail con el resumen y resetear contador
+    const busquedasAcumuladas = (prof.busquedas_semana || 0) + 1;
+
     const result = await resend.emails.send({
       from: 'Claramente <soporte@claramentepsi.com>',
       reply_to: 'claramentepsisoporte@gmail.com',
       to: profesional.email,
-      subject: 'Alguien te buscó en Claramente pero no pudo contactarte',
+      subject: `Esta semana apareciste en ${busquedasAcumuladas} búsqueda${busquedasAcumuladas > 1 ? 's' : ''} pero no pudiste ser contactado`,
       html: `
         <div style="font-family: 'DM Sans', Arial, sans-serif; max-width: 520px; margin: 0 auto; padding: 32px 24px; color: #1C2B28;">
           <div style="font-family: Georgia, serif; font-size: 22px; color: #1C2B28; margin-bottom: 24px;">
@@ -89,8 +115,7 @@ async function notificarGratuito(profesional, queryTexto) {
             Hola ${profesional.nombre},
           </h2>
           <p style="font-size: 15px; line-height: 1.7; color: #6B847E; margin-bottom: 16px;">
-            Alguien buscó un psicólogo en Claramente y apareciste como una de las opciones más afines. 
-            Esto fue lo que buscaron:
+            Esta semana apareciste en <strong style="color: #1C2B28;">\${busquedasAcumuladas} búsqueda\${busquedasAcumuladas > 1 ? 's' : ''}</strong> en Claramente como una de las opciones más afines. La última fue:
           </p>
           <div style="background: #E8F2EF; border-radius: 12px; padding: 16px 20px; margin-bottom: 20px; font-size: 15px; color: #2C5048; font-style: italic;">
             "${queryTexto}"
@@ -113,6 +138,12 @@ async function notificarGratuito(profesional, queryTexto) {
       `
     });
     console.log('Mail enviado a gratuito:', profesional.email, 'result:', JSON.stringify(result));
+    // Resetear contador y actualizar timestamp
+    await supabase.from('profesionales').update({ 
+      ultimo_mail_gratuito: new Date().toISOString(),
+      busquedas_semana: 0,
+      inicio_semana: new Date().toISOString()
+    }).eq('id', profesional.id);
   } catch(e) {
     console.error('Error enviando mail:', e.message, e);
   }
@@ -199,7 +230,7 @@ app.post('/contacto', async (req, res) => {
         .select('email, nombre')
         .eq('id', psy_id)
         .single();
-      if (prof) await notificarGratuito(prof, query_texto);
+      if (prof) await notificarGratuito({ ...prof, id: psy_id }, query_texto);
     }
 
     res.json({ ok: true });
