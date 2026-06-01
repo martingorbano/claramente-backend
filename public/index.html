@@ -145,6 +145,7 @@ nav {
 .tag-sage { background: var(--sage-light); color: var(--sage-dark); }
 .tag-warm { background: var(--warm-mid); color: var(--text-muted); }
 .card-desc { font-size: 12px; color: var(--text-muted); line-height: 1.5; }
+.card-ciudad { font-size: 11px; color: var(--text-faint); margin-top: 2px; }
 .card-footer { display: flex; align-items: center; justify-content: space-between; margin-top: auto; }
 .match-score { font-size: 12px; color: var(--sage); font-weight: 500; }
 .contact-btn { font-size: 12px; padding: 7px 14px; border-radius: 20px; border: none; background: #25D366; color: white; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.18s; display: flex; align-items: center; gap: 5px; }
@@ -504,7 +505,11 @@ function renderCards(profesionales, query) {
       ${badgeHTML}
       <div class="card-head">
         <div class="card-avatar" style="background:${col.bg};color:${col.color}">${p.iniciales}</div>
-        <div><div class="card-name">${p.nombre}</div><div class="card-sub">${p.especialidad}</div></div>
+        <div>
+          <div class="card-name">${p.nombre}</div>
+          <div class="card-sub">${p.especialidad}</div>
+          ${p.ciudad ? `<div class="card-ciudad">📍 ${p.ciudad}</div>` : ''}
+        </div>
       </div>
       <div class="card-tags">${tags.slice(0,4).map((t,i)=>`<span class="tag ${i===0?'tag-sage':'tag-warm'}">${t}</span>`).join('')}</div>
       <div class="card-desc">${p.descripcion}</div>
