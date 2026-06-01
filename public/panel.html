@@ -320,7 +320,7 @@ if (!profesional) { window.location.href = '/login.html'; throw new Error('No se
 
 // Inicializar
 document.getElementById('navName').textContent = profesional.nombre?.split(' ').slice(-2).join(' ') || '';
-document.getElementById('pageTitle').textContent = \`Hola, \${profesional.nombre?.split(' ')[1] || profesional.nombre || ''}\`;
+document.getElementById('pageTitle').textContent = `Hola, ${profesional.nombre?.split(' ')[1] || profesional.nombre || ''}`;
 
 // Cargar estadísticas
 async function cargarStats() {
