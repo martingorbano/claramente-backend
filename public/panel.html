@@ -138,18 +138,13 @@ textarea { resize: vertical; min-height: 80px; }
     <div class="stats-grid">
       <div class="stat-card">
         <div class="stat-val" id="statContactos">—</div>
-        <div class="stat-label">Contactos por WhatsApp</div>
-        <div class="stat-period">Total histórico</div>
+        <div class="stat-label">Personas que te contactaron</div>
+        <div class="stat-period">Total histórico · via WhatsApp</div>
       </div>
       <div class="stat-card">
-        <div class="stat-val" id="statVistas">—</div>
-        <div class="stat-label">Vistas de perfil</div>
+        <div class="stat-val" id="statBusquedas">—</div>
+        <div class="stat-label">Veces que apareciste en búsquedas</div>
         <div class="stat-period">Total histórico</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-val" id="statConversion">—</div>
-        <div class="stat-label">Tasa de contacto</div>
-        <div class="stat-period">Contactos / vistas</div>
       </div>
     </div>
     <div style="font-size:13px;color:var(--text-faint);line-height:1.65">
@@ -333,8 +328,7 @@ async function cargarStats() {
 
     // Poner números falsos para que el blur se vea bien
     document.getElementById('statContactos').textContent = '12';
-    document.getElementById('statVistas').textContent = '47';
-    document.getElementById('statConversion').textContent = '25%';
+    document.getElementById('statBusquedas').textContent = '47';
 
     const overlay = document.createElement('div');
     overlay.className = 'stats-lock-overlay';
@@ -353,8 +347,7 @@ async function cargarStats() {
     const contactos = data.contactos || 0;
     const vistas = data.vistas || 0;
     document.getElementById('statContactos').textContent = contactos;
-    document.getElementById('statVistas').textContent = vistas;
-    document.getElementById('statConversion').textContent = vistas > 0 ? Math.round((contactos/vistas)*100) + '%' : '—';
+    document.getElementById('statBusquedas').textContent = vistas;
   } catch(e) {
     console.error(e);
   }
