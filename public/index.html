@@ -524,12 +524,12 @@ function renderCards(profesionales, query) {
   resultsEl.style.display = 'block';
   resultsEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 
-  // Notificar a los profesionales gratuitos que aparecieron
-  profesionales.filter(p => p.plan === 'gratuito' && p.id).forEach(p => {
-    fetch('/contacto', {
+  // Registrar aparición en búsqueda para TODOS los profesionales
+  profesionales.filter(p => p.id).forEach(p => {
+    fetch('/vista', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ psy_id: p.id, query_texto: query, plan: 'gratuito' })
+      body: JSON.stringify({ psy_id: p.id, query_texto: query, plan: p.plan })
     }).catch(() => {});
   });
 }
