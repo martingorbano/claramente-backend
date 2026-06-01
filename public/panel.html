@@ -112,6 +112,7 @@ textarea { resize: vertical; min-height: 80px; }
 .tag-warm { background: var(--warm-mid); color: var(--text-muted); }
 .contact-btn-preview { width: 100%; font-size: 12px; padding: 8px; border-radius: 20px; border: none; background: #25D366; color: white; font-family: 'DM Sans', sans-serif; display: flex; align-items: center; justify-content: center; gap: 5px; }
 </style>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 <body>
 
@@ -147,8 +148,12 @@ textarea { resize: vertical; min-height: 80px; }
         <div class="stat-period">Total histórico</div>
       </div>
     </div>
-    <div style="font-size:13px;color:var(--text-faint);line-height:1.65">
-      Las estadísticas se actualizan en tiempo real cada vez que alguien ve tu perfil o toca el botón de WhatsApp.
+    <div style="font-size:13px;color:var(--text-faint);line-height:1.65;margin-bottom:24px">
+      Las estadísticas se actualizan cada vez que alguien te encuentra en una búsqueda o toca el botón de WhatsApp.
+    </div>
+    <div id="graficoWrap" style="display:none;background:var(--white);border:1px solid var(--border);border-radius:var(--radius);padding:20px">
+      <div style="font-size:13px;font-weight:500;color:var(--text);margin-bottom:16px">Últimas 8 semanas</div>
+      <canvas id="graficoStats" height="120"></canvas>
     </div>
   </div>
 
@@ -348,6 +353,11 @@ async function cargarStats() {
     const vistas = data.vistas || 0;
     document.getElementById('statContactos').textContent = contactos;
     document.getElementById('statBusquedas').textContent = vistas;
+
+    // Renderizar gráfico si hay datos
+    if (data.grafico) {
+      renderGrafico(data.grafico);
+    }
   } catch(e) {
     console.error(e);
   }
@@ -497,6 +507,62 @@ cargarPerfil();
 cargarPlan();
 
 document.getElementById('edit-nombre').addEventListener('input', actualizarPreview);
+
+function renderGrafico(grafico) {
+  // Generar las últimas 8 semanas
+  const semanas = [];
+  const labels = [];
+  for (let i = 7; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - (i * 7) - d.getDay());
+    const key = d.toISOString().split('T')[0];
+    semanas.push(key);
+    labels.push(`Sem ${8 - i}`);
+  }
+
+  const contactosData = semanas.map(s => grafico.contactos?.[s] || 0);
+  const vistasData = semanas.map(s => grafico.vistas?.[s] || 0);
+
+  const totalContactos = contactosData.reduce((a, b) => a + b, 0);
+  const totalVistas = vistasData.reduce((a, b) => a + b, 0);
+
+  if (totalContactos === 0 && totalVistas === 0) return;
+
+  document.getElementById('graficoWrap').style.display = 'block';
+
+  new Chart(document.getElementById('graficoStats'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Apariciones en búsquedas',
+          data: vistasData,
+          backgroundColor: 'rgba(168,200,192,0.5)',
+          borderColor: '#4A7C6F',
+          borderWidth: 1,
+          borderRadius: 4,
+        },
+        {
+          label: 'Contactos por WhatsApp',
+          data: contactosData,
+          backgroundColor: 'rgba(74,124,111,0.8)',
+          borderColor: '#2C5048',
+          borderWidth: 1,
+          borderRadius: 4,
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { position: 'bottom', labels: { font: { family: 'DM Sans' }, boxWidth: 12 } } },
+      scales: {
+        y: { beginAtZero: true, ticks: { stepSize: 1 }, grid: { color: 'rgba(0,0,0,0.05)' } },
+        x: { grid: { display: false } }
+      }
+    }
+  });
+}
 </script>
 </body>
 </html>
