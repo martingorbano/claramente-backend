@@ -218,6 +218,16 @@ footer { border-top: 1px solid var(--border); padding: 28px 36px; display: flex;
     <a class="nav-cta-secondary" href="/login.html">Ingresar</a><a class="nav-cta" href="/claramentepsi-registro-profesional.html">Sumate a la red</a>
   </div>
 </nav>
+<script>
+// Si hay sesión activa, cambiar "Ingresar" por "Mi panel"
+try {
+  const prof = JSON.parse(localStorage.getItem('clm_profesional') || 'null');
+  if (prof && prof.id) {
+    const btn = document.querySelector('a[href="/login.html"]');
+    if (btn) { btn.textContent = 'Mi panel'; btn.href = '/panel.html'; }
+  }
+} catch(e) {}
+</script>
 
 <!-- HERO + CHAT -->
 <section class="hero-section">
