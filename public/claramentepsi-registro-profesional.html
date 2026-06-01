@@ -1,1074 +1,774 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>claramentepsi · Registro profesional</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
-<style>
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-:root {
-  --sage: #4A7C6F; --sage-light: #E8F2EF; --sage-mid: #A8C8C0; --sage-dark: #2C5048;
-  --warm: #F7F3EE; --warm-mid: #EDE6DC; --text: #1C2B28; --text-muted: #6B847E;
-  --text-faint: #9AAFAA; --border: #D8E8E4; --white: #FFFFFF; --radius: 16px;
-  --error: #C0392B; --error-light: #FDECEA;
-}
-body { font-family: 'DM Sans', sans-serif; background: var(--warm); color: var(--text); min-height: 100vh; }
+const express = require('express');
+const crypto = require('crypto');
+const { MercadoPagoConfig, PreApprovalPlan, PreApproval } = require('mercadopago');
+const { Resend } = require('resend');
+const resend = new Resend(process.env.RESEND_API_KEY);
 
-nav { display: flex; align-items: center; justify-content: space-between; padding: 18px 36px; background: var(--warm); border-bottom: 1px solid var(--border); }
-.logo { font-family: 'Lora', serif; font-size: 20px; color: var(--text); letter-spacing: -0.02em; text-decoration: none; }
-.logo span { color: var(--sage); }
-.nav-tag { font-size: 12px; color: var(--text-faint); background: var(--sage-light); padding: 4px 10px; border-radius: 20px; }
+const mp = new MercadoPagoConfig({ accessToken: process.env.MP_ACCESS_TOKEN });
+const cors = require('cors');
+const Anthropic = require('@anthropic-ai/sdk');
+const { createClient } = require('@supabase/supabase-js');
+const path = require('path');
+const bcrypt = require('bcryptjs');
 
-.layout { max-width: 780px; margin: 0 auto; padding: 40px 20px 80px; }
+const app = express();
+const PORT = process.env.PORT || 3000;
 
-/* Progress */
-.progress-bar { display: flex; align-items: center; gap: 0; margin-bottom: 40px; }
-.step { display: flex; flex-direction: column; align-items: center; gap: 6px; flex: 1; position: relative; cursor: pointer; }
-.step:not(:last-child)::after { content: ''; position: absolute; top: 16px; left: 50%; width: 100%; height: 1px; background: var(--border); z-index: 0; }
-.step.done:not(:last-child)::after { background: var(--sage-mid); }
-.step-circle { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 500; border: 1px solid var(--border); background: var(--white); color: var(--text-faint); z-index: 1; transition: all 0.25s; }
-.step.active .step-circle { background: var(--sage); border-color: var(--sage); color: white; }
-.step.done .step-circle { background: var(--sage-light); border-color: var(--sage-mid); color: var(--sage-dark); }
-.step-label { font-size: 11px; color: var(--text-faint); text-align: center; white-space: nowrap; }
-.step.active .step-label { color: var(--sage-dark); font-weight: 500; }
-.step.done .step-label { color: var(--sage); }
+app.use(cors({ origin: '*', methods: ['GET', 'POST', 'PUT'], allowedHeaders: ['Content-Type'] }));
+app.use(express.json());
+app.use(express.static(path.join(__dirname, 'public')));
 
-/* Panels */
-.panel { display: none; animation: fadeUp 0.3s ease; }
-.panel.active { display: block; }
-@keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
 
-.panel-title { font-family: 'Lora', serif; font-size: 22px; font-weight: 400; color: var(--text); margin-bottom: 6px; }
-.panel-sub { font-size: 14px; color: var(--text-muted); margin-bottom: 28px; line-height: 1.6; }
+const SYSTEM_PROMPT = `Sos el asistente de derivación de Claramente, una plataforma argentina que conecta personas con psicólogos mediante IA.
 
-/* Form elements */
-.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-.form-grid.single { grid-template-columns: 1fr; }
-.form-grid.triple { grid-template-columns: 1fr 1fr 1fr; }
-@media (max-width: 560px) { .form-grid, .form-grid.triple { grid-template-columns: 1fr; } }
+Tu rol es entender qué necesita la persona y devolverle un JSON con los profesionales más adecuados de la base de datos real que se te provee. Hablás en español rioplatense, tono cálido y profesional. Nunca das consejos terapéuticos.
 
-.field { display: flex; flex-direction: column; gap: 6px; }
-.field.full { grid-column: 1 / -1; }
-label { font-size: 13px; font-weight: 500; color: var(--text); }
-label .opt { font-weight: 400; color: var(--text-faint); font-size: 12px; }
+Cuando tengas suficiente info (1-2 intercambios alcanza), respondé ÚNICAMENTE con este JSON sin texto adicional:
 
-input[type=text], input[type=email], input[type=tel], input[type=number], textarea, select {
-  font-family: 'DM Sans', sans-serif; font-size: 14px; padding: 10px 14px;
-  border: 1px solid var(--border); border-radius: 10px; background: var(--white);
-  color: var(--text); outline: none; transition: border-color 0.2s; width: 100%;
-}
-input:focus, textarea:focus, select:focus { border-color: var(--sage-mid); }
-input::placeholder, textarea::placeholder { color: var(--text-faint); }
-textarea { resize: vertical; min-height: 90px; }
-select { cursor: pointer; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%239AAFAA' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 14px center; padding-right: 36px; }
-
-.field-hint { font-size: 11px; color: var(--text-faint); }
-.field-error { font-size: 11px; color: var(--error); display: none; }
-.field.has-error input, .field.has-error select, .field.has-error textarea { border-color: var(--error); }
-.field.has-error .field-error { display: block; }
-
-/* Tags selector */
-.tags-selector { display: flex; flex-wrap: wrap; gap: 8px; }
-.tag-opt { font-size: 12px; padding: 6px 14px; border-radius: 20px; border: 1px solid var(--border); background: var(--white); color: var(--text-muted); cursor: pointer; transition: all 0.18s; user-select: none; }
-.tag-opt:hover { border-color: var(--sage-mid); color: var(--sage-dark); }
-.tag-opt.selected { background: var(--sage-light); border-color: var(--sage-mid); color: var(--sage-dark); font-weight: 500; }
-.tag-opt.disabled { opacity: 0.35; cursor: not-allowed; pointer-events: none; }
-
-/* Horarios */
-.horarios-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
-.dia-btn { padding: 8px 4px; border-radius: 8px; border: 1px solid var(--border); background: var(--white); font-size: 11px; font-weight: 500; color: var(--text-muted); cursor: pointer; text-align: center; transition: all 0.18s; font-family: 'DM Sans', sans-serif; }
-.dia-btn.selected { background: var(--sage-light); border-color: var(--sage-mid); color: var(--sage-dark); }
-.franjas { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
-.franja-btn { font-size: 12px; padding: 6px 14px; border-radius: 20px; border: 1px solid var(--border); background: var(--white); color: var(--text-muted); cursor: pointer; transition: all 0.18s; font-family: 'DM Sans', sans-serif; }
-.franja-btn.selected { background: var(--sage-light); border-color: var(--sage-mid); color: var(--sage-dark); }
-
-/* Foto upload */
-.photo-upload { display: flex; align-items: center; gap: 20px; }
-.photo-preview { width: 80px; height: 80px; border-radius: 50%; background: var(--warm-mid); border: 2px dashed var(--border); display: flex; align-items: center; justify-content: center; color: var(--text-faint); font-size: 11px; text-align: center; overflow: hidden; flex-shrink: 0; cursor: pointer; transition: border-color 0.2s; }
-.photo-preview:hover { border-color: var(--sage-mid); }
-.photo-preview img { width: 100%; height: 100%; object-fit: cover; }
-.photo-preview .ph-text { padding: 8px; line-height: 1.4; }
-.photo-upload-btn { font-size: 13px; padding: 9px 18px; border-radius: 20px; border: 1px solid var(--border); background: var(--white); color: var(--text-muted); cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.18s; }
-.photo-upload-btn:hover { border-color: var(--sage-mid); color: var(--sage-dark); }
-
-/* Plan */
-.plan-card { background: var(--white); border: 1.5px solid var(--sage); border-radius: var(--radius); padding: 24px; display: flex; flex-direction: column; gap: 14px; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s; }
-.plan-card:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(44,80,72,0.1); }
-.plan-free { transition: border-color 0.2s, box-shadow 0.2s; cursor: pointer; }
-.plan-free:hover { border-color: var(--sage-mid) !important; box-shadow: 0 4px 12px rgba(74,124,111,0.1); }
-.plan-header { display: flex; align-items: center; justify-content: space-between; }
-.plan-name { font-family: 'Lora', serif; font-size: 20px; font-weight: 400; }
-.plan-price { font-size: 24px; font-weight: 500; color: var(--sage); }
-.plan-price small { font-size: 13px; font-weight: 400; color: var(--text-muted); }
-.plan-features { display: flex; flex-direction: column; gap: 8px; }
-.plan-feat { font-size: 13px; color: var(--text-muted); display: flex; align-items: flex-start; gap: 10px; }
-.plan-feat::before { content: '✓'; color: var(--sage); font-weight: 500; flex-shrink: 0; margin-top: 1px; }
-.plan-free { background: var(--warm); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 20px; }
-.plan-free-label { font-size: 13px; color: var(--text-muted); margin-bottom: 6px; font-weight: 500; }
-.plan-free-desc { font-size: 13px; color: var(--text-faint); line-height: 1.55; }
-
-/* Resumen */
-.resumen-card { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px 24px; }
-.resumen-row { display: flex; justify-content: space-between; align-items: flex-start; padding: 9px 0; border-bottom: 1px solid var(--border); gap: 16px; }
-.resumen-row:last-child { border-bottom: none; }
-.resumen-key { font-size: 13px; color: var(--text-muted); flex-shrink: 0; }
-.resumen-val { font-size: 13px; color: var(--text); text-align: right; }
-
-/* Botones navegación */
-.nav-btns { display: flex; justify-content: space-between; align-items: center; margin-top: 32px; }
-.btn-back { font-size: 14px; padding: 10px 20px; border-radius: 24px; border: 1px solid var(--border); background: transparent; color: var(--text-muted); cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.18s; }
-.btn-back:hover { border-color: var(--sage-mid); color: var(--sage-dark); }
-.btn-next { font-size: 14px; padding: 10px 28px; border-radius: 24px; border: none; background: var(--sage); color: white; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.18s; font-weight: 500; }
-.btn-next:hover { background: var(--sage-dark); }
-.btn-next:disabled { background: var(--sage-mid); cursor: default; }
-
-/* Success */
-.success { text-align: center; padding: 40px 20px; }
-.success-icon { width: 64px; height: 64px; border-radius: 50%; background: var(--sage-light); display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; font-size: 28px; }
-.success h2 { font-family: 'Lora', serif; font-size: 24px; font-weight: 400; margin-bottom: 10px; }
-.success p { font-size: 15px; color: var(--text-muted); line-height: 1.65; max-width: 420px; margin: 0 auto 24px; }
-.success-btn { font-size: 14px; padding: 12px 28px; border-radius: 24px; border: none; background: var(--sage); color: white; cursor: pointer; font-family: 'DM Sans', sans-serif; font-weight: 500; }
-
-.divider { height: 1px; background: var(--border); margin: 24px 0; }
-
-/* Nudge foto */
-.foto-nudge { display:none; margin-top: 14px; background: #FFFBEC; border: 1px solid #F0D97A; border-radius: 12px; padding: 14px 16px; gap: 12px; align-items: flex-start; }
-.foto-nudge.show { display: flex; animation: fadeUp 0.3s ease; }
-.foto-nudge-icon { font-size: 20px; flex-shrink: 0; margin-top: 1px; }
-.foto-nudge-text { font-size: 13px; color: #6B5A00; line-height: 1.6; }
-.foto-nudge-text strong { font-weight: 500; display: block; margin-bottom: 3px; color: #4A3D00; }
-.foto-nudge-link { font-size: 12px; color: var(--sage); font-weight: 500; cursor: pointer; text-decoration: underline; }
-
-/* Banner resumen plan free */
-.resumen-nudge { background: var(--sage-light); border: 1px solid var(--sage-mid); border-radius: 12px; padding: 16px 18px; margin-top: 16px; display: flex; gap: 14px; align-items: flex-start; }
-.resumen-nudge-icon { font-size: 22px; flex-shrink: 0; }
-.resumen-nudge-body { flex: 1; }
-.resumen-nudge-title { font-size: 14px; font-weight: 500; color: var(--sage-dark); margin-bottom: 5px; }
-.resumen-nudge-text { font-size: 13px; color: var(--text-muted); line-height: 1.6; margin-bottom: 10px; }
-.resumen-nudge-btn { font-size: 12px; padding: 7px 16px; border-radius: 20px; background: var(--sage); color: white; border: none; cursor: pointer; font-family: 'DM Sans', sans-serif; font-weight: 500; }
-.resumen-nudge-btn:hover { background: var(--sage-dark); }
-
-/* Preview foto bloqueada en resumen */
-.photo-locked { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-faint); background: var(--warm-mid); padding: 4px 10px; border-radius: 20px; }
-.photo-locked span { font-size: 14px; }
-
-/* Pago */
-.pago-card { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; margin-bottom: 16px; }
-.pago-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
-.pago-title { font-size: 15px; font-weight: 500; color: var(--text); }
-.pago-logo { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-faint); }
-.pago-logo-mp { width: 24px; height: 24px; background: #009EE3; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; color: white; font-size: 11px; font-weight: 700; }
-.pago-monto { background: var(--sage-light); border-radius: 12px; padding: 16px 20px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-.pago-monto-label { font-size: 13px; color: var(--text-muted); }
-.pago-monto-val { font-size: 20px; font-weight: 500; color: var(--sage-dark); }
-.pago-monto-sub { font-size: 11px; color: var(--text-faint); }
-.pago-metodos { display: flex; flex-direction: column; gap: 10px; }
-.pago-metodo { border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; cursor: pointer; display: flex; align-items: center; gap: 14px; transition: all 0.18s; }
-.pago-metodo:hover { border-color: var(--sage-mid); background: var(--sage-light); }
-.pago-metodo.selected { border-color: var(--sage); background: var(--sage-light); }
-.pago-metodo-icon { width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; background: var(--warm-mid); flex-shrink: 0; }
-.pago-metodo-name { font-size: 14px; font-weight: 500; color: var(--text); }
-.pago-metodo-desc { font-size: 12px; color: var(--text-muted); }
-.pago-metodo-radio { width: 18px; height: 18px; border-radius: 50%; border: 1.5px solid var(--border); margin-left: auto; flex-shrink: 0; transition: all 0.18s; }
-.pago-metodo.selected .pago-metodo-radio { border-color: var(--sage); background: var(--sage); box-shadow: inset 0 0 0 4px white; }
-.pago-free-notice { background: var(--warm); border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px; font-size: 13px; color: var(--text-muted); line-height: 1.65; }
-.pago-free-notice strong { color: var(--text); font-weight: 500; display: block; margin-bottom: 4px; }
-.pago-seguro { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-faint); margin-top: 14px; justify-content: center; }
-.tag-opt.disabled { opacity: 0.35; cursor: not-allowed; pointer-events: none; }
-</style>
-</head>
-<body>
-
-<nav>
-  <a class="logo" href="/">clara<span>mente</span></a>
-  <span class="nav-tag">Área profesionales</span>
-</nav>
-
-<div class="layout">
-
-  <!-- Progress -->
-  <div class="progress-bar" id="progressBar">
-    <div class="step active" onclick="goTo(0)">
-      <div class="step-circle">1</div>
-      <div class="step-label">Cuenta</div>
-    </div>
-    <div class="step" onclick="goTo(1)">
-      <div class="step-circle">2</div>
-      <div class="step-label">Perfil</div>
-    </div>
-    <div class="step" onclick="goTo(2)">
-      <div class="step-circle">3</div>
-      <div class="step-label">Especialidad</div>
-    </div>
-    <div class="step" onclick="goTo(3)">
-      <div class="step-circle">4</div>
-      <div class="step-label">Disponibilidad</div>
-    </div>
-    <div class="step" onclick="goTo(4)">
-      <div class="step-circle">5</div>
-      <div class="step-label">Plan</div>
-    </div>
-    <div class="step" onclick="goTo(5)">
-      <div class="step-circle">6</div>
-      <div class="step-label">Pago</div>
-    </div>
-    <div class="step" onclick="goTo(6)">
-      <div class="step-circle">7</div>
-      <div class="step-label">Confirmar</div>
-    </div>
-  </div>
-
-  <!-- PASO 1: Cuenta -->
-  <div class="panel active" id="panel-0">
-    <div class="panel-title">Creá tu cuenta</div>
-    <div class="panel-sub">Estos datos son para acceder a tu panel. No son visibles para los pacientes.</div>
-    <div class="form-grid">
-      <div class="field" id="f-titulo">
-        <label>Título</label>
-        <select id="titulo">
-          <option value="Lic.">Lic. (Licenciado/a)</option>
-          <option value="Dr.">Dr. (Doctor/a)</option>
-          <option value="Mg.">Mg. (Magíster)</option>
-        </select>
-      </div>
-      <div class="field" id="f-nombre">
-        <label>Nombre y apellido</label>
-        <input type="text" id="nombre" placeholder="Ej: María López" />
-        <span class="field-error">Ingresá tu nombre completo</span>
-      </div>
-      <div class="field" id="f-matricula">
-        <label>Número de matrícula</label>
-        <input type="text" id="matricula" placeholder="Ej: 12345" />
-        <span class="field-error">Ingresá tu matrícula</span>
-      </div>
-      <div class="field" id="f-email">
-        <label>Email profesional</label>
-        <input type="email" id="email" placeholder="tu@email.com" />
-        <span class="field-error">Ingresá un email válido</span>
-      </div>
-      <div class="field" id="f-whatsapp">
-        <label>WhatsApp de contacto</label>
-        <input type="tel" id="whatsapp" placeholder="Ej: 2614123456" />
-        <span class="field-hint">Sin el 0 ni el 15. Los pacientes te contactan por acá.</span>
-        <span class="field-error">Ingresá tu número de WhatsApp</span>
-      </div>
-      <div class="field" id="f-pass">
-        <label>Contraseña</label>
-        <input type="password" id="pass" placeholder="Mínimo 8 caracteres" />
-        <span class="field-error">Mínimo 8 caracteres</span>
-      </div>
-      <div class="field" id="f-pass2">
-        <label>Confirmá tu contraseña</label>
-        <input type="password" id="pass2" placeholder="Repetí la contraseña" />
-        <span class="field-error" id="pass2-error">Las contraseñas no coinciden</span>
-      </div>
-    </div>
-    <div class="nav-btns">
-      <span></span>
-      <button class="btn-next" onclick="next(0)">Continuar →</button>
-    </div>
-  </div>
-
-  <!-- PASO 2: Perfil -->
-  <div class="panel" id="panel-1">
-    <div class="panel-title">Tu perfil público</div>
-    <div class="panel-sub">Esto es lo que ven los pacientes en tu tarjeta. Una presentación cálida genera más contactos.</div>
-    <div class="form-grid single" style="gap:20px">
-      <div class="field">
-        <label>Foto de perfil</label>
-        <div class="photo-upload">
-          <div class="photo-preview" id="photoPreview" onclick="document.getElementById('photoInput').click()">
-            <span class="ph-text">Subir foto</span>
-          </div>
-          <div>
-            <button class="photo-upload-btn" onclick="document.getElementById('photoInput').click()">Elegir imagen</button>
-            <p class="field-hint" style="margin-top:6px">JPG o PNG · Máx 2MB · Se recomienda foto profesional</p>
-            <input type="file" id="photoInput" accept="image/*" style="display:none" onchange="previewPhoto(this)" />
-          </div>
-        </div>
-        <div class="foto-nudge" id="fotoNudge">
-          <div class="foto-nudge-icon">📸</div>
-          <div class="foto-nudge-text">
-            <strong>Tu foto está guardada</strong>
-            Los perfiles con foto reciben hasta 3 veces más contactos. Con el plan gratuito tu foto no se muestra — los pacientes ven solo tus iniciales.
-            <br><span class="foto-nudge-link" onclick="goTo(4); selectPlan('pro')">Activar plan Pro para mostrar mi foto →</span>
-          </div>
-        </div>
-      </div>
-      <div class="field">
-        <label>Presentación breve</label>
-        <textarea id="bio" placeholder="Contá quién sos, cómo trabajás y qué tipo de pacientes acompañás. Unas 3-4 oraciones alcanzan." maxlength="400"></textarea>
-        <span class="field-hint">Máx 400 caracteres · Aparece en tu perfil completo</span>
-      </div>
-      <div class="form-grid">
-        <div class="field" id="f-ciudad">
-          <label>Ciudad donde atendés</label>
-          <input type="text" id="ciudad" placeholder="Ej: Mendoza, Buenos Aires" />
-          <span class="field-hint">Si atendés en más de una zona, separalas con coma. Ej: Ciudad, Maipú</span>
-          <span class="field-error">Ingresá al menos una ciudad</span>
-        </div>
-        <div class="field">
-          <label>Años de experiencia <span class="opt">(opcional)</span></label>
-          <input type="number" id="experiencia" placeholder="Ej: 8" min="0" max="60" />
-        </div>
-        <div class="field" id="f-honorario">
-          <label>Honorario por sesión <span class="opt">(en pesos)</span></label>
-          <input type="number" id="honorario" placeholder="Ej: 15000" />
-          <span class="field-hint">Podés poner un rango en la bio si varía</span>
-          <span class="field-error">Ingresá tu honorario</span>
-        </div>
-        <div class="field">
-          <label>Acepta obras sociales</label>
-          <div class="tags-selector" id="obrasSociales" style="margin-top:2px">
-            <span class="tag-opt" onclick="toggleTag(this,'obras')">OSDE</span>
-            <span class="tag-opt" onclick="toggleTag(this,'obras')">Swiss Medical</span>
-            <span class="tag-opt" onclick="toggleTag(this,'obras')">Galeno</span>
-            <span class="tag-opt" onclick="toggleTag(this,'obras')">IOMA</span>
-            <span class="tag-opt" onclick="toggleTag(this,'obras')">PAMI</span>
-            <span class="tag-opt" onclick="toggleTag(this,'obras')">Medicus</span>
-            <span class="tag-opt" onclick="toggleTag(this,'obras')">Particular</span>
-            <span class="tag-opt" id="otraObraBtn" onclick="toggleOtraObra()">+ Otra</span>
-          </div>
-          <div id="otraObraWrap" style="display:none; margin-top:8px; gap:8px; align-items:center; flex-wrap:wrap">
-            <input type="text" id="otraObra" placeholder="Ej: ACCORD, OSECAC..." style="max-width:260px; display:inline-block" onkeydown="addOtraObra(event)" />
-            <span class="field-hint">Presioná Enter para agregar</span>
-          </div>
-        </div>
-      </div>
-    </div>
-    <div class="nav-btns">
-      <button class="btn-back" onclick="prev(1)">← Atrás</button>
-      <button class="btn-next" onclick="next(1)">Continuar →</button>
-    </div>
-  </div>
-
-  <!-- PASO 3: Especialidad -->
-  <div class="panel" id="panel-2">
-    <div class="panel-title">Tu especialidad</div>
-    <div class="panel-sub">Esta información le permite al agente matchearte con las personas correctas. Cuanto más completo, mejor.</div>
-    <div class="form-grid single" style="gap:20px">
-      <div class="field">
-        <label>Tipo de terapia / enfoque <span class="opt" id="enfoqueCounter">(máx. 3)</span></label>
-        <div class="tags-selector" id="enfoques">
-          <span class="tag-opt" onclick="toggleEnfoque(this)">Cognitivo-conductual (TCC)</span>
-          <span class="tag-opt" onclick="toggleEnfoque(this)">Psicoanalítico</span>
-          <span class="tag-opt" onclick="toggleEnfoque(this)">Sistémico</span>
-          <span class="tag-opt" onclick="toggleEnfoque(this)">ACT</span>
-          <span class="tag-opt" onclick="toggleEnfoque(this)">Integrativo</span>
-          <span class="tag-opt" onclick="toggleEnfoque(this)">EMDR</span>
-          <span class="tag-opt" onclick="toggleEnfoque(this)">Gestalt</span>
-          <span class="tag-opt" onclick="toggleEnfoque(this)">Humanista</span>
-          <span class="tag-opt" onclick="toggleEnfoque(this)">Mindfulness</span>
-          <span class="tag-opt" onclick="toggleEnfoque(this)">Narrativo</span>
-        </div>
-      </div>
-      <div class="field">
-        <label>Especializaciones / problemáticas que trabajás</label>
-        <div class="tags-selector" id="especializaciones">
-          <span class="tag-opt" onclick="toggleTag(this,'espec')">Ansiedad</span>
-          <span class="tag-opt" onclick="toggleTag(this,'espec')">Depresión</span>
-          <span class="tag-opt" onclick="toggleTag(this,'espec')">Estrés</span>
-          <span class="tag-opt" onclick="toggleTag(this,'espec')">Pareja</span>
-          <span class="tag-opt" onclick="toggleTag(this,'espec')">Duelo</span>
-          <span class="tag-opt" onclick="toggleTag(this,'espec')">Trauma / PTSD</span>
-          <span class="tag-opt" onclick="toggleTag(this,'espec')">TOC</span>
-          <span class="tag-opt" onclick="toggleTag(this,'espec')">Fobias</span>
-          <span class="tag-opt" onclick="toggleTag(this,'espec')">Autoestima</span>
-          <span class="tag-opt" onclick="toggleTag(this,'espec')">Trastornos alimentarios</span>
-          <span class="tag-opt" onclick="toggleTag(this,'espec')">TDAH</span>
-          <span class="tag-opt" onclick="toggleTag(this,'espec')">Orientación vocacional</span>
-          <span class="tag-opt" onclick="toggleTag(this,'espec')">Sexualidad</span>
-          <span class="tag-opt" onclick="toggleTag(this,'espec')">Familia</span>
-          <span class="tag-opt" onclick="toggleTag(this,'espec')">Adolescentes</span>
-          <span class="tag-opt" onclick="toggleTag(this,'espec')">Infancia</span>
-          <span class="tag-opt" onclick="toggleTag(this,'espec')">Crisis vitales</span>
-          <span class="tag-opt" onclick="toggleTag(this,'espec')">Adicciones</span>
-        </div>
-      </div>
-      <div class="form-grid">
-        <div class="field">
-          <label>Modalidad de atención</label>
-          <div class="tags-selector" id="modalidades">
-            <span class="tag-opt" onclick="toggleTag(this,'modal')">Online</span>
-            <span class="tag-opt" onclick="toggleTag(this,'modal')">Presencial</span>
-          </div>
-        </div>
-        <div class="field">
-          <label>Edades que recibís</label>
-          <div class="tags-selector" id="edades">
-            <span class="tag-opt" onclick="toggleTag(this,'edad')">Niños (4-12)</span>
-            <span class="tag-opt" onclick="toggleTag(this,'edad')">Adolescentes (13-17)</span>
-            <span class="tag-opt" onclick="toggleTag(this,'edad')">Adultos (18-60)</span>
-            <span class="tag-opt" onclick="toggleTag(this,'edad')">Adultos mayores (60+)</span>
-          </div>
-        </div>
-      </div>
-    </div>
-    <div class="nav-btns">
-      <button class="btn-back" onclick="prev(2)">← Atrás</button>
-      <button class="btn-next" onclick="next(2)">Continuar →</button>
-    </div>
-  </div>
-
-  <!-- PASO 4: Disponibilidad -->
-  <div class="panel" id="panel-3">
-    <div class="panel-title">Tu disponibilidad</div>
-    <div class="panel-sub">Ayuda al agente a sugerir profesionales según los horarios que busca el paciente.</div>
-    <div class="form-grid single" style="gap:20px">
-      <div class="field">
-        <label>Días disponibles</label>
-        <div class="horarios-grid" id="dias">
-          <button class="dia-btn" onclick="toggleDia(this)">Lun</button>
-          <button class="dia-btn" onclick="toggleDia(this)">Mar</button>
-          <button class="dia-btn" onclick="toggleDia(this)">Mié</button>
-          <button class="dia-btn" onclick="toggleDia(this)">Jue</button>
-          <button class="dia-btn" onclick="toggleDia(this)">Vie</button>
-          <button class="dia-btn" onclick="toggleDia(this)">Sáb</button>
-          <button class="dia-btn" onclick="toggleDia(this)">Dom</button>
-        </div>
-      </div>
-      <div class="field">
-        <label>Franjas horarias</label>
-        <div class="franjas" id="franjas">
-          <button class="franja-btn" onclick="toggleFranja(this)">Mañana (8-12)</button>
-          <button class="franja-btn" onclick="toggleFranja(this)">Mediodía (12-15)</button>
-          <button class="franja-btn" onclick="toggleFranja(this)">Tarde (15-19)</button>
-          <button class="franja-btn" onclick="toggleFranja(this)">Noche (19-22)</button>
-        </div>
-      </div>
-      <div class="field">
-        <label>Duración de sesión <span class="opt">(minutos)</span></label>
-        <div style="display:flex; gap:8px; flex-wrap:wrap" id="duraciones">
-          <button class="franja-btn" onclick="toggleFranja(this)">45 min</button>
-          <button class="franja-btn" onclick="toggleFranja(this)">50 min</button>
-          <button class="franja-btn" onclick="toggleFranja(this)">60 min</button>
-          <button class="franja-btn" onclick="toggleFranja(this)">90 min</button>
-        </div>
-      </div>
-    </div>
-    <div class="nav-btns">
-      <button class="btn-back" onclick="prev(3)">← Atrás</button>
-      <button class="btn-next" onclick="next(3)">Continuar →</button>
-    </div>
-  </div>
-
-  <!-- PASO 5: Plan -->
-  <div class="panel" id="panel-4">
-    <div class="panel-title">Elegí tu plan</div>
-    <div class="panel-sub">Podés empezar gratis. Cuando veas que llegan consultas, Premium o Flex te aseguran aparecer primero y ser contactado.</div>
-
-    <div class="plan-card" id="planPro" style="cursor:pointer;border:2px solid #B8860B;background:linear-gradient(135deg,#FFFFF8 0%,#FDF8E8 100%)" onclick="selectPlan('premium')">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
-        <span style="font-size:11px;font-weight:500;padding:4px 12px;border-radius:20px;background:#FDF8E8;color:#B8860B;border:1px solid #E8D48A;letter-spacing:0.04em;text-transform:uppercase">✨ Más elegido</span>
-      </div>
-      <div class="plan-header">
-        <div>
-          <div class="plan-name" style="font-size:22px">Plan Premium</div>
-          <div style="font-size:13px;color:var(--text-muted);margin-top:2px">Máxima visibilidad y estadísticas completas</div>
-        </div>
-        <div class="plan-price" style="color:#B8860B;font-size:28px">$79.900 <small>/ mes</small></div>
-      </div>
-      <div class="divider" style="margin:0"></div>
-      <div class="plan-features">
-        <div class="plan-feat">Aparecés primero cuando sos el match correcto para una búsqueda</div>
-        <div class="plan-feat">Perfil completo con foto, bio y todas tus especializaciones</div>
-        <div class="plan-feat">Botón de WhatsApp directo en tu tarjeta</div>
-        <div class="plan-feat">Estadísticas: cuántas personas vieron tu perfil y te contactaron</div>
-        <div class="plan-feat">Badge "Profesional destacado" visible en los resultados</div>
-      </div>
-      <div style="font-size:12px;color:var(--sage);font-weight:500">← Por solo $20.000 más que el Flex, con el doble de visibilidad</div>
-    </div>
-
-    <div style="margin:16px 0"></div>
-
-    <!-- Flex -->
-    <div class="plan-card" id="planFlex" style="cursor:pointer;border-color:var(--sage-mid);margin-bottom:12px" onclick="selectPlan('flex')">
-      <div class="plan-header">
-        <div>
-          <div class="plan-name" style="font-size:17px">Plan Flex</div>
-          <div style="font-size:13px;color:var(--text-muted);margin-top:2px">Foto, contacto directo y segunda posición</div>
-        </div>
-        <div class="plan-price" style="color:var(--sage-dark)">$59.900 <small>/ mes</small></div>
-      </div>
-      <div class="divider" style="margin:0"></div>
-      <div class="plan-features">
-        <div class="plan-feat">Foto de perfil visible para los pacientes</div>
-        <div class="plan-feat">Botón de WhatsApp directo en tu tarjeta</div>
-        <div class="plan-feat">Aparecés después de los Premium</div>
-      </div>
-    </div>
-
-    <!-- Gratuito -->
-    <div class="plan-free" id="planFree" style="cursor:pointer" onclick="selectPlan('gratuito')">
-      <div class="plan-free-label">Plan gratuito</div>
-      <div class="plan-free-desc">Tu perfil aparece en los resultados sin foto ni contacto directo. Cuando alguien te encuentre pero no pueda contactarte, te avisamos por mail para que puedas evaluar si vale la pena suscribirte.</div>
-    </div>
-
-    <div id="planSelected" style="font-size:13px;color:var(--sage);margin-top:14px;font-weight:500;display:none"></div>
-
-    <div class="nav-btns">
-      <button class="btn-back" onclick="prev(4)">← Atrás</button>
-      <button class="btn-next" id="btnPlan" onclick="next(4)" disabled>Continuar →</button>
-    </div>
-  </div>
-
-  <!-- PASO 6: Pago -->
-  <div class="panel" id="panel-5">
-    <div class="panel-title">Activá tu suscripción</div>
-    <div class="panel-sub" id="pagoSub">Completá tu suscripción según el plan que elegiste.</div>
-    <div id="pagoPro">
-      <div class="pago-card">
-        <div class="pago-header">
-          <div class="pago-title">Resumen del pago</div>
-          <div class="pago-logo"><span class="pago-logo-mp">MP</span> MercadoPago</div>
-        </div>
-        <div class="pago-monto">
-          <div>
-            <div class="pago-monto-label">Plan Pro · claramentepsi</div>
-            <div class="pago-monto-sub">Suscripcion mensual · cancelable en cualquier momento</div>
-          </div>
-          <div style="text-align:right">
-            <div class="pago-monto-val">$59.900</div>
-            <div class="pago-monto-sub">/ mes</div>
-          </div>
-        </div>
-        <div class="pago-metodos">
-          <div class="pago-metodo" onclick="selectMetodo(this,'tarjeta')">
-            <div class="pago-metodo-icon">&#x1F4B3;</div>
-            <div><div class="pago-metodo-name">Tarjeta de credito o debito</div><div class="pago-metodo-desc">Visa, Mastercard, Cabal, Naranja y mas</div></div>
-            <div class="pago-metodo-radio"></div>
-          </div>
-          <div class="pago-metodo" onclick="selectMetodo(this,'transferencia')">
-            <div class="pago-metodo-icon">&#x1F3E6;</div>
-            <div><div class="pago-metodo-name">Transferencia bancaria</div><div class="pago-metodo-desc">Alias o CVU · acreditacion en minutos</div></div>
-            <div class="pago-metodo-radio"></div>
-          </div>
-          <div class="pago-metodo" onclick="selectMetodo(this,'mp')">
-            <div class="pago-metodo-icon" style="background:#E8F4FD">&#x1F499;</div>
-            <div><div class="pago-metodo-name">Saldo en MercadoPago</div><div class="pago-metodo-desc">Paga con tu cuenta de MP al instante</div></div>
-            <div class="pago-metodo-radio"></div>
-          </div>
-        </div>
-        <div class="pago-seguro">&#x1F512; Pago seguro procesado por MercadoPago · tus datos nunca se almacenan en claramentepsi</div>
-      </div>
-      <div id="pagoMetodoInfo" style="display:none" class="pago-free-notice">
-        <strong id="pagoMetodoTitle"></strong>
-        <span id="pagoMetodoText"></span>
-      </div>
-    </div>
-    <div id="pagoFree" style="display:none">
-      <div class="pago-free-notice">
-        <strong>Empezas con el plan gratuito</strong>
-        Tu perfil se publica sin costo. Cuando quieras activar Premium o Flex para aparecer primero y ser contactado, podés hacerlo desde tu panel en cualquier momento.
-      </div>
-    </div>
-    <div class="nav-btns">
-      <button class="btn-back" onclick="prev(5)">Atras</button>
-      <button class="btn-next" id="btnPago" onclick="next(5)">Continuar</button>
-    </div>
-  </div>
-
-  <!-- PASO 7: Confirmar -->
-  <div class="panel" id="panel-6">
-    <div class="panel-title">Revisá tu perfil</div>
-    <div class="panel-sub">Verificá que todo esté correcto antes de publicar tu perfil.</div>
-    <div class="resumen-card" id="resumen"></div>
-    <div class="nav-btns" style="margin-top:24px">
-      <button class="btn-back" onclick="prev(6)">← Atrás</button>
-      <button class="btn-next" onclick="submit()">Publicar perfil →</button>
-    </div>
-  </div>
-
-  <!-- ÉXITO -->
-  <div class="panel" id="panel-7">
-    <div class="success">
-      <div class="success-icon">✓</div>
-      <h2>¡Tu perfil está publicado!</h2>
-      <p>Ya aparecés en claramentepsi. Cuando alguien busque un profesional con tu perfil, el agente te va a sugerir y los pacientes podrán contactarte por WhatsApp.</p>
-      <button class="success-btn" onclick="window.location.href='claramentepsi.html'">Ir a mi panel →</button>
-    </div>
-  </div>
-
-</div>
-
-<script>
-let currentStep = 0;
-let selectedPlan = null;
-let formData = {};
-
-const STEPS = ['panel-0','panel-1','panel-2','panel-3','panel-4','panel-5','panel-6','panel-7'];
-
-function goTo(step) {
-  if (step > currentStep) return; // solo hacia atrás desde el progress
-  showStep(step);
-}
-
-function showStep(step) {
-  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-  document.getElementById(STEPS[step]).classList.add('active');
-  const steps = document.querySelectorAll('.step');
-  steps.forEach((s, i) => {
-    s.classList.remove('active', 'done');
-    if (i < step) s.classList.add('done');
-    if (i === step) s.classList.add('active');
-  });
-  currentStep = step;
-  window.scrollTo({ top: 0, behavior: 'smooth' });
-}
-
-function prev(step) { showStep(step - 1); }
-
-async function next(step) {
-  if (!validateStep(step)) return;
-  collectStep(step);
-
-  if (step === 0) {
-    const email = document.getElementById('email').value.trim();
-    try {
-      const res = await fetch(`/check-email?email=${encodeURIComponent(email)}`);
-      const data = await res.json();
-      if (data.exists) {
-        const field = document.getElementById('f-email');
-        field.classList.add('has-error');
-        field.querySelector('.field-error').textContent = 'Este email ya está registrado. ¿Querés ingresar a tu panel?';
-        return;
-      }
-    } catch(e) {}
-  }
-
-  if (step === 4) { setupPago(); }
-  if (step === 5) {
-    const plan = formData.plan || 'gratuito';
-    if ((plan === 'premium' || plan === 'flex') && window._mpLink) {
-      // Abrir MercadoPago y cambiar el botón a "Ya pagué, continuar"
-      window.open(window._mpLink, '_blank');
-      const btn = document.getElementById('btnPago');
-      btn.disabled = false;
-      btn.textContent = 'Ya pagué · Continuar →';
-      // Esperar que el usuario confirme que pagó
-      btn.onclick = () => { buildResumen(); showStep(7); };
-      return; // No avanzar automáticamente
+{
+  "respuesta": "Mensaje breve y cálido (1-2 oraciones)",
+  "profesionales": [
+    {
+      "id": "EXACTAMENTE el campo id (UUID) del profesional de la base de datos — este campo es OBLIGATORIO",
+      "nombre": "Lic. Nombre Apellido",
+      "especialidad": "Especialidad principal",
+      "enfoque": "primer enfoque del profesional",
+      "modalidad": "Online / Presencial / Online y Presencial",
+      "obras_sociales": ["OSDE"],
+      "descripcion": "Una frase concreta sobre su especialidad (máx 10 palabras, sin frases genéricas como 'acompaña con calidez' o similares)",
+      "match": 95,
+      "iniciales": "ML",
+      "color": "sage",
+      "plan": "premium / flex / gratuito",
+      "whatsapp": "numero de whatsapp",
+      "ciudad": "ciudad donde atiende (copiala del campo ciudad de la base de datos)"
     }
-    buildResumen();
-  }
-  showStep(step + 1);
+  ]
 }
 
-function validateStep(step) {
-  let ok = true;
-  if (step === 0) {
-    ok = validate('f-nombre', 'nombre', v => v.trim().length > 2) && ok;
-    ok = validate('f-matricula', 'matricula', v => v.trim().length > 2) && ok;
-    ok = validate('f-email', 'email', v => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) && ok;
-    ok = validate('f-whatsapp', 'whatsapp', v => v.trim().length >= 8) && ok;
-    ok = validate('f-pass', 'pass', v => v.trim().length >= 8) && ok;
-    const pass1 = document.getElementById('pass')?.value || '';
-    const pass2 = document.getElementById('pass2')?.value || '';
-    const field2 = document.getElementById('f-pass2');
-    if (pass2 !== pass1 || pass2.length < 8) {
-      field2?.classList.add('has-error');
-      ok = false;
-    } else {
-      field2?.classList.remove('has-error');
+REGLAS:
+- Usá SOLO profesionales de la lista que se te provee
+- El campo "id" es OBLIGATORIO — copialo exactamente del campo id de la base de datos sin modificarlo
+- El campo "plan" es OBLIGATORIO — copialo exactamente del campo plan de la base de datos (puede ser "premium", "flex" o "gratuito") — NUNCA lo cambies ni lo inventes
+- Mostrá SOLO los datos que realmente existen en el perfil — nunca inventes obras sociales, enfoques ni especializaciones que no estén en los datos
+- Si el campo obras_sociales está vacío o es null, no muestres ninguna obra social en la tarjeta
+- Si obras_sociales contiene solo "Particular", mostrá el tag como "Solo particular"
+- Si obras_sociales contiene "Particular" junto a otras obras sociales, mostrá las obras sociales normalmente sin mencionar "Particular"
+- Si el campo enfoques está vacío, no muestres enfoques
+- Si no hay profesionales en la base, avisá amablemente que todavía no hay profesionales disponibles para esa búsqueda
+- Orden: premium primero, luego flex, luego gratuito
+- Los profesionales "gratuito" NO tienen whatsapp — poné null en ese campo
+- Si TODOS los disponibles son "gratuito", devolvé el JSON igual con "solo_gratuitos": true — NUNCA mezcles texto con el JSON, la respuesta debe ser SOLO el JSON sin nada antes ni después
+- color: "sage", "warm" o "purple" según tu criterio
+- match: qué tan afín es realmente el profesional a la búsqueda (80-98)
+
+MENSAJES FUERA DE CONTEXTO:
+- Mensajes random: respondé brevemente y redirigí a la búsqueda
+- Contención directa: reconocé lo que siente, derivá al profesional indicado
+- IA genérica: sos el asistente de Claramente, nada más
+- Crisis: mencioná el 0800-999-0091 antes que cualquier otra cosa
+- Nunca des consejos terapéuticos ni diagnósticos
+
+Si falta info clave, hacé UNA sola pregunta antes del JSON.`;
+
+// Función para mandar mail al profesional gratuito
+async function notificarGratuito(profesional, queryTexto) {
+  try {
+    // Traer datos actuales del profesional
+    const { data: prof } = await supabase
+      .from('profesionales')
+      .select('ultimo_mail_gratuito, busquedas_semana, inicio_semana')
+      .eq('id', profesional.id)
+      .single();
+
+    if (!prof) return;
+
+    const ahora = new Date();
+    const inicioSemana = prof.inicio_semana ? new Date(prof.inicio_semana) : new Date();
+    const diasDesdeInicio = (ahora.getTime() - inicioSemana.getTime()) / (1000 * 60 * 60 * 24);
+    const esMismaSemana = diasDesdeInicio < 7;
+
+    if (esMismaSemana) {
+      // Sumar al contador de la semana sin mandar mail
+      await supabase.from('profesionales')
+        .update({ busquedas_semana: (prof.busquedas_semana || 0) + 1 })
+        .eq('id', profesional.id);
+      console.log(`Búsqueda acumulada para ${profesional.email} — total semana: ${(prof.busquedas_semana || 0) + 1}`);
+      return;
     }
-  }
-  if (step === 1) {
-    ok = validate('f-ciudad', 'ciudad', v => v.trim().length > 1) && ok;
-    ok = validate('f-honorario', 'honorario', v => v.trim().length > 0) && ok;
-  }
-  return ok;
-}
 
-function validate(fieldId, inputId, fn) {
-  const field = document.getElementById(fieldId);
-  const val = document.getElementById(inputId)?.value || '';
-  if (!fn(val)) { field?.classList.add('has-error'); return false; }
-  field?.classList.remove('has-error'); return true;
-}
+    // Pasó una semana — mandar mail con el resumen y resetear contador
+    const busquedasAcumuladas = (prof.busquedas_semana || 0) + 1;
 
-function collectStep(step) {
-  if (step === 0) {
-    const titulo = document.getElementById('titulo')?.value || 'Lic.';
-    const nombreRaw = v('nombre');
-    // Agregar título si no lo tiene ya
-    formData.nombre = nombreRaw.startsWith(titulo) || nombreRaw.startsWith('Lic.') || nombreRaw.startsWith('Dr.') || nombreRaw.startsWith('Mg.')
-      ? nombreRaw
-      : `${titulo} ${nombreRaw}`;
-    formData.matricula = v('matricula');
-    formData.email = v('email');
-    formData.whatsapp = v('whatsapp');
-  }
-  if (step === 1) {
-    formData.bio = v('bio');
-    formData.ciudad = v('ciudad');
-    formData.experiencia = v('experiencia');
-    formData.honorario = v('honorario');
-    formData.obrasSociales = getSelected('obrasSociales');
-  }
-  if (step === 2) {
-    formData.enfoques = getSelected('enfoques');
-    formData.especializaciones = getSelected('especializaciones');
-    formData.modalidades = getSelected('modalidades');
-    formData.edades = getSelected('edades');
-  }
-  if (step === 3) {
-    formData.dias = getSelected('dias');
-    formData.franjas = getSelected('franjas');
-    formData.duracion = getSelected('duraciones');
-  }
-  if (step === 4) {
-    formData.plan = selectedPlan;
-  }
-}
-
-function v(id) { return document.getElementById(id)?.value || ''; }
-
-function getSelected(containerId) {
-  const els = document.querySelectorAll(`#${containerId} .selected`);
-  return Array.from(els).map(e => e.textContent.trim());
-}
-
-function toggleTag(el) { el.classList.toggle('selected'); }
-function toggleDia(el) { el.classList.toggle('selected'); }
-function toggleFranja(el) { el.classList.toggle('selected'); }
-
-function selectPlan(plan) {
-  selectedPlan = plan;
-
-  // Reset todos los estilos
-  const planPro  = document.getElementById('planPro');
-  const planFlex = document.getElementById('planFlex');
-  const planFree = document.getElementById('planFree');
-
-  if (planPro)  { planPro.style.borderColor  = '#E8D48A'; planPro.style.borderWidth  = '2px'; planPro.style.boxShadow  = 'none'; planPro.style.transform  = 'none'; }
-  if (planFlex) { planFlex.style.borderColor = 'var(--sage-mid)'; planFlex.style.borderWidth = '1px'; planFlex.style.boxShadow = 'none'; planFlex.style.transform = 'none'; }
-  if (planFree) { planFree.style.borderColor = 'var(--border)'; planFree.style.boxShadow = 'none'; planFree.style.transform = 'none'; }
-
-  // Resaltar el seleccionado
-  if (plan === 'premium' && planPro)  { planPro.style.borderColor  = '#B8860B'; planPro.style.borderWidth  = '3px'; planPro.style.boxShadow  = '0 6px 24px rgba(184,134,11,0.2)'; planPro.style.transform  = 'translateY(-2px)'; }
-  if (plan === 'flex'    && planFlex) { planFlex.style.borderColor = 'var(--sage)'; planFlex.style.borderWidth = '2px'; planFlex.style.boxShadow = '0 6px 24px rgba(74,124,111,0.2)'; planFlex.style.transform = 'translateY(-2px)'; }
-  if (plan === 'gratuito'&& planFree) { planFree.style.borderColor = 'var(--sage-mid)'; planFree.style.boxShadow = '0 4px 12px rgba(74,124,111,0.1)'; }
-
-  const labels = {
-    premium:  '✓ Seleccionaste Plan Premium — $79.900/mes',
-    flex:     '✓ Seleccionaste Plan Flex — $59.900/mes',
-    gratuito: '✓ Seleccionaste Plan Gratuito'
-  };
-  const lbl = document.getElementById('planSelected');
-  lbl.textContent = labels[plan] || '';
-  lbl.style.display = 'block';
-  document.getElementById('btnPlan').disabled = false;
-}
-
-function buildResumen() {
-  collectStep(4);
-  const r = document.getElementById('resumen');
-  const fotoSubida = document.getElementById('photoPreview').querySelector('img') !== null;
-  const planEsFree = formData.plan === 'free';
-
-  const fotoVal = planEsFree
-    ? `<span class="photo-locked"><span>🔒</span> Guardada · no visible en plan gratuito</span>`
-    : (fotoSubida ? '✓ Foto subida — visible en tu perfil' : 'Sin foto');
-
-  const rows = [
-    ['Nombre', formData.nombre],
-    ['Matrícula', formData.matricula],
-    ['Email', formData.email],
-    ['WhatsApp', `+549 ${formData.whatsapp}`],
-    ['Foto de perfil', fotoVal],
-    ['Ciudad/s', formData.ciudad || '—'],
-    ['Honorario', formData.honorario ? `$${parseInt(formData.honorario).toLocaleString('es-AR')}/sesión` : '—'],
-    ['Obras sociales', formData.obrasSociales?.join(', ') || 'No especificado'],
-    ['Enfoque', formData.enfoques?.join(', ') || '—'],
-    ['Especializaciones', formData.especializaciones?.slice(0,4).join(', ') + (formData.especializaciones?.length > 4 ? '...' : '') || '—'],
-    ['Modalidad', formData.modalidades?.join(' y ') || '—'],
-    ['Edades', formData.edades?.join(', ') || '—'],
-    ['Disponibilidad', formData.dias?.join(', ') || '—'],
-    ['Franjas', formData.franjas?.join(', ') || '—'],
-    ['Plan', formData.plan === 'pro' ? 'Pro — $59.900/mes' : 'Gratuito'],
-  ];
-
-  r.innerHTML = rows.map(([k, val]) => `
-    <div class="resumen-row">
-      <span class="resumen-key">${k}</span>
-      <span class="resumen-val">${val || '—'}</span>
-    </div>`).join('');
-
-  // Nudge si eligió free y subió foto
-  const existing = document.getElementById('resumenNudge');
-  if (existing) existing.remove();
-
-  if (planEsFree) {
-    const nudge = document.createElement('div');
-    nudge.id = 'resumenNudge';
-    nudge.className = 'resumen-nudge';
-    nudge.innerHTML = `
-      <div class="resumen-nudge-icon">✨</div>
-      <div class="resumen-nudge-body">
-        <div class="resumen-nudge-title">Tu perfil va a aparecer, pero sin foto</div>
-        <div class="resumen-nudge-text">
-          Con el plan gratuito tus pacientes ven solo tus iniciales en lugar de tu foto. 
-          Los perfiles con foto generan mucha más confianza — especialmente en salud mental, donde el vínculo empieza antes del primer encuentro.
+    const result = await resend.emails.send({
+      from: 'Claramente <soporte@claramentepsi.com>',
+      reply_to: 'claramentepsisoporte@gmail.com',
+      to: profesional.email,
+      subject: `Esta semana apareciste en ${busquedasAcumuladas} búsqueda${busquedasAcumuladas > 1 ? 's' : ''} pero no pudiste ser contactado`,
+      html: `
+        <div style="font-family: 'DM Sans', Arial, sans-serif; max-width: 520px; margin: 0 auto; padding: 32px 24px; color: #1C2B28;">
+          <div style="font-family: Georgia, serif; font-size: 22px; color: #1C2B28; margin-bottom: 24px;">
+            clara<span style="color: #4A7C6F; font-style: italic;">mente</span>
+          </div>
+          <h2 style="font-size: 20px; font-weight: 400; margin-bottom: 12px; font-family: Georgia, serif;">
+            Hola ${profesional.nombre},
+          </h2>
+          <p style="font-size: 15px; line-height: 1.7; color: #6B847E; margin-bottom: 16px;">
+            Esta semana apareciste en <strong style="color: #1C2B28;">` + busquedasAcumuladas + ` búsqueda` + (busquedasAcumuladas > 1 ? 's' : '') + `</strong> en Claramente como una de las opciones más afines. La última fue:
+          </p>
+          <div style="background: #E8F2EF; border-radius: 12px; padding: 16px 20px; margin-bottom: 20px; font-size: 15px; color: #2C5048; font-style: italic;">
+            "${queryTexto}"
+          </div>
+          <p style="font-size: 15px; line-height: 1.7; color: #6B847E; margin-bottom: 24px;">
+            Sin embargo, <strong style="color: #1C2B28;">no pudieron contactarte</strong> porque tu perfil está en el plan gratuito y no muestra tu número de WhatsApp.
+          </p>
+          <p style="font-size: 15px; line-height: 1.7; color: #6B847E; margin-bottom: 28px;">
+            Con el plan <strong style="color: #1C2B28;">Flex ($59.900/mes)</strong> o <strong style="color: #B8860B;">Premium ($79.900/mes)</strong> los pacientes pueden contactarte directamente — y vos aparecés primero cuando sos el match correcto.
+          </p>
+          <a href="https://claramente-backend.onrender.com/login.html" 
+             style="display: inline-block; background: #4A7C6F; color: white; padding: 12px 28px; border-radius: 24px; text-decoration: none; font-size: 14px; font-weight: 500;">
+            Activar mi plan →
+          </a>
+          <p style="font-size: 12px; color: #9AAFAA; margin-top: 32px; line-height: 1.6;">
+            Claramente · La red de psicólogos de Argentina<br>
+            <a href="mailto:claramentepsisoporte@gmail.com" style="color: #9AAFAA;">claramentepsisoporte@gmail.com</a>
+          </p>
         </div>
-        <button class="resumen-nudge-btn" onclick="prev(5); selectPlan('pro')">Activar Plan Pro y mostrar mi foto</button>
-      </div>`;
-    r.after(nudge);
+      `
+    });
+    console.log('Mail enviado a gratuito:', profesional.email, 'result:', JSON.stringify(result));
+    // Resetear contador y actualizar timestamp
+    await supabase.from('profesionales').update({ 
+      ultimo_mail_gratuito: new Date().toISOString(),
+      busquedas_semana: 0,
+      inicio_semana: new Date().toISOString()
+    }).eq('id', profesional.id);
+  } catch(e) {
+    console.error('Error enviando mail:', e.message, e);
   }
 }
 
-function previewPhoto(input) {
-  if (input.files && input.files[0]) {
-    const reader = new FileReader();
-    reader.onload = e => {
-      const prev = document.getElementById('photoPreview');
-      prev.innerHTML = `<img src="${e.target.result}" alt="foto perfil">`;
-      // Mostrar nudge si ya eligió plan free, o siempre para recordar el valor de la foto
-      document.getElementById('fotoNudge').classList.add('show');
-    };
-    reader.readAsDataURL(input.files[0]);
+// Health check
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok', service: 'Claramente API' });
+});
+
+// Chat con agente
+app.post('/chat', async (req, res) => {
+  const { messages } = req.body;
+  if (!messages || !Array.isArray(messages)) {
+    return res.status(400).json({ error: 'messages requerido' });
   }
-}
-
-async function submit() {
-  collectStep(6);
-  const plan = formData.plan || 'gratuito';
-  const btn = document.querySelector('#panel-6 .btn-next');
-  btn.disabled = true;
-  btn.textContent = 'Publicando...';
-
-  const datos = {
-    nombre: formData.nombre,
-    matricula: formData.matricula,
-    email: formData.email,
-    whatsapp: '549' + formData.whatsapp.replace(/\D/g, ''),
-    password: document.getElementById('pass').value,
-    bio: formData.bio || '',
-    ciudad: formData.ciudad || '',
-    experiencia: parseInt(formData.experiencia) || null,
-    honorario: parseInt(formData.honorario) || null,
-    obras_sociales: formData.obrasSociales || [],
-    enfoques: formData.enfoques || [],
-    especializaciones: formData.especializaciones || [],
-    modalidades: formData.modalidades || [],
-    edades: formData.edades || [],
-    dias: formData.dias || [],
-    franjas: formData.franjas || [],
-  };
 
   try {
-    if (plan === 'gratuito') {
-      // Plan gratuito: crear perfil directo
-      const res = await fetch('/registro', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...datos, plan: 'gratuito' })
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        alert(data.error || 'Error al registrarse.');
-        btn.disabled = false;
-        btn.textContent = 'Publicar perfil →';
-        return;
-      }
-      // Login automático
-      const loginRes = await fetch('/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: datos.email, password: datos.password })
-      });
-      const loginData = await loginRes.json();
-      if (loginData.profesional) localStorage.setItem('clm_profesional', JSON.stringify(loginData.profesional));
-      showStep(7);
+    // Traer profesionales activos de Supabase
+    const { data: profesionales } = await supabase
+      .from('profesionales')
+      .select('id, nombre, matricula, whatsapp, bio, ciudad, experiencia, honorario, obras_sociales, enfoques, especializaciones, modalidades, edades, dias, franjas, foto_url, plan')
+      .eq('activo', true)
+      .order('plan', { ascending: false }); // premium > flex > gratuito
 
-    } else {
-      // Plan pago: guardar registro pendiente y redirigir a MP
-      const res = await fetch('/registro-pendiente', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ datos, plan })
-      });
-      const data = await res.json();
-      if (!res.ok || !data.session_id) {
-        alert('Error al procesar. Intentá de nuevo.');
-        btn.disabled = false;
-        btn.textContent = 'Publicar perfil →';
-        return;
-      }
+    const listaProfesionales = profesionales && profesionales.length > 0
+      ? `\n\nPROFESIONALES DISPONIBLES EN LA BASE DE DATOS:\n${JSON.stringify(profesionales, null, 2)}`
+      : '\n\nNo hay profesionales cargados en la base de datos todavía.';
 
-      // Guardar session_id para verificar después
-      localStorage.setItem('clm_session_id', data.session_id);
+    // Inyectar lista en el último mensaje
+    const messagesConBase = messages.map((m, i) =>
+      i === messages.length - 1 && m.role === 'user'
+        ? { ...m, content: m.content + listaProfesionales }
+        : m
+    );
 
-      // Redirigir al init_point generado por la API de MP (incluye external_reference y back_url)
-      window.location.href = data.init_point;
+    const response = await anthropic.messages.create({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 1500,
+      system: SYSTEM_PROMPT,
+      messages: messagesConBase,
+    });
+
+    const rawText = response.content?.[0]?.text || '';
+    console.log('RAW RESPONSE:', rawText.substring(0, 300));
+    
+    // Intentar extraer y limpiar JSON del texto
+    const cleaned = rawText.replace(/```json\s*/gi, '').replace(/```/g, '').trim();
+    const firstBrace = cleaned.indexOf('{');
+    const lastBrace = cleaned.lastIndexOf('}');
+    const jsonStr = firstBrace !== -1 && lastBrace !== -1 ? cleaned.substring(firstBrace, lastBrace + 1) : null;
+    const jsonMatch = jsonStr ? [jsonStr] : null;
+    
+    if (jsonMatch) {
+      try {
+        const parsed = JSON.parse(jsonMatch[0]);
+        if (parsed.profesionales) {
+          // Devolver solo el JSON limpio
+          return res.json({ 
+            content: [{ type: 'text', text: JSON.stringify(parsed) }] 
+          });
+        }
+      } catch(e) {}
     }
-  } catch(e) {
-    alert('Error de conexión. Intentá de nuevo.');
-    btn.disabled = false;
-    btn.textContent = 'Publicar perfil →';
+
+    res.json({ content: response.content });
+  } catch (error) {
+    console.error('Error:', error.message);
+    res.status(500).json({ error: 'Error al conectar con el agente' });
   }
-}
-
-// Enfoque: máximo 3
-function toggleEnfoque(el) {
-  const selected = document.querySelectorAll('#enfoques .tag-opt.selected');
-  if (el.classList.contains('selected')) {
-    el.classList.remove('selected');
-  } else {
-    if (selected.length >= 3) return;
-    el.classList.add('selected');
-  }
-  const count = document.querySelectorAll('#enfoques .tag-opt.selected').length;
-  const counter = document.getElementById('enfoqueCounter');
-  if (count === 3) {
-    counter.textContent = '(máx. 3 — límite alcanzado)';
-    counter.style.color = 'var(--sage)';
-    document.querySelectorAll('#enfoques .tag-opt:not(.selected)').forEach(t => t.classList.add('disabled'));
-  } else {
-    counter.textContent = `(máx. 3 — elegiste ${count})`;
-    counter.style.color = '';
-    document.querySelectorAll('#enfoques .tag-opt').forEach(t => t.classList.remove('disabled'));
-  }
-}
-
-// Obra social: campo "Otra"
-function toggleOtraObra() {
-  const wrap = document.getElementById('otraObraWrap');
-  const btn = document.getElementById('otraObraBtn');
-  const visible = wrap.style.display === 'flex';
-  wrap.style.display = visible ? 'none' : 'flex';
-  if (!visible) document.getElementById('otraObra').focus();
-}
-
-function addOtraObra(e) {
-  if (e.key !== 'Enter') return;
-  e.preventDefault();
-  const val = document.getElementById('otraObra').value.trim();
-  if (!val) return;
-  const container = document.getElementById('obrasSociales');
-  // Verificar que no exista ya
-  const existe = Array.from(container.querySelectorAll('.tag-opt')).some(t => t.textContent.trim().toLowerCase() === val.toLowerCase());
-  if (existe) { document.getElementById('otraObra').value = ''; return; }
-  const tag = document.createElement('span');
-  tag.className = 'tag-opt selected';
-  tag.textContent = val;
-  tag.onclick = function() { toggleTag(this, 'obras'); };
-  // Insertar antes del botón "+ Otra"
-  container.insertBefore(tag, document.getElementById('otraObraBtn'));
-  document.getElementById('otraObra').value = '';
-  // Ocultar el campo
-  document.getElementById('otraObraWrap').style.display = 'none';
-}
-
-// Setup panel de pago segun plan
-function setupPago() {
-  const plan = formData.plan || 'gratuito';
-  const esPago = plan === 'premium' || plan === 'flex';
-  const pagoPro = document.getElementById('pagoPro');
-  const pagoFree = document.getElementById('pagoFree');
-  const btnPago = document.getElementById('btnPago');
-  const pagoSub = document.getElementById('pagoSub');
-
-  if (esPago) {
-    pagoPro.style.display = 'block';
-    pagoFree.style.display = 'none';
-    btnPago.disabled = true;
-    btnPago.textContent = 'Ir a pagar →';
-
-    // Actualizar el monto según el plan
-    const monto = plan === 'premium' ? '$79.900' : '$59.900';
-    const nombrePlan = plan === 'premium' ? 'Plan Premium · claramentepsi' : 'Plan Flex · claramentepsi';
-    const linkMP = plan === 'premium'
-      ? 'https://www.mercadopago.com.ar/subscriptions/checkout?preapproval_plan_id=7cd85b4484f942e2a500303ce9a4f434'
-      : 'https://www.mercadopago.com.ar/subscriptions/checkout?preapproval_plan_id=7b2754ae1b744bdc85d1f828c778f6be';
-
-    document.querySelector('.pago-monto-label').textContent = nombrePlan;
-    document.querySelector('.pago-monto-val').textContent = monto;
-    pagoSub.textContent = `Elegí cómo querés pagar el ${plan === 'premium' ? 'Plan Premium' : 'Plan Flex'}. Podés cancelar cuando quieras.`;
-
-    // Guardar link de MP para usar al continuar
-    window._mpLink = linkMP;
-  } else {
-    pagoPro.style.display = 'none';
-    pagoFree.style.display = 'block';
-    btnPago.disabled = false;
-    pagoSub.textContent = 'Empezás gratis, sin necesidad de pagar nada ahora.';
-    window._mpLink = null;
-  }
-}
-
-let metodoSeleccionado = null;
-
-function selectMetodo(el, tipo) {
-  document.querySelectorAll('.pago-metodo').forEach(m => m.classList.remove('selected'));
-  el.classList.add('selected');
-  metodoSeleccionado = tipo;
-  formData.metodoPago = tipo;
-  document.getElementById('btnPago').disabled = false;
-  const msgs = {
-    tarjeta: ['Pago con tarjeta', 'Al continuar te redirigimos al checkout de MercadoPago para ingresar los datos de tu tarjeta de forma segura. Tu suscripcion se renueva automaticamente cada mes.'],
-    transferencia: ['Transferencia bancaria', 'Al confirmar te mostramos el alias y CVU de claramentepsi. Tu perfil se activa dentro de las 2 hs habiles despues de acreditado el pago.'],
-    mp: ['Pago con MercadoPago', 'Al continuar te redirigimos a tu cuenta de MercadoPago para autorizar el debito mensual automatico. Podes cancelar cuando quieras.'],
-  };
-  document.getElementById('pagoMetodoTitle').textContent = msgs[tipo][0];
-  document.getElementById('pagoMetodoText').textContent = msgs[tipo][1];
-  document.getElementById('pagoMetodoInfo').style.display = 'block';
-}
-
-// Enfoque: maximo 3
-function toggleEnfoque(el) {
-  const selected = document.querySelectorAll('#enfoques .tag-opt.selected');
-  if (el.classList.contains('selected')) {
-    el.classList.remove('selected');
-  } else {
-    if (selected.length >= 3) return;
-    el.classList.add('selected');
-  }
-  const count = document.querySelectorAll('#enfoques .tag-opt.selected').length;
-  const counter = document.getElementById('enfoqueCounter');
-  if (count >= 3) {
-    counter.textContent = '(limite: 3 elegidos)';
-    counter.style.color = 'var(--sage)';
-    document.querySelectorAll('#enfoques .tag-opt:not(.selected)').forEach(t => t.classList.add('disabled'));
-  } else {
-    counter.textContent = count > 0 ? '(max. 3 — elegiste ' + count + ')' : '(max. 3)';
-    counter.style.color = '';
-    document.querySelectorAll('#enfoques .tag-opt').forEach(t => t.classList.remove('disabled'));
-  }
-}
-
-// Obra social: campo Otra
-function toggleOtraObra() {
-  const wrap = document.getElementById('otraObraWrap');
-  const visible = wrap.style.display === 'flex';
-  wrap.style.display = visible ? 'none' : 'flex';
-  if (!visible) setTimeout(() => document.getElementById('otraObra').focus(), 50);
-}
-
-function addOtraObra(e) {
-  if (e.key !== 'Enter') return;
-  e.preventDefault();
-  const val = document.getElementById('otraObra').value.trim();
-  if (!val) return;
-  const container = document.getElementById('obrasSociales');
-  const existe = Array.from(container.querySelectorAll('.tag-opt')).some(t => t.textContent.trim().toLowerCase() === val.toLowerCase());
-  if (existe) { document.getElementById('otraObra').value = ''; return; }
-  const tag = document.createElement('span');
-  tag.className = 'tag-opt selected';
-  tag.textContent = val;
-  tag.onclick = function() { toggleTag(this, 'obras'); };
-  container.insertBefore(tag, document.getElementById('otraObraBtn'));
-  document.getElementById('otraObra').value = '';
-  document.getElementById('otraObraWrap').style.display = 'none';
-}
-
-// Limpiar errores al escribir
-document.querySelectorAll('input, textarea').forEach(el => {
-  el.addEventListener('input', () => {
-    el.closest('.field')?.classList.remove('has-error');
-  });
 });
-</script>
-</body>
-</html>
+
+// Registrar aparición en búsqueda
+app.post('/vista', async (req, res) => {
+  const { psy_id, query_texto, plan } = req.body;
+  if (!psy_id) return res.status(400).json({ error: 'psy_id requerido' });
+  try {
+    await supabase.from('vistas').insert({ psy_id });
+
+    // Si es gratuito, manejar el mail semanal
+    if (plan === 'gratuito') {
+      const { data: prof } = await supabase
+        .from('profesionales')
+        .select('email, nombre, id, ultimo_mail_gratuito, busquedas_semana, inicio_semana')
+        .eq('id', psy_id)
+        .single();
+      if (prof) await notificarGratuito({ ...prof }, query_texto);
+    }
+
+    res.json({ ok: true });
+  } catch (error) {
+    console.error('Error vista:', error.message);
+    res.status(500).json({ error: 'Error al registrar vista' });
+  }
+});
+
+// Trackear contacto de WhatsApp
+app.post('/contacto', async (req, res) => {
+  const { psy_id, query_texto, plan } = req.body;
+  if (!psy_id) return res.status(400).json({ error: 'psy_id requerido' });
+  try {
+    await supabase.from('contactos').insert({ psy_id, query_texto });
+
+    // El mail al gratuito se maneja desde /vista
+
+    res.json({ ok: true });
+  } catch (error) {
+    console.error('Error tracking:', error.message);
+    res.status(500).json({ error: 'Error al registrar contacto' });
+  }
+});
+
+// Enviar mail de verificación de email
+app.post('/verificar-email', async (req, res) => {
+  const { email, datos } = req.body;
+  if (!email) return res.status(400).json({ error: 'Email requerido' });
+  try {
+    // Verificar que no esté ya registrado
+    const { data: existe } = await supabase
+      .from('profesionales')
+      .select('id')
+      .eq('email', email)
+      .single();
+    if (existe) return res.status(400).json({ error: 'Este email ya está registrado.' });
+
+    const token = crypto.randomBytes(32).toString('hex');
+    const expires_at = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(); // 24 horas
+
+    // Guardar o actualizar verificación pendiente
+    await supabase.from('email_verifications').upsert({ email, token, datos, verified: false, expires_at }, { onConflict: 'email' });
+
+    const verifyUrl = `${process.env.APP_URL || 'https://claramente-backend.onrender.com'}/confirmar-email.html?token=${token}`;
+
+    await resend.emails.send({
+      from: 'Claramente <soporte@claramentepsi.com>',
+      reply_to: 'claramentepsisoporte@gmail.com',
+      to: email,
+      subject: 'Confirmá tu email para unirte a Claramente',
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 520px; margin: 0 auto; padding: 32px 24px; color: #1C2B28;">
+          <div style="font-family: Georgia, serif; font-size: 22px; margin-bottom: 24px;">
+            clara<span style="color: #4A7C6F; font-style: italic;">mente</span>
+          </div>
+          <h2 style="font-size: 20px; font-weight: 400; margin-bottom: 12px; font-family: Georgia, serif;">
+            Confirma tu email
+          </h2>
+          <p style="font-size: 15px; line-height: 1.7; color: #6B847E; margin-bottom: 24px;">
+            Hacé click en el botón para confirmar tu email y continuar con el registro en Claramente.
+          </p>
+          <a href="${verifyUrl}" style="display:inline-block;background:#4A7C6F;color:white;padding:12px 28px;border-radius:24px;text-decoration:none;font-size:14px;font-weight:500;">
+            Confirmar email →
+          </a>
+          <p style="font-size:13px;color:#9AAFAA;margin-top:24px;">
+            Este link expira en 24 horas. Si no creaste una cuenta en Claramente, ignorá este mail.
+          </p>
+        </div>
+      `
+    });
+
+    res.json({ ok: true });
+  } catch(e) {
+    console.error('Error verificar email:', e.message);
+    res.status(500).json({ error: 'Error al enviar verificación' });
+  }
+});
+
+// Confirmar email y retomar registro
+app.get('/confirmar-email', async (req, res) => {
+  const { token } = req.query;
+  if (!token) return res.redirect('/claramentepsi-registro-profesional.html');
+  try {
+    const { data: ver } = await supabase
+      .from('email_verifications')
+      .select('*')
+      .eq('token', token)
+      .single();
+
+    if (!ver) return res.redirect('/claramentepsi-registro-profesional.html?error=token-invalido');
+    if (new Date(ver.expires_at) < new Date()) return res.redirect('/claramentepsi-registro-profesional.html?error=token-expirado');
+
+    await supabase.from('email_verifications').update({ verified: true }).eq('token', token);
+
+    // Redirigir al registro con los datos del paso 1 encoded
+    const datos = encodeURIComponent(JSON.stringify(ver.datos));
+    res.redirect(`/claramentepsi-registro-profesional.html?verified=true&datos=${datos}`);
+  } catch(e) {
+    console.error('Error confirmar email:', e.message);
+    res.redirect('/claramentepsi-registro-profesional.html?error=error');
+  }
+});
+
+// Solicitar recuperación de contraseña
+app.post('/recuperar-password', async (req, res) => {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ error: 'Email requerido' });
+  try {
+    const { data: prof } = await supabase
+      .from('profesionales')
+      .select('id, nombre, email')
+      .eq('email', email)
+      .single();
+
+    // Siempre respondemos ok para no revelar si el email existe
+    if (!prof) return res.json({ ok: true });
+
+    const token = crypto.randomBytes(32).toString('hex');
+    const expires_at = new Date(Date.now() + 60 * 60 * 1000).toISOString(); // 1 hora
+
+    await supabase.from('password_resets').insert({ email, token, expires_at });
+
+    const resetUrl = `${process.env.APP_URL || 'https://claramente-backend.onrender.com'}/reset-password.html?token=${token}`;
+
+    await resend.emails.send({
+      from: 'Claramente <soporte@claramentepsi.com>',
+      reply_to: 'claramentepsisoporte@gmail.com',
+      to: email,
+      subject: 'Recuperá tu contraseña de Claramente',
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 520px; margin: 0 auto; padding: 32px 24px; color: #1C2B28;">
+          <div style="font-family: Georgia, serif; font-size: 22px; color: #1C2B28; margin-bottom: 24px;">
+            clara<span style="color: #4A7C6F; font-style: italic;">mente</span>
+          </div>
+          <h2 style="font-size: 20px; font-weight: 400; margin-bottom: 12px; font-family: Georgia, serif;">
+            Hola ${prof.nombre},
+          </h2>
+          <p style="font-size: 15px; line-height: 1.7; color: #6B847E; margin-bottom: 24px;">
+            Recibimos una solicitud para recuperar tu contraseña. Hacé click en el botón para crear una nueva.
+          </p>
+          <a href="${resetUrl}" 
+             style="display: inline-block; background: #4A7C6F; color: white; padding: 12px 28px; border-radius: 24px; text-decoration: none; font-size: 14px; font-weight: 500;">
+            Crear nueva contraseña →
+          </a>
+          <p style="font-size: 13px; color: #9AAFAA; margin-top: 24px; line-height: 1.6;">
+            Este link expira en 1 hora. Si no solicitaste esto, ignorá este mail.
+          </p>
+          <p style="font-size: 12px; color: #9AAFAA; margin-top: 16px;">
+            Claramente · <a href="mailto:claramentepsisoporte@gmail.com" style="color: #9AAFAA;">claramentepsisoporte@gmail.com</a>
+          </p>
+        </div>
+      `
+    });
+
+    res.json({ ok: true });
+  } catch(e) {
+    console.error('Error recuperar password:', e.message);
+    res.status(500).json({ error: 'Error al procesar la solicitud' });
+  }
+});
+
+// Resetear contraseña con token
+app.post('/reset-password', async (req, res) => {
+  const { token, password } = req.body;
+  if (!token || !password) return res.status(400).json({ error: 'Token y contraseña requeridos' });
+  try {
+    const { data: reset } = await supabase
+      .from('password_resets')
+      .select('*')
+      .eq('token', token)
+      .eq('used', false)
+      .single();
+
+    if (!reset) return res.status(400).json({ error: 'Token inválido o expirado' });
+    if (new Date(reset.expires_at) < new Date()) return res.status(400).json({ error: 'El link expiró. Solicitá uno nuevo.' });
+
+    const password_hash = await bcrypt.hash(password, 10);
+    await supabase.from('profesionales').update({ password_hash }).eq('email', reset.email);
+    await supabase.from('password_resets').update({ used: true }).eq('token', token);
+
+    res.json({ ok: true });
+  } catch(e) {
+    console.error('Error reset password:', e.message);
+    res.status(500).json({ error: 'Error al actualizar la contraseña' });
+  }
+});
+
+// Verificar si email ya existe
+app.get('/check-email', async (req, res) => {
+  const { email } = req.query;
+  if (!email) return res.json({ exists: false });
+  try {
+    const { data } = await supabase
+      .from('profesionales')
+      .select('id')
+      .eq('email', email)
+      .single();
+    res.json({ exists: !!data });
+  } catch(e) {
+    res.json({ exists: false });
+  }
+});
+
+// Registrar profesional
+app.post('/registro', async (req, res) => {
+  const { nombre, matricula, email, whatsapp, password, bio, ciudad, experiencia,
+    honorario, obras_sociales, enfoques, especializaciones, modalidades, edades,
+    dias, franjas, plan } = req.body;
+
+  if (!nombre || !email || !password || !whatsapp) {
+    return res.status(400).json({ error: 'Faltan campos requeridos' });
+  }
+
+  try {
+    const password_hash = await bcrypt.hash(password, 10);
+    const { data, error } = await supabase.from('profesionales').insert({
+      nombre, matricula, email, whatsapp, password_hash, bio, ciudad,
+      experiencia, honorario, obras_sociales, enfoques, especializaciones,
+      modalidades, edades, dias, franjas,
+      plan: plan || 'gratuito',
+      activo: true
+    }).select().single();
+
+    if (error) throw error;
+    res.json({ ok: true, id: data.id });
+  } catch (error) {
+    console.error('Error registro:', error.message);
+    if (error.message.includes('unique')) {
+      return res.status(400).json({ error: 'Ese email ya está registrado' });
+    }
+    res.status(500).json({ error: 'Error al registrar profesional' });
+  }
+});
+
+// Login profesional
+app.post('/login', async (req, res) => {
+  const { email, password } = req.body;
+  if (!email || !password) return res.status(400).json({ error: 'Email y contraseña requeridos' });
+
+  try {
+    const { data, error } = await supabase
+      .from('profesionales')
+      .select('*')
+      .eq('email', email)
+      .single();
+
+    if (error || !data) return res.status(401).json({ error: 'Email o contraseña incorrectos' });
+
+    const ok = await bcrypt.compare(password, data.password_hash);
+    if (!ok) return res.status(401).json({ error: 'Email o contraseña incorrectos' });
+
+    const { password_hash, ...profesional } = data;
+    res.json({ ok: true, profesional });
+  } catch (error) {
+    console.error('Error login:', error.message);
+    res.status(500).json({ error: 'Error al iniciar sesión' });
+  }
+});
+
+// Actualizar perfil del profesional
+app.put('/profesional/:id', async (req, res) => {
+  const { id } = req.params;
+  const { nombre, whatsapp, ciudad, honorario, bio, enfoques, especializaciones, modalidades, obras_sociales } = req.body;
+  try {
+    const { error } = await supabase
+      .from('profesionales')
+      .update({ nombre, whatsapp, ciudad, honorario, bio, enfoques, especializaciones, modalidades, obras_sociales })
+      .eq('id', id);
+    if (error) throw error;
+    res.json({ ok: true });
+  } catch (error) {
+    console.error('Error update:', error.message);
+    res.status(500).json({ error: 'Error al actualizar perfil' });
+  }
+});
+
+// Estadísticas del profesional
+app.get('/stats/:psy_id', async (req, res) => {
+  const { psy_id } = req.params;
+  try {
+    const [{ count: contactos }, { count: vistas }] = await Promise.all([
+      supabase.from('contactos').select('*', { count: 'exact', head: true }).eq('psy_id', psy_id),
+      supabase.from('vistas').select('*', { count: 'exact', head: true }).eq('psy_id', psy_id)
+    ]);
+
+    // Datos semanales para gráficos (últimas 8 semanas)
+    const hace8semanas = new Date();
+    hace8semanas.setDate(hace8semanas.getDate() - 56);
+
+    const [{ data: contactosSemana }, { data: vistasSemana }] = await Promise.all([
+      supabase.from('contactos').select('created_at').eq('psy_id', psy_id).gte('created_at', hace8semanas.toISOString()),
+      supabase.from('vistas').select('created_at').eq('psy_id', psy_id).gte('created_at', hace8semanas.toISOString())
+    ]);
+
+    // Agrupar por semana
+    const agruparPorSemana = (registros) => {
+      const semanas = {};
+      (registros || []).forEach(r => {
+        const fecha = new Date(r.created_at);
+        const inicioSemana = new Date(fecha);
+        inicioSemana.setDate(fecha.getDate() - fecha.getDay());
+        const key = inicioSemana.toISOString().split('T')[0];
+        semanas[key] = (semanas[key] || 0) + 1;
+      });
+      return semanas;
+    };
+
+    res.json({
+      contactos,
+      vistas,
+      grafico: {
+        contactos: agruparPorSemana(contactosSemana),
+        vistas: agruparPorSemana(vistasSemana)
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Error al obtener estadísticas' });
+  }
+});
+
+// Guardar registro pendiente y generar link de pago via API de MP
+app.post('/registro-pendiente', async (req, res) => {
+  const { datos, plan } = req.body;
+  if (!datos || !plan) return res.status(400).json({ error: 'Faltan datos' });
+  try {
+    const session_id = crypto.randomUUID();
+
+    // Guardar en Supabase
+    const { error } = await supabase
+      .from('registros_pendientes')
+      .insert({ session_id, datos, plan });
+    if (error) throw error;
+
+    // IDs de los planes en MP
+    const planIds = {
+      premium: '7cd85b4484f942e2a500303ce9a4f434',
+      flex: '7b2754ae1b744bdc85d1f828c778f6be'
+    };
+
+    const backUrl = `${process.env.APP_URL || 'https://claramente-backend.onrender.com'}/pago-exitoso.html?session_id=${session_id}`;
+
+    // Crear suscripción via API de MP con external_reference
+    const preApproval = new PreApproval(mp);
+    const subscription = await preApproval.create({
+      body: {
+        preapproval_plan_id: planIds[plan],
+        payer_email: datos.email,
+        external_reference: session_id,
+        back_url: backUrl,
+      }
+    });
+
+    res.json({ ok: true, session_id, init_point: subscription.init_point });
+  } catch (e) {
+    console.error('Error registro pendiente:', e.message);
+    res.status(500).json({ error: 'Error al generar link de pago: ' + e.message });
+  }
+});
+
+// Verificar firma del webhook de MP
+function verificarFirmaMP(req) {
+  try {
+    const secret = process.env.MP_WEBHOOK_SECRET;
+    if (!secret) return true; // Si no hay secret configurado, dejar pasar
+    const xSignature = req.headers['x-signature'];
+    const xRequestId = req.headers['x-request-id'];
+    if (!xSignature) return false;
+    const parts = xSignature.split(',');
+    let ts, hash;
+    parts.forEach(part => {
+      const [key, val] = part.trim().split('=');
+      if (key === 'ts') ts = val;
+      if (key === 'v1') hash = val;
+    });
+    const dataId = req.query?.['data.id'] || req.body?.data?.id || '';
+    const manifest = `id:${dataId};request-id:${xRequestId};ts:${ts};`;
+    const expectedHash = crypto.createHmac('sha256', secret).update(manifest).digest('hex');
+    return hash === expectedHash;
+  } catch(e) {
+    return true; // En caso de error, dejar pasar
+  }
+}
+
+// Webhook de MercadoPago
+app.post('/webhook/mp', async (req, res) => {
+  if (!verificarFirmaMP(req)) return res.sendStatus(401);
+  try {
+    const { type, data } = req.body;
+    if (type !== 'payment' && type !== 'preapproval') return res.sendStatus(200);
+
+    const paymentId = data?.id;
+    if (!paymentId) return res.sendStatus(200);
+
+    // Verificar el pago con la API de MP
+    const mpRes = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
+      headers: { 'Authorization': `Bearer ${process.env.MP_ACCESS_TOKEN}` }
+    });
+    const payment = await mpRes.json();
+
+    if (payment.status !== 'approved') return res.sendStatus(200);
+
+    const session_id = payment.external_reference;
+    if (!session_id) return res.sendStatus(200);
+
+    // Buscar el registro pendiente
+    const { data: pendiente } = await supabase
+      .from('registros_pendientes')
+      .select('*')
+      .eq('session_id', session_id)
+      .single();
+
+    if (!pendiente) return res.sendStatus(200);
+
+    // Crear el profesional
+    const d = pendiente.datos;
+    const password_hash = await bcrypt.hash(d.password, 10);
+    await supabase.from('profesionales').insert({
+      nombre: d.nombre, matricula: d.matricula, email: d.email,
+      whatsapp: d.whatsapp, password_hash, bio: d.bio || '',
+      ciudad: d.ciudad || '', experiencia: d.experiencia || null,
+      honorario: d.honorario || null, obras_sociales: d.obras_sociales || [],
+      enfoques: d.enfoques || [], especializaciones: d.especializaciones || [],
+      modalidades: d.modalidades || [], edades: d.edades || [],
+      dias: d.dias || [], franjas: d.franjas || [],
+      plan: pendiente.plan, activo: true,
+      plan_activo_desde: new Date().toISOString()
+    });
+
+    // Borrar el registro pendiente
+    await supabase.from('registros_pendientes').delete().eq('session_id', session_id);
+
+    res.sendStatus(200);
+  } catch (e) {
+    console.error('Error webhook MP:', e.message);
+    res.sendStatus(500);
+  }
+});
+
+// Webhook de suscripciones de MP (preapproval)
+app.post('/webhook/mp-sub', async (req, res) => {
+  if (!verificarFirmaMP(req)) return res.sendStatus(401);
+  try {
+    const { type, data } = req.body;
+    if (type !== 'preapproval') return res.sendStatus(200);
+
+    const subId = data?.id;
+    if (!subId) return res.sendStatus(200);
+
+    const mpRes = await fetch(`https://api.mercadopago.com/preapproval/${subId}`, {
+      headers: { 'Authorization': `Bearer ${process.env.MP_ACCESS_TOKEN}` }
+    });
+    const sub = await mpRes.json();
+
+    if (sub.status !== 'authorized') return res.sendStatus(200);
+
+    const session_id = sub.external_reference;
+    if (!session_id) return res.sendStatus(200);
+
+    const { data: pendiente } = await supabase
+      .from('registros_pendientes')
+      .select('*')
+      .eq('session_id', session_id)
+      .single();
+
+    if (!pendiente) return res.sendStatus(200);
+
+    const d = pendiente.datos;
+    const password_hash = await bcrypt.hash(d.password, 10);
+    await supabase.from('profesionales').insert({
+      nombre: d.nombre, matricula: d.matricula, email: d.email,
+      whatsapp: d.whatsapp, password_hash, bio: d.bio || '',
+      ciudad: d.ciudad || '', experiencia: d.experiencia || null,
+      honorario: d.honorario || null, obras_sociales: d.obras_sociales || [],
+      enfoques: d.enfoques || [], especializaciones: d.especializaciones || [],
+      modalidades: d.modalidades || [], edades: d.edades || [],
+      dias: d.dias || [], franjas: d.franjas || [],
+      plan: pendiente.plan, activo: true,
+      plan_activo_desde: new Date().toISOString()
+    });
+
+    await supabase.from('registros_pendientes').delete().eq('session_id', session_id);
+    res.sendStatus(200);
+  } catch (e) {
+    console.error('Error webhook MP sub:', e.message);
+    res.sendStatus(500);
+  }
+});
+
+// Verificar estado del pago (el frontend consulta esto después del redirect)
+app.get('/verificar-pago', async (req, res) => {
+  const { session_id } = req.query;
+  if (!session_id) return res.status(400).json({ error: 'session_id requerido' });
+  try {
+    // Si el registro pendiente ya no existe, el pago fue procesado
+    const { data: pendiente } = await supabase
+      .from('registros_pendientes')
+      .select('id')
+      .eq('session_id', session_id)
+      .single();
+
+    if (!pendiente) {
+      // Buscar el profesional recién creado por email no es posible sin el email
+      // Devolvemos ok: true y el frontend redirige al login
+      return res.json({ ok: true, procesado: true });
+    }
+    res.json({ ok: true, procesado: false });
+  } catch(e) {
+    // Si no encuentra el registro pendiente (error de single()), está procesado
+    res.json({ ok: true, procesado: true });
+  }
+});
+
+app.get('/verificar-email.html', (req, res) => res.sendFile(path.join(__dirname, 'public', 'verificar-email.html')));
+app.get('/confirmar-email.html', (req, res) => res.sendFile(path.join(__dirname, 'public', 'confirmar-email.html')));
+app.get('/confirmar-email', async (req, res) => {
+  const { token } = req.query;
+  if (!token) return res.redirect('/claramentepsi-registro-profesional.html');
+  try {
+    const { data: ver } = await supabase.from('email_verifications').select('*').eq('token', token).single();
+    if (!ver) return res.redirect('/claramentepsi-registro-profesional.html?error=token-invalido');
+    if (new Date(ver.expires_at) < new Date()) return res.redirect('/claramentepsi-registro-profesional.html?error=token-expirado');
+    await supabase.from('email_verifications').update({ verified: true }).eq('token', token);
+    const datos = encodeURIComponent(JSON.stringify(ver.datos));
+    res.redirect('/confirmar-email.html?verified=true&datos=' + datos);
+  } catch(e) {
+    res.redirect('/claramentepsi-registro-profesional.html?error=error');
+  }
+});
+app.get('/recuperar-password.html', (req, res) => res.sendFile(path.join(__dirname, 'public', 'recuperar-password.html')));
+app.get('/reset-password.html', (req, res) => res.sendFile(path.join(__dirname, 'public', 'reset-password.html')));
+app.get('/pago-exitoso.html', (req, res) => res.sendFile(path.join(__dirname, 'public', 'pago-exitoso.html')));
+
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+app.listen(PORT, () => {
+  console.log(`Claramente corriendo en puerto ${PORT}`);
+});
