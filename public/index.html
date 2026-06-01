@@ -97,30 +97,39 @@ nav {
 .pro-card:nth-child(2) { animation-delay: 0.08s; }
 .pro-card:nth-child(3) { animation-delay: 0.16s; }
 
-/* Premium — tarjeta grande y destacada */
+/* Premium — tarjeta grande y destacada, todas iguales */
 .pro-card.plan-premium { 
   border: 2px solid #B8860B; 
-  padding: 24px; 
+  padding: 24px;
   background: linear-gradient(135deg, #FFFFF8 0%, #FDF8EC 100%);
   box-shadow: 0 8px 32px rgba(184,134,11,0.12);
-  transform: scale(1.03);
-  z-index: 2;
 }
 .pro-card.plan-premium:hover { 
-  box-shadow: 0 12px 40px rgba(184,134,11,0.18); 
-  transform: scale(1.04) translateY(-2px);
+  box-shadow: 0 12px 40px rgba(184,134,11,0.18);
+  transform: translateY(-3px);
 }
-.pro-card.plan-premium .card-avatar { width: 56px; height: 56px; font-size: 20px; }
-.pro-card.plan-premium .card-name { font-size: 16px; font-weight: 500; }
-.pro-card.plan-premium .card-sub { font-size: 13px; }
+.pro-card.plan-premium .card-avatar { width: 52px; height: 52px; font-size: 18px; }
+.pro-card.plan-premium .card-name { font-size: 15px; font-weight: 500; }
 .pro-card.plan-premium .match-score { font-size: 13px; font-weight: 600; }
 
-/* Flex — tarjeta normal */
-.pro-card.plan-flex { border: 1.5px solid var(--sage-mid); }
+/* Flex — más visible que gratuito, borde verde, fondo suave */
+.pro-card.plan-flex { 
+  border: 1.5px solid var(--sage-mid);
+  background: var(--sage-light);
+  padding: 18px;
+}
+.pro-card.plan-flex .card-avatar { width: 46px; height: 46px; }
 
-/* Gratuito — tarjeta más chica y opaca */
-.pro-card.plan-gratuito { opacity: 0.72; transform: scale(0.97); }
-.pro-card.plan-gratuito:hover { transform: scale(0.98); }
+/* Gratuito — más chico, opaco, sin destacar */
+.pro-card.plan-gratuito { 
+  opacity: 0.65;
+  background: var(--warm-mid);
+  border: 1px solid var(--border);
+  padding: 14px;
+}
+.pro-card.plan-gratuito .card-avatar { width: 36px; height: 36px; font-size: 12px; }
+.pro-card.plan-gratuito .card-name { font-size: 13px; }
+.pro-card.plan-gratuito .card-sub { font-size: 11px; }
 
 .plan-badge { position: absolute; top: 12px; right: 12px; font-size: 10px; font-weight: 500; padding: 3px 8px; border-radius: 20px; letter-spacing: 0.04em; text-transform: uppercase; }
 .badge-premium { background: #FDF8E8; color: #B8860B; border: 1px solid #E8D48A; }
