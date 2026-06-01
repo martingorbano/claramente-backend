@@ -257,6 +257,85 @@ app.post('/contacto', async (req, res) => {
   }
 });
 
+// Enviar mail de verificación de email
+app.post('/verificar-email', async (req, res) => {
+  const { email, datos } = req.body;
+  if (!email) return res.status(400).json({ error: 'Email requerido' });
+  try {
+    // Verificar que no esté ya registrado
+    const { data: existe } = await supabase
+      .from('profesionales')
+      .select('id')
+      .eq('email', email)
+      .single();
+    if (existe) return res.status(400).json({ error: 'Este email ya está registrado.' });
+
+    const token = crypto.randomBytes(32).toString('hex');
+    const expires_at = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(); // 24 horas
+
+    // Guardar o actualizar verificación pendiente
+    await supabase.from('email_verifications').upsert({ email, token, datos, verified: false, expires_at }, { onConflict: 'email' });
+
+    const verifyUrl = `${process.env.APP_URL || 'https://claramente-backend.onrender.com'}/confirmar-email.html?token=${token}`;
+
+    await resend.emails.send({
+      from: 'Claramente <soporte@claramentepsi.com>',
+      reply_to: 'claramentepsisoporte@gmail.com',
+      to: email,
+      subject: 'Confirmá tu email para unirte a Claramente',
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 520px; margin: 0 auto; padding: 32px 24px; color: #1C2B28;">
+          <div style="font-family: Georgia, serif; font-size: 22px; margin-bottom: 24px;">
+            clara<span style="color: #4A7C6F; font-style: italic;">mente</span>
+          </div>
+          <h2 style="font-size: 20px; font-weight: 400; margin-bottom: 12px; font-family: Georgia, serif;">
+            Confirma tu email
+          </h2>
+          <p style="font-size: 15px; line-height: 1.7; color: #6B847E; margin-bottom: 24px;">
+            Hacé click en el botón para confirmar tu email y continuar con el registro en Claramente.
+          </p>
+          <a href="${verifyUrl}" style="display:inline-block;background:#4A7C6F;color:white;padding:12px 28px;border-radius:24px;text-decoration:none;font-size:14px;font-weight:500;">
+            Confirmar email →
+          </a>
+          <p style="font-size:13px;color:#9AAFAA;margin-top:24px;">
+            Este link expira en 24 horas. Si no creaste una cuenta en Claramente, ignorá este mail.
+          </p>
+        </div>
+      `
+    });
+
+    res.json({ ok: true });
+  } catch(e) {
+    console.error('Error verificar email:', e.message);
+    res.status(500).json({ error: 'Error al enviar verificación' });
+  }
+});
+
+// Confirmar email y retomar registro
+app.get('/confirmar-email', async (req, res) => {
+  const { token } = req.query;
+  if (!token) return res.redirect('/claramentepsi-registro-profesional.html');
+  try {
+    const { data: ver } = await supabase
+      .from('email_verifications')
+      .select('*')
+      .eq('token', token)
+      .single();
+
+    if (!ver) return res.redirect('/claramentepsi-registro-profesional.html?error=token-invalido');
+    if (new Date(ver.expires_at) < new Date()) return res.redirect('/claramentepsi-registro-profesional.html?error=token-expirado');
+
+    await supabase.from('email_verifications').update({ verified: true }).eq('token', token);
+
+    // Redirigir al registro con los datos del paso 1 encoded
+    const datos = encodeURIComponent(JSON.stringify(ver.datos));
+    res.redirect(`/claramentepsi-registro-profesional.html?verified=true&datos=${datos}`);
+  } catch(e) {
+    console.error('Error confirmar email:', e.message);
+    res.redirect('/claramentepsi-registro-profesional.html?error=error');
+  }
+});
+
 // Solicitar recuperación de contraseña
 app.post('/recuperar-password', async (req, res) => {
   const { email } = req.body;
@@ -666,6 +745,22 @@ app.get('/verificar-pago', async (req, res) => {
   }
 });
 
+app.get('/verificar-email.html', (req, res) => res.sendFile(path.join(__dirname, 'public', 'verificar-email.html')));
+app.get('/confirmar-email.html', (req, res) => res.sendFile(path.join(__dirname, 'public', 'confirmar-email.html')));
+app.get('/confirmar-email', async (req, res) => {
+  const { token } = req.query;
+  if (!token) return res.redirect('/claramentepsi-registro-profesional.html');
+  try {
+    const { data: ver } = await supabase.from('email_verifications').select('*').eq('token', token).single();
+    if (!ver) return res.redirect('/claramentepsi-registro-profesional.html?error=token-invalido');
+    if (new Date(ver.expires_at) < new Date()) return res.redirect('/claramentepsi-registro-profesional.html?error=token-expirado');
+    await supabase.from('email_verifications').update({ verified: true }).eq('token', token);
+    const datos = encodeURIComponent(JSON.stringify(ver.datos));
+    res.redirect('/confirmar-email.html?verified=true&datos=' + datos);
+  } catch(e) {
+    res.redirect('/claramentepsi-registro-profesional.html?error=error');
+  }
+});
 app.get('/recuperar-password.html', (req, res) => res.sendFile(path.join(__dirname, 'public', 'recuperar-password.html')));
 app.get('/reset-password.html', (req, res) => res.sendFile(path.join(__dirname, 'public', 'reset-password.html')));
 app.get('/pago-exitoso.html', (req, res) => res.sendFile(path.join(__dirname, 'public', 'pago-exitoso.html')));
