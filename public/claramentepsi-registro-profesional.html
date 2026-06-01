@@ -607,19 +607,34 @@ window.addEventListener('pageshow', () => {
 
 window.addEventListener('load', () => {
   const params = new URLSearchParams(window.location.search);
-  if (params.get('retomar') === 'true') {
+  if (params.get('verified') === 'true' && params.get('datos')) {
     try {
-      const datosVerificados = JSON.parse(localStorage.getItem('clm_reg_verified') || '{}');
+      const datosVerificados = JSON.parse(decodeURIComponent(params.get('datos')));
       if (datosVerificados.email) {
-        formData = { ...datosVerificados };
-        document.getElementById('nombre').value = datosVerificados.nombre || '';
-        document.getElementById('matricula').value = datosVerificados.matricula || '';
-        document.getElementById('email').value = datosVerificados.email || '';
-        document.getElementById('whatsapp').value = datosVerificados.whatsapp || '';
+        // Pre-cargar datos del paso 1
+        formData.nombre = datosVerificados.nombre || '';
+        formData.matricula = datosVerificados.matricula || '';
+        formData.email = datosVerificados.email || '';
+        formData.whatsapp = datosVerificados.whatsapp || '';
+        if (document.getElementById('nombre')) document.getElementById('nombre').value = formData.nombre;
+        if (document.getElementById('titulo')) {
+          const nombre = formData.nombre;
+          if (nombre.startsWith('Dr.')) document.getElementById('titulo').value = 'Dr.';
+          else if (nombre.startsWith('Mg.')) document.getElementById('titulo').value = 'Mg.';
+        }
+        if (document.getElementById('matricula')) document.getElementById('matricula').value = formData.matricula;
+        if (document.getElementById('email')) document.getElementById('email').value = formData.email;
+        if (document.getElementById('whatsapp')) document.getElementById('whatsapp').value = formData.whatsapp;
+        // Cargar password guardado
+        const savedPass = localStorage.getItem('clm_reg_pass');
+        if (savedPass && document.getElementById('pass')) {
+          document.getElementById('pass').value = savedPass;
+        }
+        localStorage.removeItem('clm_reg_pass');
+        // Avanzar al paso 2
         showStep(1);
-        localStorage.removeItem('clm_reg_verified');
       }
-    } catch(e) {}
+    } catch(e) { console.error('Error retomando registro:', e); }
   }
   if (params.get('error')) {
     alert('El link de verificacion expiro o es invalido. Por favor intenta de nuevo.');
@@ -683,12 +698,14 @@ async function next(step) {
     btn.disabled = true;
     btn.textContent = 'Verificando...';
     try {
+      const titulo = document.getElementById('titulo')?.value || 'Lic.';
+      const nombreRaw = document.getElementById('nombre').value;
+      const nombreFull = nombreRaw.startsWith('Lic.') || nombreRaw.startsWith('Dr.') || nombreRaw.startsWith('Mg.') ? nombreRaw : titulo + ' ' + nombreRaw;
       const datos = {
-        nombre: document.getElementById('nombre').value,
+        nombre: nombreFull,
         matricula: document.getElementById('matricula').value,
         email,
         whatsapp: document.getElementById('whatsapp').value,
-        password: document.getElementById('pass').value,
       };
       const res = await fetch('/verificar-email', {
         method: 'POST',
@@ -705,6 +722,7 @@ async function next(step) {
         return;
       }
       localStorage.setItem('clm_reg_step1', JSON.stringify(datos));
+      localStorage.setItem('clm_reg_pass', document.getElementById('pass').value);
       window.location.href = `/verificar-email.html?email=${encodeURIComponent(email)}`;
       return;
     } catch(e) {
