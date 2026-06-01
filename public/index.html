@@ -91,8 +91,8 @@ nav {
 .results-label { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-faint); margin-bottom: 6px; }
 .results-hint { font-size: 12px; color: var(--text-faint); margin-bottom: 14px; }
 .cards-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
-.cards-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; align-items: start; }
-.pro-card { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; display: flex; flex-direction: column; gap: 12px; animation: fadeUp 0.35s ease both; transition: box-shadow 0.2s, transform 0.2s; }
+.cards-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; align-items: stretch; }
+.pro-card { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; display: flex; flex-direction: column; gap: 12px; animation: fadeUp 0.35s ease both; transition: box-shadow 0.2s, transform 0.2s; height: 100%; }
 .pro-card:hover { box-shadow: 0 6px 24px rgba(44,80,72,0.08); transform: translateY(-2px); }
 .pro-card:nth-child(2) { animation-delay: 0.08s; }
 .pro-card:nth-child(3) { animation-delay: 0.16s; }
@@ -103,8 +103,8 @@ nav {
   padding: 24px;
   background: linear-gradient(135deg, #FFFFF8 0%, #FDF8EC 100%);
   box-shadow: 0 8px 32px rgba(184,134,11,0.12);
-  min-height: 280px;
 }
+
 .pro-card.plan-premium:hover { 
   box-shadow: 0 12px 40px rgba(184,134,11,0.18);
   transform: translateY(-3px);
