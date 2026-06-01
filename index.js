@@ -746,21 +746,6 @@ app.get('/verificar-pago', async (req, res) => {
 });
 
 app.get('/verificar-email.html', (req, res) => res.sendFile(path.join(__dirname, 'public', 'verificar-email.html')));
-app.get('/confirmar-email.html', (req, res) => res.sendFile(path.join(__dirname, 'public', 'confirmar-email.html')));
-app.get('/confirmar-email', async (req, res) => {
-  const { token } = req.query;
-  if (!token) return res.redirect('/claramentepsi-registro-profesional.html');
-  try {
-    const { data: ver } = await supabase.from('email_verifications').select('*').eq('token', token).single();
-    if (!ver) return res.redirect('/claramentepsi-registro-profesional.html?error=token-invalido');
-    if (new Date(ver.expires_at) < new Date()) return res.redirect('/claramentepsi-registro-profesional.html?error=token-expirado');
-    await supabase.from('email_verifications').update({ verified: true }).eq('token', token);
-    const datos = encodeURIComponent(JSON.stringify(ver.datos));
-    res.redirect('/confirmar-email.html?verified=true&datos=' + datos);
-  } catch(e) {
-    res.redirect('/claramentepsi-registro-profesional.html?error=error');
-  }
-});
 app.get('/recuperar-password.html', (req, res) => res.sendFile(path.join(__dirname, 'public', 'recuperar-password.html')));
 app.get('/reset-password.html', (req, res) => res.sendFile(path.join(__dirname, 'public', 'reset-password.html')));
 app.get('/pago-exitoso.html', (req, res) => res.sendFile(path.join(__dirname, 'public', 'pago-exitoso.html')));
