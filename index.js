@@ -75,7 +75,7 @@ Si falta info clave, hacé UNA sola pregunta antes del JSON.`;
 // Función para mandar mail al profesional gratuito
 async function notificarGratuito(profesional, queryTexto) {
   try {
-    await resend.emails.send({
+    const result = await resend.emails.send({
       from: 'Claramente <soporte@claramentepsi.com>',
       reply_to: 'claramentepsisoporte@gmail.com',
       to: profesional.email,
@@ -112,9 +112,9 @@ async function notificarGratuito(profesional, queryTexto) {
         </div>
       `
     });
-    console.log('Mail enviado a gratuito:', profesional.email);
+    console.log('Mail enviado a gratuito:', profesional.email, 'result:', JSON.stringify(result));
   } catch(e) {
-    console.error('Error enviando mail:', e.message);
+    console.error('Error enviando mail:', e.message, e);
   }
 }
 
