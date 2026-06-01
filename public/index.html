@@ -103,6 +103,7 @@ nav {
   padding: 24px;
   background: linear-gradient(135deg, #FFFFF8 0%, #FDF8EC 100%);
   box-shadow: 0 8px 32px rgba(184,134,11,0.12);
+  min-height: 280px;
 }
 .pro-card.plan-premium:hover { 
   box-shadow: 0 12px 40px rgba(184,134,11,0.18);
@@ -477,7 +478,7 @@ function renderCards(profesionales, query) {
     card.className = `pro-card plan-${p.plan || 'gratuito'}`;
 
     let badgeHTML = '';
-    if (esPremium) badgeHTML = `<span class="plan-badge badge-premium">Profesional destacado</span>`;
+    if (esPremium) badgeHTML = `<span class="plan-badge badge-premium">★ Destacado</span>`;
     if (esFlex)    badgeHTML = `<span class="plan-badge badge-flex">Flex</span>`;
 
     const footerHTML = esGratuito
