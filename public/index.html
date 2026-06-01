@@ -437,49 +437,57 @@ function openWhatsapp(psyJson, query) {
   setTimeout(() => window.open(`https://wa.me/${psy.whatsapp}?text=${msg}`, '_blank'), 600);
 }
 
-function renderCards(profesionales, query, spotlighted) {
+function renderCards(profesionales, query) {
   const cardsEl   = document.getElementById('cardsGrid');
   const resultsEl = document.getElementById('resultsSection');
   const hint      = document.getElementById('resultsHint');
   cardsEl.innerHTML = '';
-  hint.textContent = spotlighted
-    ? 'Los profesionales con plan aparecen primero · hoy también destacamos un perfil gratuito'
-    : 'Los resultados se ordenan por afinidad real · los profesionales destacados aparecen primero';
+  hint.textContent = 'Los resultados se ordenan por afinidad real · los profesionales destacados aparecen primero';
 
-  profesionales.forEach((p, i) => {
-    const c = COLORS[p.color] || COLORS.sage;
+  profesionales.forEach((p) => {
+    const col = COLORS[p.color] || COLORS.sage;
     const tags = [p.enfoque, p.modalidad, ...(p.obras_sociales || [])].filter(Boolean);
-    const isFree = p.plan === 'free';
+    const esPremium  = p.plan === 'premium';
+    const esFlex     = p.plan === 'flex';
+    const esGratuito = p.plan === 'gratuito';
+
     const card = document.createElement('div');
-    card.className = `pro-card${isFree && !(spotlighted && i < 2) ? ' is-free' : ''}`;
+    card.className = `pro-card plan-${p.plan || 'gratuito'}`;
+
     let badgeHTML = '';
     if (esPremium) badgeHTML = `<span class="plan-badge badge-premium">Profesional destacado</span>`;
     if (esFlex)    badgeHTML = `<span class="plan-badge badge-flex">Flex</span>`;
+
     const psyEncoded = encodeURIComponent(JSON.stringify(p));
     const queryEscaped = query.replace(/'/g,"\\'").replace(/"/g,'\\"');
+
+    const footerHTML = esGratuito
+      ? `<div class="no-contact-msg">Este profesional no está disponible para contacto directo</div>`
+      : `<div class="card-footer">
+          <span class="match-score">${p.match}% afín</span>
+          <button class="contact-btn" onclick="openWhatsapp('${psyEncoded}','${queryEscaped}')">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.125.558 4.122 1.532 5.856L.057 23.882l6.197-1.624A11.945 11.945 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.818 9.818 0 01-5.001-1.366l-.36-.214-3.716.974.992-3.623-.234-.373A9.818 9.818 0 012.182 12c0-5.422 4.396-9.818 9.818-9.818 5.422 0 9.818 4.396 9.818 9.818 0 5.422-4.396 9.818-9.818 9.818z"/></svg> Contactar
+          </button>
+        </div>`;
+
     card.innerHTML = `
       ${badgeHTML}
       <div class="card-head">
-        <div class="card-avatar" style="background:${c.bg};color:${c.color}">${p.iniciales}</div>
+        <div class="card-avatar" style="background:${col.bg};color:${col.color}">${p.iniciales}</div>
         <div><div class="card-name">${p.nombre}</div><div class="card-sub">${p.especialidad}</div></div>
       </div>
       <div class="card-tags">${tags.slice(0,4).map((t,i)=>`<span class="tag ${i===0?'tag-sage':'tag-warm'}">${t}</span>`).join('')}</div>
       <div class="card-desc">${p.descripcion}</div>
-      <div class="card-footer">
-        <span class="match-score">${p.match}% afín</span>
-        <button class="contact-btn" onclick="openWhatsapp('${psyEncoded}','${queryEscaped}')">
-          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.125.558 4.122 1.532 5.856L.057 23.882l6.197-1.624A11.945 11.945 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.818 9.818 0 01-5.001-1.366l-.36-.214-3.716.974.992-3.623-.234-.373A9.818 9.818 0 012.182 12c0-5.422 4.396-9.818 9.818-9.818 5.422 0 9.818 4.396 9.818 9.818 0 5.422-4.396 9.818-9.818 9.818z"/></svg>
-          Contactar
-        </button>
-      </div>`;
+      ${footerHTML}`;
+
     cardsEl.appendChild(card);
   });
+
   resultsEl.style.display = 'block';
   resultsEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 
-  // Notificar a los profesionales gratuitos que aparecieron en la búsqueda
-  const gratuitos = profesionales.filter(p => p.plan === 'gratuito' && p.id);
-  gratuitos.forEach(p => {
+  // Notificar a los profesionales gratuitos que aparecieron
+  profesionales.filter(p => p.plan === 'gratuito' && p.id).forEach(p => {
     fetch('/contacto', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -487,6 +495,7 @@ function renderCards(profesionales, query, spotlighted) {
     }).catch(() => {});
   });
 }
+
 
 function startSearch(text) {
   const input = document.getElementById('chatInput');
