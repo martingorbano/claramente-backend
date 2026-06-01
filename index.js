@@ -50,6 +50,7 @@ Cuando tengas suficiente info (1-2 intercambios alcanza), respondé ÚNICAMENTE 
 REGLAS:
 - Usá SOLO profesionales de la lista que se te provee
 - El campo "id" es OBLIGATORIO — copialo exactamente del campo id de la base de datos sin modificarlo
+- El campo "plan" es OBLIGATORIO — copialo exactamente del campo plan de la base de datos (puede ser "premium", "flex" o "gratuito") — NUNCA lo cambies ni lo inventes
 - Mostrá SOLO los datos que realmente existen en el perfil — nunca inventes obras sociales, enfoques ni especializaciones que no estén en los datos
 - Si el campo obras_sociales está vacío o es null, no muestres ninguna obra social en la tarjeta
 - Si obras_sociales contiene solo "Particular", mostrá el tag como "Solo particular"
