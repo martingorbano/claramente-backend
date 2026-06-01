@@ -115,7 +115,7 @@ async function notificarGratuito(profesional, queryTexto) {
             Hola ${profesional.nombre},
           </h2>
           <p style="font-size: 15px; line-height: 1.7; color: #6B847E; margin-bottom: 16px;">
-            Esta semana apareciste en <strong style="color: #1C2B28;">\${busquedasAcumuladas} búsqueda\${busquedasAcumuladas > 1 ? 's' : ''}</strong> en Claramente como una de las opciones más afines. La última fue:
+            Esta semana apareciste en <strong style="color: #1C2B28;">` + busquedasAcumuladas + ` búsqueda` + (busquedasAcumuladas > 1 ? 's' : '') + `</strong> en Claramente como una de las opciones más afines. La última fue:
           </p>
           <div style="background: #E8F2EF; border-radius: 12px; padding: 16px 20px; margin-bottom: 20px; font-size: 15px; color: #2C5048; font-style: italic;">
             "${queryTexto}"
