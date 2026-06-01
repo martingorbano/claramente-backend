@@ -599,6 +599,12 @@ let selectedPlan = null;
 let formData = {};
 
 // Verificar si viene de confirmacion de email
+// Rehabilitar botón si el usuario vuelve atrás
+window.addEventListener('pageshow', () => {
+  const btn = document.querySelector('#panel-0 .btn-next');
+  if (btn) { btn.disabled = false; btn.textContent = 'Continuar →'; }
+});
+
 window.addEventListener('load', () => {
   const params = new URLSearchParams(window.location.search);
   if (params.get('retomar') === 'true') {
