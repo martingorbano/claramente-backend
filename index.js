@@ -240,6 +240,90 @@ app.post('/contacto', async (req, res) => {
   }
 });
 
+// Solicitar recuperación de contraseña
+app.post('/recuperar-password', async (req, res) => {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ error: 'Email requerido' });
+  try {
+    const { data: prof } = await supabase
+      .from('profesionales')
+      .select('id, nombre, email')
+      .eq('email', email)
+      .single();
+
+    // Siempre respondemos ok para no revelar si el email existe
+    if (!prof) return res.json({ ok: true });
+
+    const token = crypto.randomBytes(32).toString('hex');
+    const expires_at = new Date(Date.now() + 60 * 60 * 1000).toISOString(); // 1 hora
+
+    await supabase.from('password_resets').insert({ email, token, expires_at });
+
+    const resetUrl = `${process.env.APP_URL || 'https://claramente-backend.onrender.com'}/reset-password.html?token=${token}`;
+
+    await resend.emails.send({
+      from: 'Claramente <soporte@claramentepsi.com>',
+      reply_to: 'claramentepsisoporte@gmail.com',
+      to: email,
+      subject: 'Recuperá tu contraseña de Claramente',
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 520px; margin: 0 auto; padding: 32px 24px; color: #1C2B28;">
+          <div style="font-family: Georgia, serif; font-size: 22px; color: #1C2B28; margin-bottom: 24px;">
+            clara<span style="color: #4A7C6F; font-style: italic;">mente</span>
+          </div>
+          <h2 style="font-size: 20px; font-weight: 400; margin-bottom: 12px; font-family: Georgia, serif;">
+            Hola ${prof.nombre},
+          </h2>
+          <p style="font-size: 15px; line-height: 1.7; color: #6B847E; margin-bottom: 24px;">
+            Recibimos una solicitud para recuperar tu contraseña. Hacé click en el botón para crear una nueva.
+          </p>
+          <a href="${resetUrl}" 
+             style="display: inline-block; background: #4A7C6F; color: white; padding: 12px 28px; border-radius: 24px; text-decoration: none; font-size: 14px; font-weight: 500;">
+            Crear nueva contraseña →
+          </a>
+          <p style="font-size: 13px; color: #9AAFAA; margin-top: 24px; line-height: 1.6;">
+            Este link expira en 1 hora. Si no solicitaste esto, ignorá este mail.
+          </p>
+          <p style="font-size: 12px; color: #9AAFAA; margin-top: 16px;">
+            Claramente · <a href="mailto:claramentepsisoporte@gmail.com" style="color: #9AAFAA;">claramentepsisoporte@gmail.com</a>
+          </p>
+        </div>
+      `
+    });
+
+    res.json({ ok: true });
+  } catch(e) {
+    console.error('Error recuperar password:', e.message);
+    res.status(500).json({ error: 'Error al procesar la solicitud' });
+  }
+});
+
+// Resetear contraseña con token
+app.post('/reset-password', async (req, res) => {
+  const { token, password } = req.body;
+  if (!token || !password) return res.status(400).json({ error: 'Token y contraseña requeridos' });
+  try {
+    const { data: reset } = await supabase
+      .from('password_resets')
+      .select('*')
+      .eq('token', token)
+      .eq('used', false)
+      .single();
+
+    if (!reset) return res.status(400).json({ error: 'Token inválido o expirado' });
+    if (new Date(reset.expires_at) < new Date()) return res.status(400).json({ error: 'El link expiró. Solicitá uno nuevo.' });
+
+    const password_hash = await bcrypt.hash(password, 10);
+    await supabase.from('profesionales').update({ password_hash }).eq('email', reset.email);
+    await supabase.from('password_resets').update({ used: true }).eq('token', token);
+
+    res.json({ ok: true });
+  } catch(e) {
+    console.error('Error reset password:', e.message);
+    res.status(500).json({ error: 'Error al actualizar la contraseña' });
+  }
+});
+
 // Verificar si email ya existe
 app.get('/check-email', async (req, res) => {
   const { email } = req.query;
@@ -535,6 +619,8 @@ app.get('/verificar-pago', async (req, res) => {
   }
 });
 
+app.get('/recuperar-password.html', (req, res) => res.sendFile(path.join(__dirname, 'public', 'recuperar-password.html')));
+app.get('/reset-password.html', (req, res) => res.sendFile(path.join(__dirname, 'public', 'reset-password.html')));
 app.get('/pago-exitoso.html', (req, res) => res.sendFile(path.join(__dirname, 'public', 'pago-exitoso.html')));
 
 app.get('*', (req, res) => {
