@@ -334,6 +334,7 @@ async function cargarStats() {
     // Poner números falsos para que el blur se vea bien
     document.getElementById('statContactos').textContent = '12';
     document.getElementById('statBusquedas').textContent = '47';
+    renderGrafico({});
 
     const overlay = document.createElement('div');
     overlay.className = 'stats-lock-overlay';
@@ -354,10 +355,8 @@ async function cargarStats() {
     document.getElementById('statContactos').textContent = contactos;
     document.getElementById('statBusquedas').textContent = vistas;
 
-    // Renderizar gráfico si hay datos
-    if (data.grafico) {
-      renderGrafico(data.grafico);
-    }
+    // Renderizar gráfico siempre
+    renderGrafico(data.grafico || {});
   } catch(e) {
     console.error(e);
   }
@@ -525,8 +524,6 @@ function renderGrafico(grafico) {
 
   const totalContactos = contactosData.reduce((a, b) => a + b, 0);
   const totalVistas = vistasData.reduce((a, b) => a + b, 0);
-
-  if (totalContactos === 0 && totalVistas === 0) return;
 
   document.getElementById('graficoWrap').style.display = 'block';
 
