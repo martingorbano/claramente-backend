@@ -97,16 +97,30 @@ nav {
 .pro-card:nth-child(2) { animation-delay: 0.08s; }
 .pro-card:nth-child(3) { animation-delay: 0.16s; }
 
-/* Premium — tarjeta grande */
-.pro-card.plan-premium { border: 1.5px solid #B8860B; padding: 22px; background: linear-gradient(135deg, #FFFFF8 0%, #FDFBF0 100%); }
-.pro-card.plan-premium .card-avatar { width: 52px; height: 52px; font-size: 18px; }
-.pro-card.plan-premium .card-name { font-size: 15px; }
+/* Premium — tarjeta grande y destacada */
+.pro-card.plan-premium { 
+  border: 2px solid #B8860B; 
+  padding: 24px; 
+  background: linear-gradient(135deg, #FFFFF8 0%, #FDF8EC 100%);
+  box-shadow: 0 8px 32px rgba(184,134,11,0.12);
+  transform: scale(1.03);
+  z-index: 2;
+}
+.pro-card.plan-premium:hover { 
+  box-shadow: 0 12px 40px rgba(184,134,11,0.18); 
+  transform: scale(1.04) translateY(-2px);
+}
+.pro-card.plan-premium .card-avatar { width: 56px; height: 56px; font-size: 20px; }
+.pro-card.plan-premium .card-name { font-size: 16px; font-weight: 500; }
+.pro-card.plan-premium .card-sub { font-size: 13px; }
+.pro-card.plan-premium .match-score { font-size: 13px; font-weight: 600; }
 
 /* Flex — tarjeta normal */
-.pro-card.plan-flex { border: 1px solid var(--sage-mid); }
+.pro-card.plan-flex { border: 1.5px solid var(--sage-mid); }
 
-/* Gratuito — tarjeta pequeña, sin botón */
-.pro-card.plan-gratuito { opacity: 0.75; }
+/* Gratuito — tarjeta más chica y opaca */
+.pro-card.plan-gratuito { opacity: 0.72; transform: scale(0.97); }
+.pro-card.plan-gratuito:hover { transform: scale(0.98); }
 
 .plan-badge { position: absolute; top: 12px; right: 12px; font-size: 10px; font-weight: 500; padding: 3px 8px; border-radius: 20px; letter-spacing: 0.04em; text-transform: uppercase; }
 .badge-premium { background: #FDF8E8; color: #B8860B; border: 1px solid #E8D48A; }
@@ -429,8 +443,7 @@ async function trackContact(psy, query) {
   }
 }
 
-function openWhatsapp(psyJson, query) {
-  const psy = JSON.parse(decodeURIComponent(psyJson));
+function openWhatsapp(psy, query) {
   trackContact(psy, query);
   const nombre = psy.nombre.split(' ').slice(1).join(' ') || psy.nombre;
   const msg = encodeURIComponent(`Hola ${nombre}, te contacto desde Claramente. Busco ayuda con: ${query}`);
@@ -458,14 +471,11 @@ function renderCards(profesionales, query) {
     if (esPremium) badgeHTML = `<span class="plan-badge badge-premium">Profesional destacado</span>`;
     if (esFlex)    badgeHTML = `<span class="plan-badge badge-flex">Flex</span>`;
 
-    const psyEncoded = encodeURIComponent(JSON.stringify(p));
-    const queryEscaped = query.replace(/'/g,"\\'").replace(/"/g,'\\"');
-
     const footerHTML = esGratuito
       ? `<div class="no-contact-msg">Este profesional no está disponible para contacto directo</div>`
       : `<div class="card-footer">
           <span class="match-score">${p.match}% afín</span>
-          <button class="contact-btn" onclick="openWhatsapp('${psyEncoded}','${queryEscaped}')">
+          <button class="contact-btn btn-contactar" type="button">
             <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.125.558 4.122 1.532 5.856L.057 23.882l6.197-1.624A11.945 11.945 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.818 9.818 0 01-5.001-1.366l-.36-.214-3.716.974.992-3.623-.234-.373A9.818 9.818 0 012.182 12c0-5.422 4.396-9.818 9.818-9.818 5.422 0 9.818 4.396 9.818 9.818 0 5.422-4.396 9.818-9.818 9.818z"/></svg> Contactar
           </button>
         </div>`;
@@ -479,6 +489,14 @@ function renderCards(profesionales, query) {
       <div class="card-tags">${tags.slice(0,4).map((t,i)=>`<span class="tag ${i===0?'tag-sage':'tag-warm'}">${t}</span>`).join('')}</div>
       <div class="card-desc">${p.descripcion}</div>
       ${footerHTML}`;
+
+    // Agregar evento al botón usando data attributes para evitar problemas con comillas
+    if (!esGratuito) {
+      const btn = card.querySelector('.btn-contactar');
+      if (btn) {
+        btn.addEventListener('click', () => openWhatsapp(p, query));
+      }
+    }
 
     cardsEl.appendChild(card);
   });
@@ -495,6 +513,7 @@ function renderCards(profesionales, query) {
     }).catch(() => {});
   });
 }
+
 
 
 function startSearch(text) {
