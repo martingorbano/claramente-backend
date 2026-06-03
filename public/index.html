@@ -156,7 +156,7 @@ nav {
 .areas-section { padding: 60px 24px; background: var(--warm); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
 .areas-section .section-title em { font-style: italic; color: var(--sage); }
 .areas-grid { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 4px; }
-.area-chip { display: flex; align-items: center; gap: 8px; padding: 10px 18px; border-radius: 24px; border: 1px solid var(--border); background: var(--white); cursor: pointer; transition: all 0.18s; font-size: 14px; color: var(--text-muted); font-family: "DM Sans", sans-serif; }
+.area-chip { display: flex; align-items: center; gap: 8px; padding: 10px 18px; border-radius: 24px; border: 1px solid var(--border); background: var(--white); cursor: pointer; transition: all 0.18s; font-size: 14px; color: var(--text-muted); font-family: "DM Sans", sans-serif; text-decoration: none; }
 .area-chip:hover { border-color: var(--sage-mid); background: var(--sage-light); color: var(--sage-dark); }
 .area-chip i { font-size: 16px; color: var(--sage); }
 
@@ -274,16 +274,14 @@ try {
     <div class="section-title">¿En qué podemos <em>ayudarte?</em></div>
     <div class="section-sub">Tocá un área y el asistente arranca la búsqueda por vos.</div>
     <div class="areas-grid" id="areasGrid">
-      <div class="area-chip" onclick="startSearch('Busco psicólogo para ansiedad y estrés')"><i class="ti ti-brain" aria-hidden="true"></i>Ansiedad y estrés</div>
-      <div class="area-chip" onclick="startSearch('Busco psicólogo especializado en pareja y familia')"><i class="ti ti-heart" aria-hidden="true"></i>Pareja y familia</div>
-      <div class="area-chip" onclick="startSearch('Busco psicólogo para niños o adolescentes')"><i class="ti ti-mood-kid" aria-hidden="true"></i>Niños y adolescentes</div>
-      <div class="area-chip" onclick="startSearch('Busco psicólogo para trabajar duelo o pérdida')"><i class="ti ti-leaf" aria-hidden="true"></i>Duelo y pérdida</div>
-      <div class="area-chip" onclick="startSearch('Busco psicólogo para terapia individual de adultos')"><i class="ti ti-user" aria-hidden="true"></i>Terapia individual</div>
-      <div class="area-chip" onclick="startSearch('Busco psicólogo especializado en adicciones')"><i class="ti ti-ban" aria-hidden="true"></i>Adicciones</div>
-      <div class="area-chip" onclick="startSearch('Necesito una evaluación psicológica')"><i class="ti ti-clipboard-check" aria-hidden="true"></i>Evaluaciones</div>
-      <div class="area-chip" onclick="startSearch('Busco psicólogo para orientación vocacional')"><i class="ti ti-compass" aria-hidden="true"></i>Orientación vocacional</div>
-      <div class="area-chip" onclick="startSearch('Busco neuropsicólogo')"><i class="ti ti-activity" aria-hidden="true"></i>Neuropsicología</div>
-      <div class="area-chip" onclick="startSearch('Necesito psicólogo para causas judiciales o peritaje')"><i class="ti ti-scale" aria-hidden="true"></i>Causas judiciales</div>
+      <a class="area-chip" href="/ansiedad">Ansiedad y estrés</a>
+      <a class="area-chip" href="/pareja">Pareja y familia</a>
+      <a class="area-chip" href="/ninos">Niños y adolescentes</a>
+      <a class="area-chip" href="/adicciones">Adicciones</a>
+      <a class="area-chip" href="/evaluaciones">Evaluaciones</a>
+      <a class="area-chip" href="/vocacional">Orientación vocacional</a>
+      <a class="area-chip" href="/neuropsicologia">Neuropsicología</a>
+      <a class="area-chip" href="/judicial">Causas judiciales</a>
     </div>
   </div>
 </section>
