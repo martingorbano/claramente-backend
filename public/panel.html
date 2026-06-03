@@ -84,6 +84,12 @@ textarea { resize: vertical; min-height: 80px; }
 .btn-save:hover { background: var(--sage-dark); }
 .save-msg { font-size: 13px; color: var(--sage); display: none; }
 .save-msg.show { display: block; }
+.foto-upload-wrap { display: flex; align-items: center; gap: 20px; margin-bottom: 20px; padding-bottom: 20px; border-bottom: 1px solid var(--border); }
+.foto-circle { width: 72px; height: 72px; border-radius: 50%; background: var(--sage-light); color: var(--sage-dark); display: flex; align-items: center; justify-content: center; font-family: "Lora", serif; font-size: 22px; font-weight: 500; flex-shrink: 0; overflow: hidden; cursor: pointer; border: 2px dashed var(--border); transition: border-color 0.2s; }
+.foto-circle:hover { border-color: var(--sage-mid); }
+.foto-circle img { width: 100%; height: 100%; object-fit: cover; }
+.btn-foto { font-size: 13px; padding: 8px 16px; border-radius: 20px; border: 1px solid var(--border); background: transparent; color: var(--text-muted); cursor: pointer; font-family: "DM Sans", sans-serif; transition: all 0.18s; }
+.btn-foto:hover { border-color: var(--sage-mid); color: var(--sage-dark); }
 
 /* Stats blur para Flex */
 .stats-locked { position: relative; }
@@ -161,6 +167,17 @@ textarea { resize: vertical; min-height: 80px; }
   <div class="tab-panel active" id="tab-perfil">
     <div style="display:grid;grid-template-columns:1fr auto;gap:24px;align-items:start;flex-wrap:wrap">
       <div>
+        <div class="foto-upload-wrap">
+          <div class="foto-circle" id="fotoCircle" onclick="document.getElementById('fotoInput').click()">
+            <span id="fotoIniciales"></span>
+          </div>
+          <div>
+            <div style="font-size:14px;font-weight:500;margin-bottom:4px">Foto de perfil</div>
+            <div style="font-size:12px;color:var(--text-faint);margin-bottom:8px">Recomendamos una foto profesional · Solo visible en planes Flex y Premium</div>
+            <button class="btn-foto" onclick="document.getElementById('fotoInput').click()">Cambiar foto</button>
+            <input type="file" id="fotoInput" accept="image/*" style="display:none" onchange="previsualizarFoto(this)" />
+          </div>
+        </div>
         <div class="section-label">Datos de contacto</div>
         <div class="form-grid">
           <div class="field">
@@ -506,6 +523,41 @@ cargarPerfil();
 cargarPlan();
 
 document.getElementById('edit-nombre').addEventListener('input', actualizarPreview);
+
+function previsualizarFoto(input) {
+  if (!input.files || !input.files[0]) return;
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    const circle = document.getElementById('fotoCircle');
+    circle.innerHTML = `<img src="${e.target.result}" alt="foto">`;
+    // Subir foto al backend
+    const formData = new FormData();
+    formData.append('foto', input.files[0]);
+    formData.append('psy_id', profesional.id);
+    try {
+      const res = await fetch('/upload-foto', { method: 'POST', body: formData });
+      const data = await res.json();
+      if (data.foto_url) {
+        profesional.foto_url = data.foto_url;
+        localStorage.setItem('clm_profesional', JSON.stringify(profesional));
+      }
+    } catch(e) { console.error('Error subiendo foto:', e); }
+  };
+  reader.readAsDataURL(input.files[0]);
+}
+
+// Inicializar foto al cargar
+function inicializarFoto() {
+  const circle = document.getElementById('fotoCircle');
+  const iniciales = document.getElementById('fotoIniciales');
+  if (profesional.foto_url) {
+    circle.innerHTML = `<img src="${profesional.foto_url}" alt="foto">`;
+  } else {
+    const partes = (profesional.nombre || '').split(' ').filter(w => w.length > 1);
+    iniciales.textContent = partes.slice(0, 2).map(w => w[0]).join('').toUpperCase() || 'P';
+  }
+}
+inicializarFoto();
 
 function renderGrafico(grafico) {
   // Generar las últimas 8 semanas
