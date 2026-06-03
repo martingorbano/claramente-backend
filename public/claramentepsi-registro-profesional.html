@@ -307,9 +307,13 @@ select { cursor: pointer; appearance: none; background-image: url("data:image/sv
       <div class="form-grid">
         <div class="field" id="f-ciudad">
           <label>Ciudad donde atendés</label>
-          <input type="text" id="ciudad" placeholder="Ej: Mendoza, Buenos Aires" />
-          <span class="field-hint">Si atendés en más de una zona, separalas con coma. Ej: Ciudad, Maipú</span>
-          <span class="field-error">Ingresá al menos una ciudad</span>
+          <input type="text" id="ciudad" placeholder="Ej: Mendoza" />
+          <span class="field-error">Ingresá tu ciudad</span>
+        </div>
+        <div class="field">
+          <label>Localidad <span class="opt">(opcional)</span></label>
+          <input type="text" id="localidad" placeholder="Ej: Maipú, Godoy Cruz" />
+          <span class="field-hint">Si atendés en más de una zona</span>
         </div>
         <div class="field">
           <label>Años de experiencia <span class="opt">(opcional)</span></label>
@@ -799,6 +803,7 @@ function collectStep(step) {
   if (step === 1) {
     formData.bio = v('bio');
     formData.ciudad = v('ciudad');
+    formData.localidad = v('localidad');
     formData.experiencia = v('experiencia');
     formData.honorario = v('honorario');
     formData.obrasSociales = getSelected('obrasSociales');
