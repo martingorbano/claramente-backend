@@ -275,7 +275,7 @@ textarea { resize: vertical; min-height: 80px; }
       <div style="padding-top:8px">
         <div class="preview-label">Así te ven los pacientes</div>
         <div class="pro-card-preview">
-          <span class="plan-badge badge-pro" id="previewBadge" style="position:absolute;top:12px;right:12px">Pro</span>
+          <span class="plan-badge" id="previewBadge" style="display:none"></span>
           <div class="card-head">
             <div class="card-avatar" id="previewIniciales">ML</div>
             <div>
@@ -434,7 +434,6 @@ function actualizarPreview() {
   tagsEl.innerHTML = tags.map((t,i) => `<span class="tag ${i===0?'tag-sage':'tag-warm'}">${t}</span>`).join('');
 
   const badge = document.getElementById('previewBadge');
-  const badge = document.getElementById('previewBadge');
   if (profesional.plan === 'premium') {
     badge.textContent = 'Destacado'; badge.className = 'plan-badge badge-premium'; badge.style.cssText = '';
   } else if (profesional.plan === 'flex') {
@@ -480,7 +479,7 @@ async function guardarPerfil() {
 const MP_LINKS = {
   premium: 'https://www.mercadopago.com.ar/subscriptions/checkout?preapproval_plan_id=7cd85b4484f942e2a500303ce9a4f434',
   flex: 'https://www.mercadopago.com.ar/subscriptions/checkout?preapproval_plan_id=7b2754ae1b744bdc85d1f828c778f6be',
-  cancelar: 'https://www.mercadopago.com.ar/subscriptions'
+  cancelar: 'https://www.mercadopago.com.ar/subscriptions#from-section=menu'
 };
 
 function cargarPlan() {
