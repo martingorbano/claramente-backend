@@ -526,11 +526,11 @@ app.post('/upload-foto', upload.single('foto'), async (req, res) => {
 // Actualizar perfil del profesional
 app.put('/profesional/:id', async (req, res) => {
   const { id } = req.params;
-  const { nombre, whatsapp, ciudad, honorario, bio, enfoques, especializaciones, modalidades, obras_sociales } = req.body;
+  const { nombre, whatsapp, ciudad, localidad, honorario, bio, enfoques, especializaciones, modalidades, obras_sociales } = req.body;
   try {
     const { error } = await supabase
       .from('profesionales')
-      .update({ nombre, whatsapp, ciudad, honorario, bio, enfoques, especializaciones, modalidades, obras_sociales })
+      .update({ nombre, whatsapp, ciudad, localidad, honorario, bio, enfoques, especializaciones, modalidades, obras_sociales })
       .eq('id', id);
     if (error) throw error;
     res.json({ ok: true });
