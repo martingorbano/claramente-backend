@@ -20,6 +20,14 @@ app.use(cors({ origin: '*', methods: ['GET', 'POST', 'PUT'], allowedHeaders: ['C
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Rutas de áreas de atención
+const areas = ['ansiedad', 'pareja', 'ninos', 'adicciones', 'evaluaciones', 'neuropsicologia', 'judicial', 'vocacional'];
+areas.forEach(area => {
+  app.get(`/${area}`, (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', `${area}.html`));
+  });
+});
+
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
 
