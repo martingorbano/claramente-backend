@@ -396,6 +396,19 @@ try {
 <script>
 let searchCount = parseInt(localStorage.getItem('clm_searches') || '0');
 
+// Pre-cargar búsqueda si viene desde una página de área
+const _urlParams = new URLSearchParams(window.location.search);
+const _buscar = _urlParams.get('buscar');
+if (_buscar) {
+  window.addEventListener('DOMContentLoaded', () => {
+    setTimeout(() => {
+      const decoded = decodeURIComponent(_buscar.replace(/\+/g, ' '));
+      document.getElementById('chatInput').value = decoded;
+      sendMessage();
+    }, 800);
+  });
+}
+
 // El system prompt vive en el backend (index.js)
 let history = [], isLoading = false, lastQuery = '';
 
