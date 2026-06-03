@@ -456,6 +456,7 @@ async function guardarPerfil() {
     especializaciones: Array.from(document.querySelectorAll('#edit-especializaciones .tag-opt.selected')).map(t => t.textContent),
     modalidades: Array.from(document.querySelectorAll('#edit-modalidades .tag-opt.selected')).map(t => t.textContent),
     obras_sociales: Array.from(document.querySelectorAll('#edit-obras .tag-opt.selected')).map(t => t.textContent),
+    foto_url: profesional.foto_url || null,
   };
 
   try {
