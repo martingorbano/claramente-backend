@@ -202,6 +202,15 @@ textarea { resize: vertical; min-height: 80px; }
             <label>Honorario por sesión</label>
             <input type="number" id="edit-honorario" />
           </div>
+          <div class="field">
+            <label>Género</label>
+            <select id="edit-genero">
+              <option value="">Sin especificar</option>
+              <option value="F">Mujer</option>
+              <option value="M">Hombre</option>
+              <option value="NB">No binarie</option>
+            </select>
+          </div>
           <div class="field full">
             <label>Presentación</label>
             <textarea id="edit-bio" maxlength="400"></textarea>
@@ -393,6 +402,7 @@ function cargarPerfil() {
   if (document.getElementById('edit-localidad')) document.getElementById('edit-localidad').value = profesional.localidad || '';
   document.getElementById('edit-honorario').value = profesional.honorario || '';
   document.getElementById('edit-bio').value = profesional.bio || '';
+  if (document.getElementById('edit-genero')) document.getElementById('edit-genero').value = profesional.genero || '';
 
   // Marcar tags
   marcarTags('edit-enfoques', profesional.enfoques || []);
@@ -457,6 +467,7 @@ async function guardarPerfil() {
     modalidades: Array.from(document.querySelectorAll('#edit-modalidades .tag-opt.selected')).map(t => t.textContent),
     obras_sociales: Array.from(document.querySelectorAll('#edit-obras .tag-opt.selected')).map(t => t.textContent),
     foto_url: profesional.foto_url || null,
+    genero: document.getElementById('edit-genero')?.value || null,
   };
 
   try {
