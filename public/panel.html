@@ -190,8 +190,13 @@ textarea { resize: vertical; min-height: 80px; }
             <span class="field-hint">Sin el 0 ni el 15</span>
           </div>
           <div class="field">
-            <label>Ciudad/s</label>
-            <input type="text" id="edit-ciudad" />
+            <label>Ciudad</label>
+            <input type="text" id="edit-ciudad" placeholder="Ej: Mendoza" />
+          </div>
+          <div class="field">
+            <label>Localidad <span style="font-weight:400;color:var(--text-faint);font-size:12px">(opcional)</span></label>
+            <input type="text" id="edit-localidad" placeholder="Ej: Maipú, Godoy Cruz" />
+            <span class="field-hint">Si atendés en más de una zona</span>
           </div>
           <div class="field">
             <label>Honorario por sesión</label>
@@ -385,6 +390,7 @@ function cargarPerfil() {
   document.getElementById('edit-nombre').value = profesional.nombre || '';
   document.getElementById('edit-whatsapp').value = profesional.whatsapp || '';
   document.getElementById('edit-ciudad').value = profesional.ciudad || '';
+  if (document.getElementById('edit-localidad')) document.getElementById('edit-localidad').value = profesional.localidad || '';
   document.getElementById('edit-honorario').value = profesional.honorario || '';
   document.getElementById('edit-bio').value = profesional.bio || '';
 
@@ -428,10 +434,14 @@ function actualizarPreview() {
   tagsEl.innerHTML = tags.map((t,i) => `<span class="tag ${i===0?'tag-sage':'tag-warm'}">${t}</span>`).join('');
 
   const badge = document.getElementById('previewBadge');
-  if (profesional.plan === 'pro') {
-    badge.textContent = 'Pro'; badge.className = 'plan-badge badge-pro'; badge.style.cssText = 'position:absolute;top:12px;right:12px';
+  const badge = document.getElementById('previewBadge');
+  if (profesional.plan === 'premium') {
+    badge.textContent = 'Destacado'; badge.className = 'plan-badge badge-premium'; badge.style.cssText = '';
+  } else if (profesional.plan === 'flex') {
+    badge.textContent = 'Flex'; badge.className = 'plan-badge badge-flex'; badge.style.cssText = '';
   } else {
     badge.style.display = 'none';
+  }
   }
 }
 
@@ -441,6 +451,7 @@ async function guardarPerfil() {
     nombre: document.getElementById('edit-nombre').value,
     whatsapp: document.getElementById('edit-whatsapp').value,
     ciudad: document.getElementById('edit-ciudad').value,
+      localidad: document.getElementById('edit-localidad')?.value || '',
     honorario: parseInt(document.getElementById('edit-honorario').value) || null,
     bio: document.getElementById('edit-bio').value,
     enfoques: Array.from(document.querySelectorAll('#edit-enfoques .tag-opt.selected')).map(t => t.textContent),
