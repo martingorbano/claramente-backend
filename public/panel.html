@@ -297,11 +297,11 @@ textarea { resize: vertical; min-height: 80px; }
   <div class="tab-panel" id="tab-plan">
     <div class="plan-current" id="planCurrent">
       <div class="plan-info">
-        <span class="plan-badge badge-free" id="planBadge">Gratuito</span>
+        <span class="plan-badge" id="planBadge">Gratuito</span>
         <div class="plan-name" id="planNombre">Plan Gratuito</div>
-        <div class="plan-desc" id="planDesc">Aparecés en los resultados pero después de los profesionales Pro.</div>
+        <div class="plan-desc" id="planDesc">Aparecés en los resultados sin foto ni contacto directo.</div>
       </div>
-      <button class="btn-upgrade" id="btnUpgrade" onclick="upgrade()">Activar plan</button>
+      <div id="planBtns" style="display:flex;gap:8px;flex-wrap:wrap"></div>
     </div>
     <div class="plan-features">
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:16px;text-align:center;flex-wrap:wrap">
@@ -477,25 +477,45 @@ async function guardarPerfil() {
 }
 
 // Plan
+const MP_LINKS = {
+  premium: 'https://www.mercadopago.com.ar/subscriptions/checkout?preapproval_plan_id=7cd85b4484f942e2a500303ce9a4f434',
+  flex: 'https://www.mercadopago.com.ar/subscriptions/checkout?preapproval_plan_id=7b2754ae1b744bdc85d1f828c778f6be',
+  cancelar: 'https://www.mercadopago.com.ar/subscriptions'
+};
+
 function cargarPlan() {
   const plan = profesional.plan || 'gratuito';
   const planes = {
-    premium: { label: 'Premium', badge: 'badge-premium', nombre: 'Plan Premium — $79.900/mes', desc: 'Tarjeta grande, primera posición, foto, estadísticas completas.' },
-    flex:    { label: 'Flex',    badge: 'badge-flex',    nombre: 'Plan Flex — $59.900/mes',    desc: 'Aparecés después de los Premium, con foto y botón de contacto.' },
-    gratuito:{ label: 'Gratuito',badge: 'badge-gratuito',nombre: 'Plan Gratuito',               desc: 'Aparecés en resultados sin foto ni contacto directo.' },
+    premium: { label: 'Destacado', badge: 'badge-premium', nombre: 'Plan Premium — $79.900/mes', desc: 'Tarjeta grande, primera posición, foto y estadísticas completas.' },
+    flex:    { label: 'Flex',      badge: 'badge-flex',    nombre: 'Plan Flex — $59.900/mes',    desc: 'Aparecés después de los Destacados, con foto y botón de contacto.' },
+    gratuito:{ label: 'Gratuito',  badge: 'badge-gratuito',nombre: 'Plan Gratuito',               desc: 'Aparecés en resultados sin foto ni contacto directo.' },
   };
   const p = planes[plan] || planes.gratuito;
   document.getElementById('planBadge').textContent = p.label;
   document.getElementById('planBadge').className = `plan-badge ${p.badge}`;
   document.getElementById('planNombre').textContent = p.nombre;
   document.getElementById('planDesc').textContent = p.desc;
-  const btn = document.getElementById('btnUpgrade');
-  if (plan === 'premium') {
-    btn.textContent = 'Plan activo ✓';
-    btn.style.background = '#B8860B';
-    btn.style.cursor = 'default';
-  } else {
-    btn.textContent = plan === 'flex' ? 'Subir a Premium' : 'Activar plan';
+
+  const btns = document.getElementById('planBtns');
+  btns.innerHTML = '';
+
+  const mkBtn = (texto, url, estilo) => {
+    const b = document.createElement('a');
+    b.href = url; b.target = '_blank';
+    b.textContent = texto;
+    b.style.cssText = `font-size:13px;padding:9px 18px;border-radius:20px;text-decoration:none;font-family:'DM Sans',sans-serif;font-weight:500;cursor:pointer;${estilo}`;
+    btns.appendChild(b);
+  };
+
+  if (plan === 'gratuito') {
+    mkBtn('Activar Flex', MP_LINKS.flex, 'background:var(--sage-light);color:var(--sage-dark);border:1px solid var(--sage-mid)');
+    mkBtn('Activar Premium', MP_LINKS.premium, 'background:#B8860B;color:white');
+  } else if (plan === 'flex') {
+    mkBtn('Subir a Premium', MP_LINKS.premium, 'background:#B8860B;color:white');
+    mkBtn('Cancelar suscripción', MP_LINKS.cancelar, 'background:transparent;color:var(--text-faint);border:1px solid var(--border)');
+  } else if (plan === 'premium') {
+    mkBtn('Bajar a Flex', MP_LINKS.flex, 'background:var(--sage-light);color:var(--sage-dark);border:1px solid var(--sage-mid)');
+    mkBtn('Cancelar suscripción', MP_LINKS.cancelar, 'background:transparent;color:var(--text-faint);border:1px solid var(--border)');
   }
 }
 
