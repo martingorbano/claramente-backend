@@ -497,10 +497,12 @@ app.post('/login', async (req, res) => {
 // Upload foto de perfil
 app.post('/upload-foto', upload.single('foto'), async (req, res) => {
   const { psy_id } = req.body;
+  console.log('upload-foto: psy_id=', psy_id, 'file=', req.file?.originalname, 'size=', req.file?.size);
   if (!req.file || !psy_id) return res.status(400).json({ error: 'Faltan datos' });
   try {
     const ext = req.file.mimetype.split('/')[1] || 'jpg';
     const filename = `fotos/${psy_id}.${ext}`;
+    console.log('upload-foto: subiendo a storage como', filename);
     
     const { error: uploadError } = await supabase.storage
       .from('claramente')
@@ -509,17 +511,32 @@ app.post('/upload-foto', upload.single('foto'), async (req, res) => {
         upsert: true
       });
     
-    if (uploadError) throw uploadError;
+    if (uploadError) {
+      console.error('upload-foto: error en storage:', JSON.stringify(uploadError));
+      throw uploadError;
+    }
 
     const { data: { publicUrl } } = supabase.storage
       .from('claramente')
       .getPublicUrl(filename);
 
-    await supabase.from('profesionales').update({ foto_url: publicUrl }).eq('id', psy_id);
+    console.log('upload-foto: publicUrl=', publicUrl);
+
+    const { error: updateError } = await supabase
+      .from('profesionales')
+      .update({ foto_url: publicUrl })
+      .eq('id', psy_id);
+
+    if (updateError) {
+      console.error('upload-foto: error actualizando profesional:', JSON.stringify(updateError));
+      throw updateError;
+    }
+
+    console.log('upload-foto: OK, foto guardada');
     res.json({ ok: true, foto_url: publicUrl });
   } catch(e) {
-    console.error('Error upload foto:', e.message);
-    res.status(500).json({ error: 'Error al subir foto' });
+    console.error('Error upload foto:', e.message, JSON.stringify(e));
+    res.status(500).json({ error: 'Error al subir foto', detalle: e.message });
   }
 });
 
