@@ -310,20 +310,16 @@ select { cursor: pointer; appearance: none; background-image: url("data:image/sv
           <input type="text" id="ciudad" placeholder="Ej: Mendoza" />
           <span class="field-error">Ingresá tu ciudad</span>
         </div>
-        <div class="field">
-          <label>Localidad <span class="opt">(opcional)</span></label>
+        <div class="field" id="f-localidad">
+          <label>Localidad donde atendés</label>
           <input type="text" id="localidad" placeholder="Ej: Maipú, Godoy Cruz" />
-          <span class="field-hint">Si atendés en más de una zona</span>
+          <span class="field-error">Ingresá tu localidad</span>
         </div>
-        <div class="field">
-          <label>Años de experiencia <span class="opt">(opcional)</span></label>
-          <input type="number" id="experiencia" placeholder="Ej: 8" min="0" max="60" />
-        </div>
+
         <div class="field" id="f-honorario">
-          <label>Honorario por sesión <span class="opt">(en pesos)</span></label>
+          <label>Honorario por sesión <span class="opt">(opcional · en pesos)</span></label>
           <input type="number" id="honorario" placeholder="Ej: 15000" />
           <span class="field-hint">Podés poner un rango en la bio si varía</span>
-          <span class="field-error">Ingresá tu honorario</span>
         </div>
         <div class="field">
           <label>Acepta obras sociales</label>
@@ -334,7 +330,7 @@ select { cursor: pointer; appearance: none; background-image: url("data:image/sv
             <span class="tag-opt" onclick="toggleTag(this,'obras')">IOMA</span>
             <span class="tag-opt" onclick="toggleTag(this,'obras')">PAMI</span>
             <span class="tag-opt" onclick="toggleTag(this,'obras')">Medicus</span>
-            <span class="tag-opt" onclick="toggleTag(this,'obras')">Particular</span>
+            <span class="tag-opt" onclick="toggleTag(this,'obras')">Sólo particular</span>
             <span class="tag-opt" id="otraObraBtn" onclick="toggleOtraObra()">+ Otra</span>
           </div>
           <div id="otraObraWrap" style="display:none; margin-top:8px; gap:8px; align-items:center; flex-wrap:wrap">
@@ -369,6 +365,7 @@ select { cursor: pointer; appearance: none; background-image: url("data:image/sv
           <span class="tag-opt" onclick="toggleEnfoque(this)">Mindfulness</span>
           <span class="tag-opt" onclick="toggleEnfoque(this)">Narrativo</span>
         </div>
+        <span class="field-error" id="error-enfoques" style="display:none"></span>
       </div>
       <div class="field">
         <label>Especializaciones / problemáticas que trabajás</label>
@@ -392,6 +389,7 @@ select { cursor: pointer; appearance: none; background-image: url("data:image/sv
           <span class="tag-opt" onclick="toggleTag(this,'espec')">Crisis vitales</span>
           <span class="tag-opt" onclick="toggleTag(this,'espec')">Adicciones</span>
         </div>
+        <span class="field-error" id="error-especializaciones" style="display:none"></span>
       </div>
       <div class="form-grid">
         <div class="field">
@@ -400,6 +398,7 @@ select { cursor: pointer; appearance: none; background-image: url("data:image/sv
             <span class="tag-opt" onclick="toggleTag(this,'modal')">Online</span>
             <span class="tag-opt" onclick="toggleTag(this,'modal')">Presencial</span>
           </div>
+          <span class="field-error" id="error-modalidades" style="display:none"></span>
         </div>
         <div class="field">
           <label>Edades que recibís</label>
@@ -409,6 +408,7 @@ select { cursor: pointer; appearance: none; background-image: url("data:image/sv
             <span class="tag-opt" onclick="toggleTag(this,'edad')">Adultos (18-60)</span>
             <span class="tag-opt" onclick="toggleTag(this,'edad')">Adultos mayores (60+)</span>
           </div>
+          <span class="field-error" id="error-edades" style="display:none"></span>
         </div>
       </div>
     </div>
@@ -776,7 +776,17 @@ function validateStep(step) {
   }
   if (step === 1) {
     ok = validate('f-ciudad', 'ciudad', v => v.trim().length > 1) && ok;
-    ok = validate('f-honorario', 'honorario', v => v.trim().length > 0) && ok;
+    ok = validate('f-localidad', 'localidad', v => v.trim().length > 1) && ok;
+  }
+  if (step === 2) {
+    const enfoques = document.querySelectorAll('#enfoques .tag-opt.selected').length;
+    const especializaciones = document.querySelectorAll('#especializaciones .tag-opt.selected').length;
+    const modalidades = document.querySelectorAll('#modalidades .tag-opt.selected').length;
+    const edades = document.querySelectorAll('#edades .tag-opt.selected').length;
+    if (enfoques === 0) { showTagError('error-enfoques', 'Seleccioná al menos un enfoque'); ok = false; } else hideTagError('error-enfoques');
+    if (especializaciones === 0) { showTagError('error-especializaciones', 'Seleccioná al menos una especialización'); ok = false; } else hideTagError('error-especializaciones');
+    if (modalidades === 0) { showTagError('error-modalidades', 'Seleccioná al menos una modalidad'); ok = false; } else hideTagError('error-modalidades');
+    if (edades === 0) { showTagError('error-edades', 'Seleccioná al menos un grupo etario'); ok = false; } else hideTagError('error-edades');
   }
   return ok;
 }
@@ -1162,6 +1172,15 @@ function addOtraObra(e) {
   container.insertBefore(tag, document.getElementById('otraObraBtn'));
   document.getElementById('otraObra').value = '';
   document.getElementById('otraObraWrap').style.display = 'none';
+}
+
+function showTagError(id, msg) {
+  const el = document.getElementById(id);
+  if (el) { el.textContent = msg; el.style.display = 'block'; }
+}
+function hideTagError(id) {
+  const el = document.getElementById(id);
+  if (el) { el.style.display = 'none'; }
 }
 
 // Limpiar errores al escribir
