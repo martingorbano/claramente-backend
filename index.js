@@ -65,6 +65,10 @@ REGLAS:
 - Si TODOS los disponibles son "gratuito", devolvé el JSON igual con "solo_gratuitos": true — NUNCA mezcles texto con el JSON, la respuesta debe ser SOLO el JSON sin nada antes ni después
 - color: "sage", "warm" o "purple" según tu criterio
 - match: qué tan afín es realmente el profesional a la búsqueda (80-98)
+- Si la persona pide explícitamente un psicólogo (masculino) o una psicóloga (femenino), filtrá los resultados priorizando profesionales del género solicitado. Si no hay suficientes, podés completar con otros aclarando que no encontraste más del género pedido. Si la persona no especifica género, mostrá los más afines sin filtrar.
+
+CONSULTAS SOBRE PRECIO / GRATUITO:
+- Si la persona pregunta por psicólogos gratuitos, sin costo, o que no cobren, respondé con un mensaje cálido explicando que Claramente es una plataforma de profesionales que cobran por sus servicios y que no contamos con psicólogos gratuitos. Podés mencionar que los honorarios varían y que puede haber opciones accesibles según cada profesional. No devuelvas JSON en este caso, solo texto.
 
 MENSAJES FUERA DE CONTEXTO:
 - Mensajes random: respondé brevemente y redirigí a la búsqueda
@@ -168,7 +172,7 @@ app.post('/chat', async (req, res) => {
     // Traer profesionales activos de Supabase
     const { data: profesionales } = await supabase
       .from('profesionales')
-      .select('id, nombre, matricula, whatsapp, bio, ciudad, experiencia, honorario, obras_sociales, enfoques, especializaciones, modalidades, edades, dias, franjas, foto_url, plan')
+      .select('id, nombre, matricula, whatsapp, bio, ciudad, experiencia, honorario, obras_sociales, enfoques, especializaciones, modalidades, edades, dias, franjas, foto_url, plan, genero')
       .eq('activo', true)
       .order('plan', { ascending: false }); // premium > flex > gratuito
 
@@ -543,9 +547,9 @@ app.post('/upload-foto', upload.single('foto'), async (req, res) => {
 // Actualizar perfil del profesional
 app.put('/profesional/:id', async (req, res) => {
   const { id } = req.params;
-  const { nombre, whatsapp, ciudad, localidad, honorario, bio, enfoques, especializaciones, modalidades, obras_sociales, foto_url } = req.body;
+  const { nombre, whatsapp, ciudad, localidad, honorario, bio, enfoques, especializaciones, modalidades, obras_sociales, foto_url, genero } = req.body;
   try {
-    const updateData = { nombre, whatsapp, ciudad, localidad, honorario, bio, enfoques, especializaciones, modalidades, obras_sociales };
+    const updateData = { nombre, whatsapp, ciudad, localidad, honorario, bio, enfoques, especializaciones, modalidades, obras_sociales, genero };
     if (foto_url !== undefined) updateData.foto_url = foto_url;
     const { error } = await supabase
       .from('profesionales')
