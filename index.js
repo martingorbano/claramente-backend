@@ -1,5 +1,7 @@
 const express = require('express');
 const crypto = require('crypto');
+const multer = require('multer');
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 2 * 1024 * 1024 } });
 const { MercadoPagoConfig, PreApprovalPlan, PreApproval } = require('mercadopago');
 const { Resend } = require('resend');
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -489,6 +491,35 @@ app.post('/login', async (req, res) => {
   } catch (error) {
     console.error('Error login:', error.message);
     res.status(500).json({ error: 'Error al iniciar sesión' });
+  }
+});
+
+// Upload foto de perfil
+app.post('/upload-foto', upload.single('foto'), async (req, res) => {
+  const { psy_id } = req.body;
+  if (!req.file || !psy_id) return res.status(400).json({ error: 'Faltan datos' });
+  try {
+    const ext = req.file.mimetype.split('/')[1] || 'jpg';
+    const filename = `fotos/${psy_id}.${ext}`;
+    
+    const { error: uploadError } = await supabase.storage
+      .from('claramente')
+      .upload(filename, req.file.buffer, {
+        contentType: req.file.mimetype,
+        upsert: true
+      });
+    
+    if (uploadError) throw uploadError;
+
+    const { data: { publicUrl } } = supabase.storage
+      .from('claramente')
+      .getPublicUrl(filename);
+
+    await supabase.from('profesionales').update({ foto_url: publicUrl }).eq('id', psy_id);
+    res.json({ ok: true, foto_url: publicUrl });
+  } catch(e) {
+    console.error('Error upload foto:', e.message);
+    res.status(500).json({ error: 'Error al subir foto' });
   }
 });
 
