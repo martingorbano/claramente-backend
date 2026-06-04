@@ -474,7 +474,7 @@ select { cursor: pointer; appearance: none; background-image: url("data:image/sv
           <div class="plan-name" style="font-size:22px">Plan Premium</div>
           <div style="font-size:13px;color:var(--text-muted);margin-top:2px">Máxima visibilidad y estadísticas completas</div>
         </div>
-        <div class="plan-price" style="color:#B8860B;font-size:28px">$79.900 <small>/ mes</small></div>
+        <div class="plan-price" style="color:#B8860B;font-size:28px">$44.900 <small>/ mes</small></div>
       </div>
       <div class="divider" style="margin:0"></div>
       <div class="plan-features">
@@ -496,7 +496,7 @@ select { cursor: pointer; appearance: none; background-image: url("data:image/sv
           <div class="plan-name" style="font-size:17px">Plan Flex</div>
           <div style="font-size:13px;color:var(--text-muted);margin-top:2px">Foto, contacto directo y segunda posición</div>
         </div>
-        <div class="plan-price" style="color:var(--sage-dark)">$59.900 <small>/ mes</small></div>
+        <div class="plan-price" style="color:var(--sage-dark)">$32.500 <small>/ mes</small></div>
       </div>
       <div class="divider" style="margin:0"></div>
       <div class="plan-features">
@@ -536,7 +536,7 @@ select { cursor: pointer; appearance: none; background-image: url("data:image/sv
             <div class="pago-monto-sub">Suscripcion mensual · cancelable en cualquier momento</div>
           </div>
           <div style="text-align:right">
-            <div class="pago-monto-val">$59.900</div>
+            <div class="pago-monto-val">$32.500</div>
             <div class="pago-monto-sub">/ mes</div>
           </div>
         </div>
@@ -863,8 +863,8 @@ function selectPlan(plan) {
   if (plan === 'gratuito'&& planFree) { planFree.style.borderColor = 'var(--sage-mid)'; planFree.style.boxShadow = '0 4px 12px rgba(74,124,111,0.1)'; }
 
   const labels = {
-    premium:  '✓ Seleccionaste Plan Premium — $79.900/mes',
-    flex:     '✓ Seleccionaste Plan Flex — $59.900/mes',
+    premium:  '✓ Seleccionaste Plan Premium — $44.900/mes',
+    flex:     '✓ Seleccionaste Plan Flex — $32.500/mes',
     gratuito: '✓ Seleccionaste Plan Gratuito'
   };
   const lbl = document.getElementById('planSelected');
@@ -898,7 +898,7 @@ function buildResumen() {
     ['Edades', formData.edades?.join(', ') || '—'],
     ['Disponibilidad', formData.dias?.join(', ') || '—'],
     ['Franjas', formData.franjas?.join(', ') || '—'],
-    ['Plan', formData.plan === 'pro' ? 'Pro — $59.900/mes' : 'Gratuito'],
+    ['Plan', formData.plan === 'pro' ? 'Pro — $32.500/mes' : 'Gratuito'],
   ];
 
   r.innerHTML = rows.map(([k, val]) => `
@@ -1088,7 +1088,7 @@ function setupPago() {
     btnPago.textContent = 'Ir a pagar →';
 
     // Actualizar el monto según el plan
-    const monto = plan === 'premium' ? '$79.900' : '$59.900';
+    const monto = plan === 'premium' ? '$44.900' : '$32.500';
     const nombrePlan = plan === 'premium' ? 'Plan Premium · claramentepsi' : 'Plan Flex · claramentepsi';
     const linkMP = plan === 'premium'
       ? 'https://www.mercadopago.com.ar/subscriptions/checkout?preapproval_plan_id=7cd85b4484f942e2a500303ce9a4f434'
