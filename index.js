@@ -139,7 +139,7 @@ async function notificarGratuito(profesional, queryTexto) {
             Sin embargo, <strong style="color: #1C2B28;">no pudieron contactarte</strong> porque tu perfil está en el plan gratuito y no muestra tu número de WhatsApp.
           </p>
           <p style="font-size: 15px; line-height: 1.7; color: #6B847E; margin-bottom: 28px;">
-            Con el plan <strong style="color: #1C2B28;">Flex ($59.900/mes)</strong> o <strong style="color: #B8860B;">Premium ($79.900/mes)</strong> los pacientes pueden contactarte directamente — y vos aparecés primero cuando sos el match correcto.
+            Con el plan <strong style="color: #1C2B28;">Flex ($32.500/mes)</strong> o <strong style="color: #B8860B;">Premium ($44.900/mes)</strong> los pacientes pueden contactarte directamente — y vos aparecés primero cuando sos el match correcto.
           </p>
           <a href="https://claramente-backend.onrender.com/login.html" 
              style="display: inline-block; background: #4A7C6F; color: white; padding: 12px 28px; border-radius: 24px; text-decoration: none; font-size: 14px; font-weight: 500;">
