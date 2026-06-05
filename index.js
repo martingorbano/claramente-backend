@@ -53,7 +53,8 @@ Cuando tengas suficiente info (1-2 intercambios alcanza), respondé ÚNICAMENTE 
       "color": "sage",
       "plan": "premium / flex / gratuito",
       "whatsapp": "numero de whatsapp",
-      "ciudad": "ciudad donde atiende (copiala del campo ciudad de la base de datos)"
+      "ciudad": "ciudad donde atiende (copiala del campo ciudad de la base de datos)",
+      "foto_url": "copiá exactamente el campo foto_url de la base de datos, o null si no tiene"
     }
   ]
 }
