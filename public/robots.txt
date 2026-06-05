@@ -1,0 +1,12 @@
+User-agent: *
+Allow: /
+Disallow: /panel.html
+Disallow: /login.html
+Disallow: /recuperar-password.html
+Disallow: /reset-password.html
+Disallow: /verificar-email.html
+Disallow: /confirmar-email.html
+Disallow: /pago-exitoso.html
+Disallow: /claramentepsi-registro-profesional.html
+
+Sitemap: https://claramentepsi.com/sitemap.xml
