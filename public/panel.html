@@ -601,12 +601,18 @@ function inicializarFoto() {
 inicializarFoto();
 
 function renderGrafico(grafico) {
-  // Generar las últimas 8 semanas
+  // Generar las últimas 8 semanas — igual que el backend (domingo como inicio)
   const semanas = [];
   const labels = [];
+  const hoy = new Date();
+  // Ir al domingo de la semana actual
+  const domingoActual = new Date(hoy);
+  domingoActual.setDate(hoy.getDate() - hoy.getDay());
+  domingoActual.setHours(0, 0, 0, 0);
+
   for (let i = 7; i >= 0; i--) {
-    const d = new Date();
-    d.setDate(d.getDate() - (i * 7) - d.getDay());
+    const d = new Date(domingoActual);
+    d.setDate(domingoActual.getDate() - (i * 7));
     const key = d.toISOString().split('T')[0];
     semanas.push(key);
     labels.push(`Sem ${8 - i}`);
