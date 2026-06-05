@@ -501,7 +501,7 @@ function renderCards(profesionales, query) {
   cardsEl.innerHTML = '';
   hint.textContent = 'Los resultados se ordenan por afinidad real · los profesionales destacados aparecen primero';
 
-  profesionales.forEach((p) => {
+  profesionales.slice(0, 6).forEach((p) => {
     const col = COLORS[p.color] || COLORS.sage;
     const tags = [p.enfoque, p.modalidad, ...(p.obras_sociales || [])].filter(Boolean);
     const esPremium  = p.plan === 'premium';
@@ -527,7 +527,9 @@ function renderCards(profesionales, query) {
     card.innerHTML = `
       ${badgeHTML}
       <div class="card-head">
-        <div class="card-avatar" style="background:${col.bg};color:${col.color}">${p.iniciales}</div>
+        <div class="card-avatar" style="background:${col.bg};color:${col.color};overflow:hidden;padding:0">
+          ${p.foto_url ? `<img src="${p.foto_url}" style="width:100%;height:100%;object-fit:cover;border-radius:50%" onerror="this.parentElement.innerHTML='${p.iniciales}'" />` : p.iniciales}
+        </div>
         <div>
           <div class="card-name">${p.nombre}</div>
           <div class="card-sub">${p.especialidad}</div>
