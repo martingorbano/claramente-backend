@@ -1,6 +1,7 @@
 const express = require('express');
 const crypto = require('crypto');
 const multer = require('multer');
+const rateLimit = require('express-rate-limit');
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 2 * 1024 * 1024 } });
 const { MercadoPagoConfig, PreApprovalPlan, PreApproval } = require('mercadopago');
 const { Resend } = require('resend');
@@ -17,7 +18,36 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(cors({ origin: '*', methods: ['GET', 'POST', 'PUT'], allowedHeaders: ['Content-Type'] }));
-app.use(express.json());
+app.use(express.json({ limit: '50kb' })); // limitar tamaño de requests
+
+// Rate limiting general
+const limiterGeneral = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutos
+  max: 100,
+  message: { error: 'Demasiadas solicitudes. Intentá en unos minutos.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Rate limiting estricto para el chat (IA)
+const limiterChat = rateLimit({
+  windowMs: 60 * 1000, // 1 minuto
+  max: 10,
+  message: { error: 'Demasiadas consultas al asistente. Esperá un momento.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Rate limiting para login (anti brute force)
+const limiterLogin = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutos
+  max: 10,
+  message: { error: 'Demasiados intentos de login. Intentá en 15 minutos.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+app.use(limiterGeneral);
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Rutas de áreas de atención
@@ -171,11 +201,14 @@ app.get('/health', (req, res) => {
 });
 
 // Chat con agente
-app.post('/chat', async (req, res) => {
+app.post('/chat', limiterChat, async (req, res) => {
   const { messages } = req.body;
   if (!messages || !Array.isArray(messages)) {
     return res.status(400).json({ error: 'messages requerido' });
   }
+  if (messages.length > 20) return res.status(400).json({ error: 'Conversación demasiado larga' });
+  const lastMsg = messages[messages.length - 1]?.content || '';
+  if (typeof lastMsg === 'string' && lastMsg.length > 2000) return res.status(400).json({ error: 'Mensaje demasiado largo' });
 
   try {
     // Traer profesionales activos de Supabase
@@ -483,7 +516,7 @@ app.post('/registro', async (req, res) => {
 });
 
 // Login profesional
-app.post('/login', async (req, res) => {
+app.post('/login', limiterLogin, async (req, res) => {
   const { email, password } = req.body;
   if (!email || !password) return res.status(400).json({ error: 'Email y contraseña requeridos' });
 
