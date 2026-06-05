@@ -505,7 +505,7 @@ app.post('/registro', async (req, res) => {
     }).select().single();
 
     if (error) throw error;
-    const { password_hash, ...profesional } = data;
+    const { password_hash: _ph, ...profesional } = data;
     res.json({ ok: true, profesional });
   } catch (error) {
     console.error('Error registro:', error.message);
