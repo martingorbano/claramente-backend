@@ -96,14 +96,14 @@ Cuando tengas suficiente info (1-2 intercambios alcanza), respondé ÚNICAMENTE 
 REGLAS:
 - Usá SOLO profesionales de la lista que se te provee
 - El campo "id" es OBLIGATORIO — copialo exactamente del campo id de la base de datos sin modificarlo
-- El campo "plan" es OBLIGATORIO — copialo exactamente del campo plan de la base de datos (puede ser "premium", "flex" o "gratuito") — NUNCA lo cambies ni lo inventes
+- El campo "plan" es OBLIGATORIO — copialo exactamente del campo plan de la base de datos (puede ser "premium" o "gratuito") — NUNCA lo cambies ni lo inventes
 - Mostrá SOLO los datos que realmente existen en el perfil — nunca inventes obras sociales, enfoques ni especializaciones que no estén en los datos
 - Si el campo obras_sociales está vacío o es null, no muestres ninguna obra social en la tarjeta
 - Si obras_sociales contiene solo "Particular", mostrá el tag como "Solo particular"
 - Si obras_sociales contiene "Particular" junto a otras obras sociales, mostrá las obras sociales normalmente sin mencionar "Particular"
 - Si el campo enfoques está vacío, no muestres enfoques
 - Si no hay profesionales en la base, avisá amablemente que todavía no hay profesionales disponibles para esa búsqueda
-- Orden: premium primero, luego flex, luego gratuito
+- Orden: premium primero, luego gratuito
 - Los profesionales "gratuito" NO tienen whatsapp — poné null en ese campo
 - Si TODOS los disponibles son "gratuito", devolvé el JSON igual con "solo_gratuitos": true — NUNCA mezcles texto con el JSON, la respuesta debe ser SOLO el JSON sin nada antes ni después
 - color: "sage", "warm" o "purple" según tu criterio
@@ -174,7 +174,7 @@ async function notificarGratuito(profesional, queryTexto) {
             Sin embargo, <strong style="color: #1C2B28;">no pudieron contactarte</strong> porque tu perfil está en el plan gratuito y no muestra tu número de WhatsApp.
           </p>
           <p style="font-size: 15px; line-height: 1.7; color: #6B847E; margin-bottom: 28px;">
-            Con el plan <strong style="color: #1C2B28;">Flex ($32.500/mes)</strong> o <strong style="color: #B8860B;">Premium ($44.900/mes)</strong> los pacientes pueden contactarte directamente — y vos aparecés primero cuando sos el match correcto.
+            Con el plan <strong style="color: #1C2B28;">Flex ($32.500/mes)</strong> o <strong style="color: #B8860B;">Premium ($32.500/mes)</strong> los pacientes pueden contactarte directamente — y vos aparecés primero cuando sos el match correcto.
           </p>
           <a href="https://claramente-backend.onrender.com/login.html" 
              style="display: inline-block; background: #4A7C6F; color: white; padding: 12px 28px; border-radius: 24px; text-decoration: none; font-size: 14px; font-weight: 500;">
@@ -669,8 +669,7 @@ app.post('/registro-pendiente', async (req, res) => {
 
     // IDs de los planes en MP
     const planIds = {
-      premium: '7cd85b4484f942e2a500303ce9a4f434',
-      flex: '7b2754ae1b744bdc85d1f828c778f6be'
+      premium: '7b2754ae1b744bdc85d1f828c778f6be'
     };
 
     const backUrl = `${process.env.APP_URL || 'https://claramente-backend.onrender.com'}/pago-exitoso.html?session_id=${session_id}`;
