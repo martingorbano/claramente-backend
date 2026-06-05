@@ -310,6 +310,15 @@ select { cursor: pointer; appearance: none; background-image: url("data:image/sv
           <input type="text" id="ciudad" placeholder="Ej: Mendoza" />
           <span class="field-error">Ingresá tu ciudad</span>
         </div>
+        <div class="field">
+          <label>Género</label>
+          <select id="genero">
+            <option value="">Sin especificar</option>
+            <option value="F">Mujer</option>
+            <option value="M">Hombre</option>
+            <option value="NB">No binario</option>
+          </select>
+        </div>
         <div class="field" id="f-localidad">
           <label>Localidad donde atendés</label>
           <input type="text" id="localidad" placeholder="Ej: Maipú, Godoy Cruz" />
@@ -814,6 +823,7 @@ function collectStep(step) {
     formData.bio = v('bio');
     formData.ciudad = v('ciudad');
     formData.localidad = v('localidad');
+    formData.genero = v('genero');
     formData.experiencia = v('experiencia');
     formData.honorario = v('honorario');
     formData.obrasSociales = getSelected('obrasSociales');
