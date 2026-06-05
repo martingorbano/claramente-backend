@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>claramentepsi · Registro profesional</title>
+<title>Claramente · Registro profesional</title>
 <link rel="icon" type="image/x-icon" href="/favicon.ico">
 <link rel="icon" type="image/png" sizes="512x512" href="/favicon-512.png">
 <link rel="icon" type="image/png" sizes="192x192" href="/favicon-192.png">
@@ -546,7 +546,7 @@ select { cursor: pointer; appearance: none; background-image: url("data:image/sv
         <div class="pago-monto">
           <div>
             <div class="pago-monto-label">Plan Pro · claramentepsi</div>
-            <div class="pago-monto-sub">Suscripcion mensual · cancelable en cualquier momento</div>
+            <div class="pago-monto-sub">Suscripción mensual · cancelable en cualquier momento</div>
           </div>
           <div style="text-align:right">
             <div class="pago-monto-val">$32.500</div>
@@ -656,7 +656,7 @@ window.addEventListener('load', () => {
     } catch(e) { console.error('Error retomando registro:', e); }
   }
   if (params.get('error')) {
-    alert('El link de verificacion expiro o es invalido. Por favor intenta de nuevo.');
+    alert('El link de verificación expiró o es inválido. Por favor intenta de nuevo.');
   }
 });
 
@@ -1128,9 +1128,9 @@ function selectMetodo(el, tipo) {
   formData.metodoPago = tipo;
   document.getElementById('btnPago').disabled = false;
   const msgs = {
-    tarjeta: ['Pago con tarjeta', 'Al continuar te redirigimos al checkout de MercadoPago para ingresar los datos de tu tarjeta de forma segura. Tu suscripcion se renueva automaticamente cada mes.'],
+    tarjeta: ['Pago con tarjeta', 'Al continuar te redirigimos al checkout de MercadoPago para ingresar los datos de tu tarjeta de forma segura. Tu suscripción se renueva automáticamente cada mes.'],
     transferencia: ['Transferencia bancaria', 'Al confirmar te mostramos el alias y CVU de claramentepsi. Tu perfil se activa dentro de las 2 hs habiles despues de acreditado el pago.'],
-    mp: ['Pago con MercadoPago', 'Al continuar te redirigimos a tu cuenta de MercadoPago para autorizar el debito mensual automatico. Podes cancelar cuando quieras.'],
+    mp: ['Pago con MercadoPago', 'Al continuar te redirigimos a tu cuenta de MercadoPago para autorizar el débito mensual automático. Podés cancelar cuando quieras.'],
   };
   document.getElementById('pagoMetodoTitle').textContent = msgs[tipo][0];
   document.getElementById('pagoMetodoText').textContent = msgs[tipo][1];
