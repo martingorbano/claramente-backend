@@ -593,7 +593,7 @@ select { cursor: pointer; appearance: none; background-image: url("data:image/sv
       <div class="success-icon">✓</div>
       <h2>¡Tu perfil está publicado!</h2>
       <p>Ya aparecés en claramentepsi. Cuando alguien busque un profesional con tu perfil, el agente te va a sugerir y los pacientes podrán contactarte por WhatsApp.</p>
-      <button class="success-btn" onclick="window.location.href='claramentepsi.html'">Ir a mi panel →</button>
+      <button class="success-btn" onclick="window.location.href='/panel.html'">Ir a mi panel →</button>
     </div>
   </div>
 
@@ -983,14 +983,10 @@ async function submit() {
         btn.textContent = 'Publicar perfil →';
         return;
       }
-      // Login automático
-      const loginRes = await fetch('/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: datos.email, password: datos.password })
-      });
-      const loginData = await loginRes.json();
-      if (loginData.profesional) localStorage.setItem('clm_profesional', JSON.stringify(loginData.profesional));
+      // Guardar sesión automáticamente con los datos que ya devuelve /registro
+      if (data.profesional) {
+        localStorage.setItem('clm_profesional', JSON.stringify(data.profesional));
+      }
       showStep(7);
 
     } else {
