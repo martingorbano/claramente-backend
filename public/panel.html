@@ -537,7 +537,7 @@ function upgrade() {
   const plan = profesional.plan || 'gratuito';
   if (plan === 'gratuito') {
     // Mostrar opciones de plan
-    const elegir = confirm('Que plan queres activar?\n\nPremium - $44.900/mes (tarjeta grande, primera posicion, estadisticas)\n\nFlex - $32.500/mes (foto, contacto, segunda posicion)\n\nAceptar = Premium / Cancelar = Flex');
+    const elegir = confirm('¿Qué plan querés activar?\n\nPremium - $44.900/mes (tarjeta grande, primera posición, estadísticas)\n\nFlex - $32.500/mes (foto, contacto, segunda posición)\n\nAceptar = Premium / Cancelar = Flex');
     if (elegir) {
       window.open('https://www.mercadopago.com.ar/subscriptions/checkout?preapproval_plan_id=7cd85b4484f942e2a500303ce9a4f434', '_blank');
     } else {
