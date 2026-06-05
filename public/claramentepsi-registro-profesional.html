@@ -476,7 +476,7 @@ select { cursor: pointer; appearance: none; background-image: url("data:image/sv
   <!-- PASO 5: Plan -->
   <div class="panel" id="panel-4">
     <div class="panel-title">Elegí tu plan</div>
-    <div class="panel-sub">Podés empezar gratis. Cuando veas que llegan consultas, Premium o Flex te aseguran aparecer primero y ser contactado.</div>
+    <div class="panel-sub">Podés empezar gratis. Cuando veas que llegan consultas, el plan Premium te asegura aparecer primero y ser contactado.</div>
 
     <div class="plan-card" id="planPro" style="cursor:pointer;border:2px solid #B8860B;background:linear-gradient(135deg,#FFFFF8 0%,#FDF8E8 100%)" onclick="selectPlan('premium')">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
@@ -487,7 +487,7 @@ select { cursor: pointer; appearance: none; background-image: url("data:image/sv
           <div class="plan-name" style="font-size:22px">Plan Premium</div>
           <div style="font-size:13px;color:var(--text-muted);margin-top:2px">Máxima visibilidad y estadísticas completas</div>
         </div>
-        <div class="plan-price" style="color:#B8860B;font-size:28px">$44.900 <small>/ mes</small></div>
+        <div class="plan-price" style="color:#B8860B;font-size:28px">$32.500 <small>/ mes</small></div>
       </div>
       <div class="divider" style="margin:0"></div>
       <div class="plan-features">
@@ -497,32 +497,15 @@ select { cursor: pointer; appearance: none; background-image: url("data:image/sv
         <div class="plan-feat">Estadísticas: cuántas personas vieron tu perfil y te contactaron</div>
         <div class="plan-feat">Badge "Profesional destacado" visible en los resultados</div>
       </div>
-      <div style="font-size:12px;color:var(--sage);font-weight:500">← Por solo $20.000 más que el Flex, con el doble de visibilidad</div>
+      
     </div>
 
-    <div style="margin:16px 0"></div>
 
-    <!-- Flex -->
-    <div class="plan-card" id="planFlex" style="cursor:pointer;border-color:var(--sage-mid);margin-bottom:12px" onclick="selectPlan('flex')">
-      <div class="plan-header">
-        <div>
-          <div class="plan-name" style="font-size:17px">Plan Flex</div>
-          <div style="font-size:13px;color:var(--text-muted);margin-top:2px">Foto, contacto directo y segunda posición</div>
-        </div>
-        <div class="plan-price" style="color:var(--sage-dark)">$32.500 <small>/ mes</small></div>
-      </div>
-      <div class="divider" style="margin:0"></div>
-      <div class="plan-features">
-        <div class="plan-feat">Foto de perfil visible para los pacientes</div>
-        <div class="plan-feat">Botón de WhatsApp directo en tu tarjeta</div>
-        <div class="plan-feat">Aparecés después de los Premium</div>
-      </div>
-    </div>
 
     <!-- Gratuito -->
     <div class="plan-free" id="planFree" style="cursor:pointer" onclick="selectPlan('gratuito')">
       <div class="plan-free-label">Plan gratuito</div>
-      <div class="plan-free-desc">Tu perfil aparece en los resultados sin foto ni contacto directo. Cuando alguien te encuentre pero no pueda contactarte, te avisamos por mail para que puedas evaluar si vale la pena suscribirte.</div>
+      <div class="plan-free-desc">Tu perfil aparece en los resultados sin foto ni contacto directo. Cuando alguien te encuentre, te avisamos por mail para que puedas evaluar si vale la pena suscribirte al plan Premium.</div>
     </div>
 
     <div id="planSelected" style="font-size:13px;color:var(--sage);margin-top:14px;font-weight:500;display:none"></div>
@@ -580,7 +563,7 @@ select { cursor: pointer; appearance: none; background-image: url("data:image/sv
     <div id="pagoFree" style="display:none">
       <div class="pago-free-notice">
         <strong>Empezas con el plan gratuito</strong>
-        Tu perfil se publica sin costo. Cuando quieras activar Premium o Flex para aparecer primero y ser contactado, podés hacerlo desde tu panel en cualquier momento.
+        Tu perfil se publica sin costo. Cuando quieras activar Premium para aparecer primero y ser contactado, podés hacerlo desde tu panel en cualquier momento.
       </div>
     </div>
     <div class="nav-btns">
@@ -754,7 +737,7 @@ async function next(step) {
   if (step === 4) { setupPago(); }
   if (step === 5) {
     const plan = formData.plan || 'gratuito';
-    if ((plan === 'premium' || plan === 'flex') && window._mpLink) {
+    if (plan === 'premium' && window._mpLink) {
       // Abrir MercadoPago y cambiar el botón a "Ya pagué, continuar"
       window.open(window._mpLink, '_blank');
       const btn = document.getElementById('btnPago');
@@ -864,20 +847,20 @@ function selectPlan(plan) {
 
   // Reset todos los estilos
   const planPro  = document.getElementById('planPro');
-  const planFlex = document.getElementById('planFlex');
+  
   const planFree = document.getElementById('planFree');
 
   if (planPro)  { planPro.style.borderColor  = '#E8D48A'; planPro.style.borderWidth  = '2px'; planPro.style.boxShadow  = 'none'; planPro.style.transform  = 'none'; }
-  if (planFlex) { planFlex.style.borderColor = 'var(--sage-mid)'; planFlex.style.borderWidth = '1px'; planFlex.style.boxShadow = 'none'; planFlex.style.transform = 'none'; }
+  
   if (planFree) { planFree.style.borderColor = 'var(--border)'; planFree.style.boxShadow = 'none'; planFree.style.transform = 'none'; }
 
   // Resaltar el seleccionado
   if (plan === 'premium' && planPro)  { planPro.style.borderColor  = '#B8860B'; planPro.style.borderWidth  = '3px'; planPro.style.boxShadow  = '0 6px 24px rgba(184,134,11,0.2)'; planPro.style.transform  = 'translateY(-2px)'; }
-  if (plan === 'flex'    && planFlex) { planFlex.style.borderColor = 'var(--sage)'; planFlex.style.borderWidth = '2px'; planFlex.style.boxShadow = '0 6px 24px rgba(74,124,111,0.2)'; planFlex.style.transform = 'translateY(-2px)'; }
+  
   if (plan === 'gratuito'&& planFree) { planFree.style.borderColor = 'var(--sage-mid)'; planFree.style.boxShadow = '0 4px 12px rgba(74,124,111,0.1)'; }
 
   const labels = {
-    premium:  '✓ Seleccionaste Plan Premium — $44.900/mes',
+    premium:  '✓ Seleccionaste Plan Premium — $32.500/mes',
     flex:     '✓ Seleccionaste Plan Flex — $32.500/mes',
     gratuito: '✓ Seleccionaste Plan Gratuito'
   };
@@ -1085,7 +1068,7 @@ function addOtraObra(e) {
 // Setup panel de pago segun plan
 function setupPago() {
   const plan = formData.plan || 'gratuito';
-  const esPago = plan === 'premium' || plan === 'flex';
+  const esPago = plan === 'premium';
   const pagoPro = document.getElementById('pagoPro');
   const pagoFree = document.getElementById('pagoFree');
   const btnPago = document.getElementById('btnPago');
@@ -1098,15 +1081,15 @@ function setupPago() {
     btnPago.textContent = 'Ir a pagar →';
 
     // Actualizar el monto según el plan
-    const monto = plan === 'premium' ? '$44.900' : '$32.500';
-    const nombrePlan = plan === 'premium' ? 'Plan Premium · claramentepsi' : 'Plan Flex · claramentepsi';
+    const monto = plan === 'premium' ? '$32.500' : '$32.500';
+    const nombrePlan = 'Plan Premium · claramentepsi';
     const linkMP = plan === 'premium'
       ? 'https://www.mercadopago.com.ar/subscriptions/checkout?preapproval_plan_id=7cd85b4484f942e2a500303ce9a4f434'
       : 'https://www.mercadopago.com.ar/subscriptions/checkout?preapproval_plan_id=7b2754ae1b744bdc85d1f828c778f6be';
 
     document.querySelector('.pago-monto-label').textContent = nombrePlan;
     document.querySelector('.pago-monto-val').textContent = monto;
-    pagoSub.textContent = `Elegí cómo querés pagar el ${plan === 'premium' ? 'Plan Premium' : 'Plan Flex'}. Podés cancelar cuando quieras.`;
+    pagoSub.textContent = 'Elegí cómo querés pagar el Plan Premium. Podés cancelar cuando quieras.';
 
     // Guardar link de MP para usar al continuar
     window._mpLink = linkMP;
