@@ -330,7 +330,7 @@ textarea { resize: vertical; min-height: 80px; }
         </div>
         <div style="padding:14px;border-radius:12px;border:1.5px solid #B8860B;background:#FDF8E8">
           <div style="font-size:12px;font-weight:500;color:#B8860B;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.05em">Premium</div>
-          <div style="font-size:20px;font-weight:500;color:#B8860B">$44.900</div>
+          <div style="font-size:20px;font-weight:500;color:#B8860B">$32.500</div>
           <div style="font-size:11px;color:#B8860B">/mes</div>
         </div>
       </div>
@@ -492,16 +492,14 @@ async function guardarPerfil() {
 
 // Plan
 const MP_LINKS = {
-  premium: 'https://www.mercadopago.com.ar/subscriptions/checkout?preapproval_plan_id=7cd85b4484f942e2a500303ce9a4f434',
-  flex: 'https://www.mercadopago.com.ar/subscriptions/checkout?preapproval_plan_id=7b2754ae1b744bdc85d1f828c778f6be',
+  premium: 'https://www.mercadopago.com.ar/subscriptions/checkout?preapproval_plan_id=7b2754ae1b744bdc85d1f828c778f6be',
   cancelar: 'https://www.mercadopago.com.ar/subscriptions#from-section=menu'
 };
 
 function cargarPlan() {
   const plan = profesional.plan || 'gratuito';
   const planes = {
-    premium: { label: 'Destacado', badge: 'badge-premium', nombre: 'Plan Premium — $44.900/mes', desc: 'Tarjeta grande, primera posición, foto y estadísticas completas.' },
-    flex:    { label: 'Flex',      badge: 'badge-flex',    nombre: 'Plan Flex — $32.500/mes',    desc: 'Aparecés después de los Destacados, con foto y botón de contacto.' },
+    premium: { label: 'Destacado', badge: 'badge-premium', nombre: 'Plan Premium — $32.500/mes', desc: 'Tarjeta grande, primera posición, foto y estadísticas completas.' },
     gratuito:{ label: 'Gratuito',  badge: 'badge-gratuito',nombre: 'Plan Gratuito',               desc: 'Aparecés en resultados sin foto ni contacto directo.' },
   };
   const p = planes[plan] || planes.gratuito;
@@ -522,30 +520,14 @@ function cargarPlan() {
   };
 
   if (plan === 'gratuito') {
-    mkBtn('Activar Flex', MP_LINKS.flex, 'background:var(--sage-light);color:var(--sage-dark);border:1px solid var(--sage-mid)');
     mkBtn('Activar Premium', MP_LINKS.premium, 'background:#B8860B;color:white');
-  } else if (plan === 'flex') {
-    mkBtn('Subir a Premium', MP_LINKS.premium, 'background:#B8860B;color:white');
-    mkBtn('Cancelar suscripción', MP_LINKS.cancelar, 'background:transparent;color:var(--text-faint);border:1px solid var(--border)');
   } else if (plan === 'premium') {
-    mkBtn('Bajar a Flex', MP_LINKS.flex, 'background:var(--sage-light);color:var(--sage-dark);border:1px solid var(--sage-mid)');
     mkBtn('Cancelar suscripción', MP_LINKS.cancelar, 'background:transparent;color:var(--text-faint);border:1px solid var(--border)');
   }
 }
 
 function upgrade() {
-  const plan = profesional.plan || 'gratuito';
-  if (plan === 'gratuito') {
-    // Mostrar opciones de plan
-    const elegir = confirm('¿Qué plan querés activar?\n\nPremium - $44.900/mes (tarjeta grande, primera posición, estadísticas)\n\nFlex - $32.500/mes (foto, contacto, segunda posición)\n\nAceptar = Premium / Cancelar = Flex');
-    if (elegir) {
-      window.open('https://www.mercadopago.com.ar/subscriptions/checkout?preapproval_plan_id=7cd85b4484f942e2a500303ce9a4f434', '_blank');
-    } else {
-      window.open('https://www.mercadopago.com.ar/subscriptions/checkout?preapproval_plan_id=7b2754ae1b744bdc85d1f828c778f6be', '_blank');
-    }
-  } else if (plan === 'flex') {
-    window.open('https://www.mercadopago.com.ar/subscriptions/checkout?preapproval_plan_id=7cd85b4484f942e2a500303ce9a4f434', '_blank');
-  }
+  window.open(MP_LINKS.premium, '_blank');
 }
 
 // Tabs
