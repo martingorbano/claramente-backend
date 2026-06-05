@@ -54,6 +54,16 @@ const limiterLogin = rateLimit({
 app.use(limiterGeneral);
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Sitemap y robots
+app.get('/sitemap.xml', (req, res) => {
+  res.setHeader('Content-Type', 'application/xml');
+  res.sendFile(path.join(__dirname, 'public', 'sitemap.xml'));
+});
+app.get('/robots.txt', (req, res) => {
+  res.setHeader('Content-Type', 'text/plain');
+  res.sendFile(path.join(__dirname, 'public', 'robots.txt'));
+});
+
 // Rutas de áreas de atención
 const areas = ['ansiedad', 'pareja', 'ninos', 'adicciones', 'evaluaciones', 'neuropsicologia', 'judicial', 'vocacional'];
 areas.forEach(area => {
