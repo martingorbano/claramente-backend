@@ -17,7 +17,11 @@ const bcrypt = require('bcryptjs');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.use(cors({ origin: '*', methods: ['GET', 'POST', 'PUT'], allowedHeaders: ['Content-Type'] }));
+app.use(cors({
+  origin: ['https://claramentepsi.com', 'https://www.claramentepsi.com', 'https://claramente-backend.onrender.com'],
+  methods: ['GET', 'POST', 'PUT'],
+  allowedHeaders: ['Content-Type']
+}));
 app.use(express.json({ limit: '50kb' })); // limitar tamaño de requests
 
 // Rate limiting general
