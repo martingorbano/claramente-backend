@@ -186,7 +186,7 @@ async function notificarGratuito(profesional, queryTexto) {
           <p style="font-size: 15px; line-height: 1.7; color: #6B847E; margin-bottom: 28px;">
             Con el plan <strong style="color: #1C2B28;">Flex ($32.500/mes)</strong> o <strong style="color: #B8860B;">Premium ($32.500/mes)</strong> los pacientes pueden contactarte directamente — y vos aparecés primero cuando sos el match correcto.
           </p>
-          <a href="https://claramente-backend.onrender.com/login.html" 
+          <a href="https://claramentepsi.com/login.html" 
              style="display: inline-block; background: #4A7C6F; color: white; padding: 12px 28px; border-radius: 24px; text-decoration: none; font-size: 14px; font-weight: 500;">
             Activar mi plan →
           </a>
@@ -338,7 +338,7 @@ app.post('/verificar-email', async (req, res) => {
     // Guardar o actualizar verificación pendiente
     await supabase.from('email_verifications').upsert({ email, token, datos, verified: false, expires_at }, { onConflict: 'email' });
 
-    const verifyUrl = `${process.env.APP_URL || 'https://claramente-backend.onrender.com'}/confirmar-email?token=${token}`;
+    const verifyUrl = `${process.env.APP_URL || 'https://claramentepsi.com'}/confirmar-email?token=${token}`;
 
     await resend.emails.send({
       from: 'Claramente <soporte@claramentepsi.com>',
@@ -417,7 +417,7 @@ app.post('/recuperar-password', async (req, res) => {
 
     await supabase.from('password_resets').insert({ email, token, expires_at });
 
-    const resetUrl = `${process.env.APP_URL || 'https://claramente-backend.onrender.com'}/reset-password.html?token=${token}`;
+    const resetUrl = `${process.env.APP_URL || 'https://claramentepsi.com'}/reset-password.html?token=${token}`;
 
     await resend.emails.send({
       from: 'Claramente <soporte@claramentepsi.com>',
@@ -850,8 +850,9 @@ app.get('/verificar-pago', async (req, res) => {
     }
     res.json({ ok: true, procesado: false });
   } catch(e) {
-    // Si no encuentra el registro pendiente (error de single()), está procesado
-    res.json({ ok: true, procesado: true });
+    // Error real — devolver no procesado para que el frontend siga esperando
+    console.error('Error verificar-pago:', e.message);
+    res.json({ ok: true, procesado: false });
   }
 });
 
