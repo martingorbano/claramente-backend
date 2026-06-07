@@ -680,7 +680,7 @@ app.post('/registro-pendiente', async (req, res) => {
 
     // IDs de los planes en MP
     const planIds = {
-      premium: '7b2754ae1b744bdc85d1f828c778f6be'
+      premium: 'eefad72a6586412e8a74031b80c9ca0b'
     };
 
     const backUrl = `${process.env.APP_URL || 'https://claramente-backend.onrender.com'}/pago-exitoso.html?session_id=${session_id}`;
