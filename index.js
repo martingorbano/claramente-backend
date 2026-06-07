@@ -15,6 +15,7 @@ const path = require('path');
 const bcrypt = require('bcryptjs');
 
 const app = express();
+app.set('trust proxy', 1); // Render usa proxy
 const PORT = process.env.PORT || 3000;
 
 app.use(cors({
