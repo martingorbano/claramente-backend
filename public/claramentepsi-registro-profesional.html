@@ -738,14 +738,9 @@ async function next(step) {
   if (step === 5) {
     const plan = formData.plan || 'gratuito';
     if (plan === 'premium' && window._mpLink) {
-      // Abrir MercadoPago y cambiar el botón a "Ya pagué, continuar"
-      window.open(window._mpLink, '_blank');
-      const btn = document.getElementById('btnPago');
-      btn.disabled = false;
-      btn.textContent = 'Ya pagué · Continuar →';
-      // Esperar que el usuario confirme que pagó
-      btn.onclick = () => { buildResumen(); showStep(7); };
-      return; // No avanzar automáticamente
+      // Redirigir a MercadoPago — el webhook confirmará el pago
+      window.location.href = window._mpLink;
+      return;
     }
     buildResumen();
   }
