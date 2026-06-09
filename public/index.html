@@ -249,8 +249,7 @@ try {
   if (prof && prof.id) {
     const btnIngresar = document.querySelector('a[href="/login.html"]');
     if (btnIngresar) { btnIngresar.textContent = 'Mi panel'; btnIngresar.href = '/panel.html'; }
-    const btnSumate = document.querySelector('a[href="/claramentepsi-registro-profesional.html"]');
-    if (btnSumate) btnSumate.style.display = 'none';
+    document.querySelectorAll('a[href="/claramentepsi-registro-profesional.html"], a[href="claramentepsi-registro-profesional.html"]').forEach(btn => btn.style.display = 'none');
   }
 } catch(e) {}
 </script>
