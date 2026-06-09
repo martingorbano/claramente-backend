@@ -648,5 +648,14 @@ async function sendMessage() {
   }
 }
 </script>
+<script>
+// Ocultar botones de registro si hay sesión activa (ejecutar después de cargar el DOM)
+try {
+  const _prof = JSON.parse(localStorage.getItem('clm_profesional') || 'null');
+  if (_prof && _prof.id) {
+    document.querySelectorAll('a[href="/claramentepsi-registro-profesional.html"], a[href="claramentepsi-registro-profesional.html"]').forEach(btn => btn.style.display = 'none');
+  }
+} catch(e) {}
+</script>
 </body>
 </html>
