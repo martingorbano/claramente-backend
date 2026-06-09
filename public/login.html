@@ -75,6 +75,17 @@ document.querySelectorAll('input').forEach(i => {
   i.addEventListener('keydown', e => { if (e.key === 'Enter') login(); });
 });
 
+// Ocultar "Sumate a Claramente" si hay sesión activa
+try {
+  const _prof = JSON.parse(localStorage.getItem('clm_profesional') || 'null');
+  if (_prof && _prof.id) {
+    const btnSumate = document.querySelector('a[href="/claramentepsi-registro-profesional.html"]');
+    if (btnSumate) btnSumate.style.display = 'none';
+    const divider = document.querySelector('.divider');
+    if (divider) divider.style.display = 'none';
+  }
+} catch(e) {}
+
 async function login() {
   const email = document.getElementById('email').value.trim();
   const password = document.getElementById('password').value;
