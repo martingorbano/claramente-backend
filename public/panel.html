@@ -493,9 +493,17 @@ const MP_LINKS = {
 
 function cargarPlan() {
   const plan = profesional.plan || 'gratuito';
+  const esTrial = profesional.es_trial && profesional.trial_hasta;
+  const trialFecha = esTrial ? new Date(profesional.trial_hasta).toLocaleDateString('es-AR', { day:'numeric', month:'long' }) : '';
+  
   const planes = {
-    premium: { label: 'Destacado', badge: 'badge-premium', nombre: 'Plan Premium — $32.500/mes · Precio de lanzamiento', desc: 'Tarjeta grande, primera posición, foto y estadísticas completas.' },
-    gratuito:{ label: 'Gratuito',  badge: 'badge-gratuito',nombre: 'Plan Gratuito',               desc: 'Aparecés en resultados sin foto ni contacto directo.' },
+    premium: { 
+      label: esTrial ? 'Trial activo' : 'Destacado', 
+      badge: 'badge-premium', 
+      nombre: esTrial ? `Plan Premium — Trial activo hasta el ${trialFecha}` : 'Plan Premium — $32.500/mes · Precio de lanzamiento', 
+      desc: esTrial ? `Tu perfil está activo como Premium hasta el ${trialFecha}. Después podés suscribirte para continuar.` : 'Tarjeta grande, primera posición, foto y estadísticas completas.'
+    },
+    gratuito:{ label: 'Gratuito', badge: 'badge-gratuito', nombre: 'Plan Gratuito', desc: 'Aparecés en resultados sin foto ni contacto directo.' },
   };
   const p = planes[plan] || planes.gratuito;
   document.getElementById('planBadge').textContent = p.label;
