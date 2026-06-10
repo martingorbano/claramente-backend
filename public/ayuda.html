@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ayuda y soporte · Claramente</title>
+<meta name="description" content="Centro de ayuda de Claramente. Preguntas frecuentes y contacto de soporte para pacientes y profesionales.">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<link rel="icon" type="image/png" sizes="512x512" href="/favicon-512.png">
+<link rel="icon" type="image/png" sizes="192x192" href="/favicon-192.png">
+<link rel="apple-touch-icon" href="/favicon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --sage: #4A7C6F; --sage-light: #E8F2EF; --sage-mid: #A8C8C0; --sage-dark: #2C5048;
+  --warm: #F7F3EE; --warm-mid: #EDE6DC; --text: #1C2B28; --text-muted: #6B847E;
+  --text-faint: #9AAFAA; --border: #D8E8E4; --white: #FFFFFF; --radius: 16px;
+}
+body { font-family: 'DM Sans', sans-serif; background: var(--warm); color: var(--text); min-height: 100vh; }
+
+nav { display: flex; align-items: center; justify-content: space-between; padding: 16px 36px; background: var(--white); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 100; }
+.logo { font-family: 'Lora', serif; font-size: 20px; color: var(--text); letter-spacing: -0.02em; text-decoration: none; }
+.logo span { color: var(--sage); font-style: italic; }
+.nav-back { font-size: 13px; color: var(--text-muted); text-decoration: none; display: flex; align-items: center; gap: 6px; transition: color 0.18s; }
+.nav-back:hover { color: var(--sage); }
+
+.hero { background: var(--white); border-bottom: 1px solid var(--border); padding: 56px 24px 48px; text-align: center; }
+.hero-inner { max-width: 600px; margin: 0 auto; }
+.eyebrow { font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--sage); margin-bottom: 14px; }
+.hero h1 { font-family: 'Lora', serif; font-size: 38px; font-weight: 400; line-height: 1.2; margin-bottom: 14px; letter-spacing: -0.03em; }
+.hero h1 em { font-style: italic; color: var(--sage); }
+.hero-sub { font-size: 15px; color: var(--text-muted); line-height: 1.7; }
+
+.content { max-width: 760px; margin: 0 auto; padding: 56px 24px 80px; }
+
+/* TABS */
+.tabs { display: flex; gap: 4px; margin-bottom: 36px; border-bottom: 1px solid var(--border); }
+.tab-btn { font-size: 14px; padding: 10px 20px; border: none; background: transparent; color: var(--text-muted); cursor: pointer; font-family: 'DM Sans', sans-serif; border-bottom: 2px solid transparent; margin-bottom: -1px; transition: all 0.18s; }
+.tab-btn.active { color: var(--sage-dark); border-bottom-color: var(--sage); font-weight: 500; }
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+
+/* FAQ */
+.faq-group { margin-bottom: 32px; }
+.faq-group-title { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-faint); margin-bottom: 12px; }
+.faq-item { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 8px; overflow: hidden; }
+.faq-question { width: 100%; text-align: left; padding: 16px 20px; font-size: 14px; font-weight: 500; color: var(--text); background: transparent; border: none; cursor: pointer; font-family: 'DM Sans', sans-serif; display: flex; justify-content: space-between; align-items: center; gap: 12px; transition: background 0.18s; }
+.faq-question:hover { background: var(--warm); }
+.faq-arrow { font-size: 16px; color: var(--text-faint); transition: transform 0.2s; flex-shrink: 0; }
+.faq-item.open .faq-arrow { transform: rotate(180deg); }
+.faq-answer { font-size: 14px; color: var(--text-muted); line-height: 1.75; padding: 0 20px; max-height: 0; overflow: hidden; transition: max-height 0.3s ease, padding 0.3s ease; }
+.faq-item.open .faq-answer { max-height: 400px; padding: 0 20px 16px; }
+
+/* FORMULARIO */
+.form-card { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius); padding: 32px; }
+.form-title { font-family: 'Lora', serif; font-size: 22px; font-weight: 400; margin-bottom: 6px; }
+.form-sub { font-size: 14px; color: var(--text-muted); margin-bottom: 28px; line-height: 1.6; }
+.field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media (max-width: 560px) { .form-grid { grid-template-columns: 1fr; } nav { padding: 16px 20px; } .tab-btn { font-size: 13px; padding: 10px 14px; } }
+label { font-size: 13px; font-weight: 500; color: var(--text); }
+input, select, textarea { font-family: 'DM Sans', sans-serif; font-size: 14px; padding: 10px 14px; border: 1px solid var(--border); border-radius: 10px; background: var(--white); color: var(--text); outline: none; transition: border-color 0.2s; width: 100%; }
+input:focus, select:focus, textarea:focus { border-color: var(--sage-mid); }
+textarea { resize: vertical; min-height: 120px; }
+.btn-enviar { font-size: 14px; padding: 12px 32px; border-radius: 24px; border: none; background: var(--sage); color: white; cursor: pointer; font-family: 'DM Sans', sans-serif; font-weight: 500; transition: all 0.18s; margin-top: 8px; }
+.btn-enviar:hover { background: var(--sage-dark); }
+.btn-enviar:disabled { background: var(--sage-mid); cursor: default; }
+.msg { font-size: 13px; padding: 12px 16px; border-radius: 10px; margin-top: 16px; display: none; }
+.msg.ok { background: var(--sage-light); color: var(--sage-dark); display: block; }
+.msg.error { background: #FDECEA; color: #C0392B; display: block; }
+
+/* CONTACTO DIRECTO */
+.contact-options { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 32px; }
+@media (max-width: 560px) { .contact-options { grid-template-columns: 1fr; } }
+.contact-card { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; display: flex; align-items: flex-start; gap: 14px; }
+.contact-icon { font-size: 24px; flex-shrink: 0; }
+.contact-label { font-size: 13px; font-weight: 500; color: var(--text); margin-bottom: 4px; }
+.contact-desc { font-size: 12px; color: var(--text-muted); line-height: 1.5; }
+.contact-link { font-size: 13px; color: var(--sage); text-decoration: none; font-weight: 500; display: inline-block; margin-top: 6px; }
+.contact-link:hover { color: var(--sage-dark); }
+</style>
+</head>
+<body>
+
+<nav>
+  <a class="logo" href="/">clara<span>mente</span></a>
+  <a class="nav-back" href="/">← Volver al inicio</a>
+</nav>
+
+<div class="hero">
+  <div class="hero-inner">
+    <div class="eyebrow">Centro de ayuda</div>
+    <h1>¿En qué te <em>podemos ayudar?</em></h1>
+    <p class="hero-sub">Encontrá respuestas a las preguntas más frecuentes o escribinos directamente.</p>
+  </div>
+</div>
+
+<div class="content">
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('pacientes')">Para pacientes</button>
+    <button class="tab-btn" onclick="switchTab('profesionales')">Para profesionales</button>
+    <button class="tab-btn" onclick="switchTab('contacto')">Contacto</button>
+  </div>
+
+  <!-- PACIENTES -->
+  <div class="tab-panel active" id="tab-pacientes">
+    <div class="faq-group">
+      <div class="faq-group-title">Sobre la plataforma</div>
+
+      <div class="faq-item">
+        <button class="faq-question" onclick="toggleFaq(this)">
+          ¿Cómo funciona Claramente? <span class="faq-arrow">↓</span>
+        </button>
+        <div class="faq-answer">Describís lo que estás buscando en tus propias palabras — por ejemplo "busco psicóloga para ansiedad, online, que atienda OSDE" — y nuestra IA analiza tu consulta y te muestra los profesionales más afines de la red. Podés contactarlos directamente por WhatsApp.</div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-question" onclick="toggleFaq(this)">
+          ¿Tiene algún costo para mí como paciente? <span class="faq-arrow">↓</span>
+        </button>
+        <div class="faq-answer">No, Claramente es completamente gratuito para los pacientes. Solo los profesionales pagan una suscripción para aparecer con perfil completo.</div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-question" onclick="toggleFaq(this)">
+          ¿Los profesionales son verificados? <span class="faq-arrow">↓</span>
+        </button>
+        <div class="faq-answer">Todos los profesionales deben ingresar su número de matrícula al registrarse. Te recomendamos siempre verificar la matrícula en el Colegio de Psicólogos de tu provincia antes de comenzar un proceso terapéutico.</div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-question" onclick="toggleFaq(this)">
+          ¿Puedo buscar psicólogos por obra social? <span class="faq-arrow">↓</span>
+        </button>
+        <div class="faq-answer">Sí. Podés mencionarlo en tu búsqueda — por ejemplo "busco psicólogo que atienda OSDE en Mendoza" — y el sistema filtrará los profesionales que trabajan con esa cobertura.</div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-question" onclick="toggleFaq(this)">
+          ¿Cómo me contacto con un psicólogo? <span class="faq-arrow">↓</span>
+        </button>
+        <div class="faq-answer">Una vez que la IA te muestra los resultados, cada tarjeta de profesional Premium tiene un botón verde de "Contactar" que abre WhatsApp directamente con el número del profesional.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PROFESIONALES -->
+  <div class="tab-panel" id="tab-profesionales">
+    <div class="faq-group">
+      <div class="faq-group-title">Registro y perfil</div>
+
+      <div class="faq-item">
+        <button class="faq-question" onclick="toggleFaq(this)">
+          ¿Cómo me registro como profesional? <span class="faq-arrow">↓</span>
+        </button>
+        <div class="faq-answer">Hacé click en "Sumate a la red" desde la página principal. El registro tiene varios pasos donde completás tus datos, especialidades, disponibilidad y elegís tu plan. Todo el proceso tarda unos minutos.</div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-question" onclick="toggleFaq(this)">
+          ¿Qué diferencia hay entre el plan gratuito y el Premium? <span class="faq-arrow">↓</span>
+        </button>
+        <div class="faq-answer">Con el plan gratuito aparecés en los resultados pero sin foto ni botón de contacto directo. Los pacientes no pueden contactarte desde la plataforma. Con el plan Premium ($32.500/mes) aparecés con foto, primera posición en los resultados, botón de WhatsApp directo y acceso a estadísticas de vistas y contactos.</div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-question" onclick="toggleFaq(this)">
+          ¿Puedo cambiar mi plan después de registrarme? <span class="faq-arrow">↓</span>
+        </button>
+        <div class="faq-answer">Sí, desde tu panel podés activar el plan Premium en cualquier momento. También podés cancelar tu suscripción cuando quieras desde MercadoPago.</div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-question" onclick="toggleFaq(this)">
+          ¿Cómo actualizo mis datos o foto de perfil? <span class="faq-arrow">↓</span>
+        </button>
+        <div class="faq-answer">Ingresá a tu panel con tu email y contraseña, y en la pestaña "Mi perfil" podés editar todos tus datos. Los cambios se reflejan inmediatamente en los resultados de búsqueda.</div>
+      </div>
+    </div>
+
+    <div class="faq-group">
+      <div class="faq-group-title">Pagos y suscripción</div>
+
+      <div class="faq-item">
+        <button class="faq-question" onclick="toggleFaq(this)">
+          ¿Cómo funciona el cobro? <span class="faq-arrow">↓</span>
+        </button>
+        <div class="faq-answer">El pago es mensual y recurrente a través de MercadoPago. Se debita automáticamente cada mes desde la tarjeta que registraste. Podés cancelar en cualquier momento desde tu cuenta de MercadoPago.</div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-question" onclick="toggleFaq(this)">
+          ¿Cómo cancelo mi suscripción? <span class="faq-arrow">↓</span>
+        </button>
+        <div class="faq-answer">Desde tu panel en Claramente, pestaña "Plan", hay un botón para cancelar que te lleva directamente a MercadoPago. También podés cancelar directamente desde mercadopago.com.ar → Mis suscripciones.</div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-question" onclick="toggleFaq(this)">
+          ¿Qué pasa si cancelo? ¿Desaparece mi perfil? <span class="faq-arrow">↓</span>
+        </button>
+        <div class="faq-answer">No, tu perfil sigue activo en el plan gratuito. Seguís apareciendo en los resultados pero sin foto ni botón de contacto directo. Podés volver a activar Premium cuando quieras.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONTACTO -->
+  <div class="tab-panel" id="tab-contacto">
+    <div class="contact-options">
+      <div class="contact-card">
+        <div class="contact-icon">✉️</div>
+        <div>
+          <div class="contact-label">Email directo</div>
+          <div class="contact-desc">Para consultas que no son urgentes. Respondemos en menos de 24hs.</div>
+          <a class="contact-link" href="mailto:claramentepsisoporte@gmail.com">claramentepsisoporte@gmail.com</a>
+        </div>
+      </div>
+      <div class="contact-card">
+        <div class="contact-icon">⏱️</div>
+        <div>
+          <div class="contact-label">Tiempo de respuesta</div>
+          <div class="contact-desc">Respondemos todos los mensajes dentro de las 24 horas hábiles.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="form-card">
+      <div class="form-title">Escribinos</div>
+      <div class="form-sub">Completá el formulario y te respondemos a la brevedad.</div>
+
+      <div class="form-grid">
+        <div class="field">
+          <label>Nombre</label>
+          <input type="text" id="s-nombre" placeholder="Tu nombre" />
+        </div>
+        <div class="field">
+          <label>Email</label>
+          <input type="email" id="s-email" placeholder="tu@email.com" />
+        </div>
+      </div>
+      <div class="field">
+        <label>Tipo de consulta</label>
+        <select id="s-tipo">
+          <option value="">Seleccioná una opción</option>
+          <option value="Consulta como paciente">Soy paciente y tengo una consulta</option>
+          <option value="Consulta como profesional">Soy profesional y tengo una consulta</option>
+          <option value="Problema técnico">Problema técnico</option>
+          <option value="Problema con el pago">Problema con el pago</option>
+          <option value="Sugerencia">Sugerencia o mejora</option>
+          <option value="Otro">Otro</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Mensaje</label>
+        <textarea id="s-mensaje" placeholder="Contanos en qué podemos ayudarte..."></textarea>
+      </div>
+      <button class="btn-enviar" id="btnEnviar" onclick="enviarConsulta()">Enviar mensaje →</button>
+      <div class="msg" id="s-msg"></div>
+    </div>
+  </div>
+</div>
+
+<footer style="border-top:1px solid var(--border);padding:24px 36px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
+  <div style="font-family:'Lora',serif;font-size:16px;color:var(--text-muted)">clara<span style="color:var(--sage);font-style:italic">mente</span></div>
+  <div style="font-size:12px;color:var(--text-faint)">La red de psicólogos de Argentina</div>
+</footer>
+
+<script>
+function switchTab(tab) {
+  document.querySelectorAll('.tab-btn').forEach((t, i) => {
+    const tabs = ['pacientes', 'profesionales', 'contacto'];
+    t.classList.toggle('active', tabs[i] === tab);
+  });
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById(`tab-${tab}`).classList.add('active');
+}
+
+function toggleFaq(btn) {
+  const item = btn.parentElement;
+  const isOpen = item.classList.contains('open');
+  // Cerrar todos
+  document.querySelectorAll('.faq-item.open').forEach(el => el.classList.remove('open'));
+  // Abrir el clickeado si estaba cerrado
+  if (!isOpen) item.classList.add('open');
+}
+
+async function enviarConsulta() {
+  const nombre = document.getElementById('s-nombre').value.trim();
+  const email = document.getElementById('s-email').value.trim();
+  const tipo = document.getElementById('s-tipo').value;
+  const mensaje = document.getElementById('s-mensaje').value.trim();
+  const btn = document.getElementById('btnEnviar');
+  const msg = document.getElementById('s-msg');
+
+  if (!nombre || !email || !mensaje) {
+    msg.textContent = 'Por favor completá nombre, email y mensaje.';
+    msg.className = 'msg error';
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Enviando...';
+  msg.className = 'msg';
+
+  try {
+    const res = await fetch('/soporte', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nombre, email, tipo, mensaje })
+    });
+    const data = await res.json();
+    if (res.ok) {
+      msg.textContent = '✓ Mensaje enviado. Te respondemos en menos de 24hs.';
+      msg.className = 'msg ok';
+      document.getElementById('s-nombre').value = '';
+      document.getElementById('s-email').value = '';
+      document.getElementById('s-tipo').value = '';
+      document.getElementById('s-mensaje').value = '';
+      btn.textContent = 'Enviado ✓';
+    } else {
+      throw new Error(data.error);
+    }
+  } catch(e) {
+    msg.textContent = 'Error al enviar. Intentá de nuevo o escribinos a claramentepsisoporte@gmail.com';
+    msg.className = 'msg error';
+    btn.disabled = false;
+    btn.textContent = 'Enviar mensaje →';
+  }
+}
+</script>
+</body>
+</html>
