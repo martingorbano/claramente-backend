@@ -653,6 +653,13 @@ app.post('/login', limiterLogin, async (req, res) => {
     if (!ok) return res.status(401).json({ error: 'Email o contraseña incorrectos' });
 
     const { password_hash, ...profesional } = data;
+    
+    // Si tiene trial activo, devolver plan como premium
+    if (profesional.trial_hasta && new Date(profesional.trial_hasta) > new Date()) {
+      profesional.plan = 'premium';
+      profesional.es_trial = true;
+    }
+    
     res.json({ ok: true, profesional });
   } catch (error) {
     console.error('Error login:', error.message);
