@@ -210,6 +210,93 @@ async function notificarGratuito(profesional, queryTexto) {
   }
 }
 
+// ============================================================
+// TRIALS
+// ============================================================
+
+// Activar trial para un profesional (llamado desde Supabase SQL o admin)
+app.post('/activar-trial', async (req, res) => {
+  const { id } = req.body;
+  if (!id) return res.status(400).json({ error: 'id requerido' });
+  try {
+    const trial_hasta = new Date();
+    trial_hasta.setDate(trial_hasta.getDate() + 30); // 30 días
+    const { error } = await supabase
+      .from('profesionales')
+      .update({ trial_hasta: trial_hasta.toISOString() })
+      .eq('id', id);
+    if (error) throw error;
+    res.json({ ok: true, trial_hasta });
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Cron: verificar trials vencidos y mandar mail
+async function verificarTrialsVencidos() {
+  try {
+    const ahora = new Date().toISOString();
+    // Buscar profesionales con trial vencido que aún no fueron notificados
+    const { data: vencidos } = await supabase
+      .from('profesionales')
+      .select('id, nombre, email, trial_hasta, busquedas_semana')
+      .lt('trial_hasta', ahora)
+      .not('trial_hasta', 'is', null)
+      .eq('plan', 'gratuito'); // Ya están en gratuito, el trial expiró
+
+    if (!vencidos || vencidos.length === 0) return;
+
+    for (const prof of vencidos) {
+      // Verificar que no le hayamos mandado el mail ya (limpiar trial_hasta después de notificar)
+      const trialFecha = new Date(prof.trial_hasta);
+      const diasVencido = Math.floor((new Date() - trialFecha) / (1000 * 60 * 60 * 24));
+      
+      // Solo mandar mail el primer día que vence
+      if (diasVencido > 1) continue;
+
+      const nombre = prof.nombre?.split(' ')[0] || 'Lic.';
+      const mpLink = 'https://www.mercadopago.com.ar/subscriptions/checkout?preapproval_plan_id=eefad72a6586412e8a74031b80c9ca0b';
+
+      await resend.emails.send({
+        from: 'Claramente <hola@claramentepsi.com>',
+        to: prof.email,
+        subject: 'Tu período de prueba en Claramente terminó',
+        html: `
+          <div style="font-family:'DM Sans',Arial,sans-serif;max-width:520px;margin:0 auto;background:#F7F3EE;padding:32px 20px">
+            <div style="background:white;border-radius:16px;padding:36px;border:1px solid #D8E8E4">
+              <div style="font-family:Georgia,serif;font-size:22px;color:#1C2B28;margin-bottom:20px">
+                clara<span style="color:#4A7C6F;font-style:italic">mente</span>
+              </div>
+              <p style="font-size:16px;color:#1C2B28;margin-bottom:8px">Hola, ${nombre}.</p>
+              <p style="font-size:14px;color:#6B847E;line-height:1.7;margin-bottom:24px">
+                Tu mes de prueba en Claramente terminó. Esperamos que hayas podido ver cómo funciona la plataforma y recibido algunas consultas.
+              </p>
+              <div style="background:#F7F3EE;border-radius:12px;padding:20px;margin-bottom:24px;text-align:center">
+                <p style="font-size:13px;color:#6B847E;margin-bottom:4px">Para seguir apareciendo con foto y contacto directo</p>
+                <p style="font-size:22px;font-weight:600;color:#B8860B;margin:0">$32.500/mes</p>
+                <p style="font-size:11px;color:#B8860B;font-style:italic;margin-top:4px">Precio promocional de lanzamiento</p>
+              </div>
+              <a href="${mpLink}" style="display:block;text-align:center;background:#4A7C6F;color:white;padding:14px 28px;border-radius:24px;text-decoration:none;font-size:14px;font-weight:500;margin-bottom:16px">
+                Activar Plan Premium →
+              </a>
+              <p style="font-size:12px;color:#9AAFAA;text-align:center;line-height:1.6">
+                Si no activás el plan, tu perfil sigue apareciendo en los resultados sin foto ni contacto directo.<br>
+                Podés activar Premium desde tu panel cuando quieras.
+              </p>
+            </div>
+          </div>
+        `
+      });
+      console.log(`Mail de trial vencido enviado a ${prof.email}`);
+    }
+  } catch(e) {
+    console.error('Error verificando trials:', e.message);
+  }
+}
+
+// Ejecutar verificación de trials cada 12 horas
+setInterval(verificarTrialsVencidos, 12 * 60 * 60 * 1000);
+
 // Health check
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', service: 'Claramente API' });
@@ -229,9 +316,26 @@ app.post('/chat', limiterChat, async (req, res) => {
     // Traer profesionales activos de Supabase
     const { data: profesionales } = await supabase
       .from('profesionales')
-      .select('id, nombre, matricula, whatsapp, bio, ciudad, experiencia, honorario, obras_sociales, enfoques, especializaciones, modalidades, edades, dias, franjas, foto_url, plan, genero')
+      .select('id, nombre, matricula, whatsapp, bio, ciudad, experiencia, honorario, obras_sociales, enfoques, especializaciones, modalidades, edades, dias, franjas, foto_url, plan, genero, trial_hasta')
       .eq('activo', true)
       .order('plan', { ascending: false }); // premium > flex > gratuito
+
+    // Verificar trials vencidos y bajarlos a gratuito
+    const ahora = new Date();
+    const trialsVencidos = profesionales?.filter(p => 
+      p.trial_hasta && new Date(p.trial_hasta) < ahora && p.plan === 'gratuito'
+    ) || [];
+    
+    // No hacemos nada acá — el trial se procesa en el endpoint /verificar-trial
+    
+    // Tratar profesionales con trial activo como premium
+    if (profesionales) {
+      profesionales.forEach(p => {
+        if (p.trial_hasta && new Date(p.trial_hasta) > ahora) {
+          p.plan = 'premium'; // Trial activo → mostrar como premium
+        }
+      });
+    }
 
     const listaProfesionales = profesionales && profesionales.length > 0
       ? `\n\nPROFESIONALES DISPONIBLES EN LA BASE DE DATOS:\n${JSON.stringify(profesionales, null, 2)}`
