@@ -65,6 +65,11 @@ app.get('/robots.txt', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'robots.txt'));
 });
 
+// Ruta de ayuda
+app.get('/ayuda', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'ayuda.html'));
+});
+
 // Rutas de áreas de atención
 const areas = ['ansiedad', 'pareja', 'ninos', 'adicciones', 'evaluaciones', 'neuropsicologia', 'judicial', 'vocacional'];
 areas.forEach(area => {
@@ -296,6 +301,44 @@ async function verificarTrialsVencidos() {
 
 // Ejecutar verificación de trials cada 12 horas
 setInterval(verificarTrialsVencidos, 12 * 60 * 60 * 1000);
+
+// Formulario de soporte
+app.post('/soporte', async (req, res) => {
+  const { nombre, email, tipo, mensaje } = req.body;
+  if (!nombre || !email || !mensaje) return res.status(400).json({ error: 'Faltan campos requeridos' });
+  try {
+    await resend.emails.send({
+      from: 'Claramente <soporte@claramentepsi.com>',
+      to: 'claramentepsisoporte@gmail.com',
+      reply_to: email,
+      subject: `Consulta de soporte — ${tipo || 'General'} · ${nombre}`,
+      html: `
+        <div style="font-family:'DM Sans',Arial,sans-serif;max-width:520px;margin:0 auto;background:#F7F3EE;padding:32px 20px">
+          <div style="background:white;border-radius:16px;padding:36px;border:1px solid #D8E8E4">
+            <div style="font-family:Georgia,serif;font-size:22px;color:#1C2B28;margin-bottom:20px">
+              clara<span style="color:#4A7C6F;font-style:italic">mente</span> · Soporte
+            </div>
+            <table style="width:100%;border-collapse:collapse;margin-bottom:20px">
+              <tr><td style="font-size:12px;color:#9AAFAA;padding:8px 0 2px;text-transform:uppercase;letter-spacing:0.05em">Nombre</td></tr>
+              <tr><td style="font-size:14px;color:#1C2B28;padding-bottom:12px;border-bottom:1px solid #D8E8E4">${nombre}</td></tr>
+              <tr><td style="font-size:12px;color:#9AAFAA;padding:12px 0 2px;text-transform:uppercase;letter-spacing:0.05em">Email</td></tr>
+              <tr><td style="font-size:14px;color:#1C2B28;padding-bottom:12px;border-bottom:1px solid #D8E8E4">${email}</td></tr>
+              <tr><td style="font-size:12px;color:#9AAFAA;padding:12px 0 2px;text-transform:uppercase;letter-spacing:0.05em">Tipo de consulta</td></tr>
+              <tr><td style="font-size:14px;color:#1C2B28;padding-bottom:12px;border-bottom:1px solid #D8E8E4">${tipo || 'General'}</td></tr>
+              <tr><td style="font-size:12px;color:#9AAFAA;padding:12px 0 2px;text-transform:uppercase;letter-spacing:0.05em">Mensaje</td></tr>
+              <tr><td style="font-size:14px;color:#1C2B28;line-height:1.6;white-space:pre-wrap">${mensaje}</td></tr>
+            </table>
+            <p style="font-size:12px;color:#9AAFAA">Podés responder directamente a este mail para contactar a ${nombre}.</p>
+          </div>
+        </div>
+      `
+    });
+    res.json({ ok: true });
+  } catch(e) {
+    console.error('Error soporte:', e.message);
+    res.status(500).json({ error: 'Error al enviar el mensaje' });
+  }
+});
 
 // Health check
 app.get('/health', (req, res) => {
