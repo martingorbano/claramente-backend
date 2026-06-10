@@ -328,6 +328,7 @@ textarea { resize: vertical; min-height: 80px; }
           <div style="font-size:12px;font-weight:500;color:#B8860B;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.05em">Premium</div>
           <div style="font-size:20px;font-weight:500;color:#B8860B">$32.500</div>
           <div style="font-size:11px;color:#B8860B">/mes</div>
+          <div style="font-size:10px;color:#B8860B;margin-top:4px;font-style:italic">Precio de lanzamiento</div>
         </div>
       </div>
       <div class="plan-feat"><span class="plan-feat-icon">✓</span><div><strong>Aparición en resultados</strong> — los tres planes aparecen cuando sos afín a la búsqueda.</div></div>
@@ -493,7 +494,7 @@ const MP_LINKS = {
 function cargarPlan() {
   const plan = profesional.plan || 'gratuito';
   const planes = {
-    premium: { label: 'Destacado', badge: 'badge-premium', nombre: 'Plan Premium — $32.500/mes', desc: 'Tarjeta grande, primera posición, foto y estadísticas completas.' },
+    premium: { label: 'Destacado', badge: 'badge-premium', nombre: 'Plan Premium — $32.500/mes · Precio de lanzamiento', desc: 'Tarjeta grande, primera posición, foto y estadísticas completas.' },
     gratuito:{ label: 'Gratuito',  badge: 'badge-gratuito',nombre: 'Plan Gratuito',               desc: 'Aparecés en resultados sin foto ni contacto directo.' },
   };
   const p = planes[plan] || planes.gratuito;
