@@ -714,6 +714,27 @@ app.post('/upload-foto', upload.single('foto'), async (req, res) => {
 });
 
 // Actualizar perfil del profesional
+app.get('/profesional/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const { data, error } = await supabase
+      .from('profesionales')
+      .select('*')
+      .eq('id', id)
+      .single();
+    if (error || !data) return res.status(404).json({ error: 'No encontrado' });
+    const { password_hash, ...profesional } = data;
+    // Si tiene trial activo, devolver plan como premium
+    if (profesional.trial_hasta && new Date(profesional.trial_hasta) > new Date()) {
+      profesional.plan = 'premium';
+      profesional.es_trial = true;
+    }
+    res.json(profesional);
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 app.put('/profesional/:id', async (req, res) => {
   const { id } = req.params;
   const { nombre, whatsapp, ciudad, localidad, honorario, bio, enfoques, especializaciones, modalidades, obras_sociales, foto_url, genero } = req.body;
