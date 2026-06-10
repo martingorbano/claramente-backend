@@ -254,7 +254,24 @@ select { cursor: pointer; appearance: none; background-image: url("data:image/sv
       </div>
       <div class="field" id="f-whatsapp">
         <label>WhatsApp de contacto</label>
-        <input type="tel" id="whatsapp" placeholder="Ej: 2614123456" />
+        <div style="display:flex;gap:8px">
+          <select id="whatsapp-pais" style="font-family:'DM Sans',sans-serif;font-size:14px;padding:10px 10px;border:1px solid var(--border);border-radius:10px;background:white;color:var(--text);outline:none;flex-shrink:0;width:130px">
+            <option value="54">🇦🇷 +54</option>
+            <option value="598">🇺🇾 +598</option>
+            <option value="56">🇨🇱 +56</option>
+            <option value="591">🇧🇴 +591</option>
+            <option value="595">🇵🇾 +595</option>
+            <option value="51">🇵🇪 +51</option>
+            <option value="57">🇨🇴 +57</option>
+            <option value="58">🇻🇪 +58</option>
+            <option value="593">🇪🇨 +593</option>
+            <option value="34">🇪🇸 +34</option>
+            <option value="1">🇺🇸 +1</option>
+            <option value="52">🇲🇽 +52</option>
+            <option value="55">🇧🇷 +55</option>
+          </select>
+          <input type="tel" id="whatsapp" placeholder="Ej: 2614123456" style="flex:1" />
+        </div>
         <span class="field-hint">Sin el 0 ni el 15. Los pacientes te contactan por acá.</span>
         <span class="field-error">Ingresá tu número de WhatsApp</span>
       </div>
@@ -310,9 +327,35 @@ select { cursor: pointer; appearance: none; background-image: url("data:image/sv
       </div>
       <div class="form-grid">
         <div class="field" id="f-ciudad">
-          <label>Ciudad donde atendés</label>
-          <input type="text" id="ciudad" placeholder="Ej: Mendoza" />
-          <span class="field-error">Ingresá tu ciudad</span>
+          <label>Provincia donde atendés</label>
+          <select id="ciudad" style="font-family:'DM Sans',sans-serif;font-size:14px;padding:10px 14px;border:1px solid var(--border);border-radius:10px;background:white;color:var(--text);outline:none;width:100%">
+            <option value="">Seleccioná una provincia</option>
+            <option>Buenos Aires</option>
+            <option>CABA</option>
+            <option>Catamarca</option>
+            <option>Chaco</option>
+            <option>Chubut</option>
+            <option>Córdoba</option>
+            <option>Corrientes</option>
+            <option>Entre Ríos</option>
+            <option>Formosa</option>
+            <option>Jujuy</option>
+            <option>La Pampa</option>
+            <option>La Rioja</option>
+            <option>Mendoza</option>
+            <option>Misiones</option>
+            <option>Neuquén</option>
+            <option>Río Negro</option>
+            <option>Salta</option>
+            <option>San Juan</option>
+            <option>San Luis</option>
+            <option>Santa Cruz</option>
+            <option>Santa Fe</option>
+            <option>Santiago del Estero</option>
+            <option>Tierra del Fuego</option>
+            <option>Tucumán</option>
+          </select>
+          <span class="field-error">Seleccioná tu provincia</span>
         </div>
         <div class="field">
           <label>Género</label>
@@ -767,7 +810,7 @@ function validateStep(step) {
     }
   }
   if (step === 1) {
-    ok = validate('f-ciudad', 'ciudad', v => v.trim().length > 1) && ok;
+    ok = validate('f-ciudad', 'ciudad', v => v.trim().length > 1 && v !== '') && ok;
     ok = validate('f-localidad', 'localidad', v => v.trim().length > 1) && ok;
   }
   if (step === 2) {
@@ -880,9 +923,9 @@ function buildResumen() {
     ['Nombre', formData.nombre],
     ['Matrícula', formData.matricula],
     ['Email', formData.email],
-    ['WhatsApp', `+549 ${formData.whatsapp}`],
+    ['WhatsApp', `+${document.getElementById('whatsapp-pais')?.value || '54'} ${formData.whatsapp}`],
     ['Foto de perfil', fotoVal],
-    ['Ciudad/s', formData.ciudad || '—'],
+    ['Provincia', formData.ciudad || '—'],
     ['Honorario', formData.honorario ? `$${parseInt(formData.honorario).toLocaleString('es-AR')}/sesión` : '—'],
     ['Obras sociales', formData.obrasSociales?.join(', ') || 'No especificado'],
     ['Enfoque', formData.enfoques?.join(', ') || '—'],
@@ -939,6 +982,26 @@ async function submit() {
   collectStep(6);
   const plan = formData.plan || 'gratuito';
   const btn = document.querySelector('#panel-6 .btn-next');
+
+  // Validación final antes de publicar
+  const camposRequeridos = [
+    { campo: formData.nombre, label: 'Nombre' },
+    { campo: formData.matricula, label: 'Matrícula' },
+    { campo: formData.email, label: 'Email' },
+    { campo: formData.whatsapp, label: 'WhatsApp' },
+    { campo: formData.ciudad, label: 'Provincia' },
+    { campo: formData.localidad, label: 'Localidad' },
+    { campo: formData.enfoques?.length, label: 'Enfoque terapéutico' },
+    { campo: formData.especializaciones?.length, label: 'Especializaciones' },
+    { campo: formData.modalidades?.length, label: 'Modalidad' },
+    { campo: formData.edades?.length, label: 'Grupo etario' },
+  ];
+  const faltantes = camposRequeridos.filter(c => !c.campo).map(c => c.label);
+  if (faltantes.length > 0) {
+    alert(`Faltan completar los siguientes campos: ${faltantes.join(', ')}`);
+    return;
+  }
+
   btn.disabled = true;
   btn.textContent = 'Publicando...';
 
@@ -946,7 +1009,13 @@ async function submit() {
     nombre: formData.nombre,
     matricula: formData.matricula,
     email: formData.email,
-    whatsapp: '549' + formData.whatsapp.replace(/\D/g, ''),
+    whatsapp: (() => {
+        const pais = document.getElementById('whatsapp-pais')?.value || '54';
+        const num = formData.whatsapp.replace(/\D/g, '');
+        // Para Argentina agregar el 9 si no está
+        if (pais === '54' && !num.startsWith('9')) return pais + '9' + num;
+        return pais + num;
+      })(),
     password: document.getElementById('pass').value,
     bio: formData.bio || '',
     ciudad: formData.ciudad || '',
