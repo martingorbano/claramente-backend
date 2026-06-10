@@ -418,7 +418,11 @@ try {
 <!-- FOOTER -->
 <footer>
   <div class="footer-logo">clara<span>mente</span></div>
-  <div class="footer-note">La red de psicólogos de Argentina · Prototipo funcional</div>
+  <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap">
+    <a href="/ayuda" style="font-size:12px;color:var(--text-faint);text-decoration:none;transition:color 0.18s" onmouseover="this.style.color='var(--sage)'" onmouseout="this.style.color='var(--text-faint)'">Ayuda y soporte</a>
+    <a href="mailto:claramentepsisoporte@gmail.com" style="font-size:12px;color:var(--text-faint);text-decoration:none;transition:color 0.18s" onmouseover="this.style.color='var(--sage)'" onmouseout="this.style.color='var(--text-faint)'">claramentepsisoporte@gmail.com</a>
+    <span class="footer-note">La red de psicólogos de Argentina</span>
+  </div>
 </footer>
 
 <div class="toast" id="toast"></div>
