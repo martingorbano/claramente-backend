@@ -548,9 +548,28 @@ function logout() {
   window.location.href = '/';
 }
 
-// Init
-cargarPerfil();
-cargarPlan();
+// Init — traer datos frescos de Supabase al cargar
+async function inicializar() {
+  try {
+    const res = await fetch(`/profesional/${profesional.id}`);
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.id) {
+        // Preservar es_trial si existe en localStorage
+        if (profesional.es_trial) data.es_trial = profesional.es_trial;
+        if (profesional.trial_hasta) data.trial_hasta = profesional.trial_hasta;
+        profesional = data;
+        localStorage.setItem('clm_profesional', JSON.stringify(profesional));
+      }
+    }
+  } catch(e) {
+    console.error('Error cargando perfil fresco:', e);
+  }
+  cargarPerfil();
+  cargarPlan();
+  inicializarFoto();
+}
+inicializar();
 
 document.getElementById('edit-nombre').addEventListener('input', actualizarPreview);
 
@@ -587,7 +606,7 @@ function inicializarFoto() {
     iniciales.textContent = partes.slice(0, 2).map(w => w[0]).join('').toUpperCase() || 'P';
   }
 }
-inicializarFoto();
+// inicializarFoto() se llama desde inicializar()
 
 function renderGrafico(grafico) {
   // Generar las últimas 8 semanas — igual que el backend (domingo como inicio)
