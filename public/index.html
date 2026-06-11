@@ -565,7 +565,19 @@ function renderCards(profesionales, query) {
         <div>
           <div class="card-name">${p.nombre}</div>
           <div class="card-sub">${p.especialidad}</div>
-          ${p.ciudad ? `<div class="card-ciudad">📍 ${p.ciudad}</div>` : ''}
+          <div class="card-ciudad">
+            ${(() => {
+              const esOnline = p.modalidades?.includes('Online');
+              const esPresencial = p.modalidades?.includes('Presencial');
+              if (esPresencial) {
+                const ubicacion = [p.ciudad, p.localidad].filter(Boolean).join(' · ');
+                return ubicacion ? `📍 ${ubicacion}` : '📍 Argentina';
+              } else if (esOnline) {
+                return '🌐 Online';
+              }
+              return p.ciudad ? `📍 ${p.ciudad}` : '';
+            })()}
+          </div>
         </div>
       </div>
       <div class="card-tags">${tags.slice(0,4).map((t,i)=>`<span class="tag ${i===0?'tag-sage':'tag-warm'}">${t}</span>`).join('')}</div>
