@@ -1047,6 +1047,21 @@ async function submit() {
         btn.textContent = 'Publicar perfil →';
         return;
       }
+      // Subir foto si el usuario eligió una
+      const photoInput = document.getElementById('photoInput');
+      if (data.profesional && photoInput.files && photoInput.files[0]) {
+        try {
+          const formDataFoto = new FormData();
+          formDataFoto.append('foto', photoInput.files[0]);
+          formDataFoto.append('psy_id', data.profesional.id);
+          const fotoRes = await fetch('/upload-foto', { method: 'POST', body: formDataFoto });
+          const fotoData = await fotoRes.json();
+          if (fotoData.foto_url) {
+            data.profesional.foto_url = fotoData.foto_url;
+          }
+        } catch(e) { console.error('Error subiendo foto:', e); }
+      }
+
       // Guardar sesión automáticamente con los datos que ya devuelve /registro
       if (data.profesional) {
         localStorage.setItem('clm_profesional', JSON.stringify(data.profesional));
