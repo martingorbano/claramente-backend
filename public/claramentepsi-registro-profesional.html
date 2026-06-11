@@ -643,6 +643,7 @@ select { cursor: pointer; appearance: none; background-image: url("data:image/sv
 let currentStep = 0;
 let selectedPlan = null;
 let formData = {};
+let _fotoFile = null; // Guardar archivo de foto globalmente
 
 // Verificar si viene de confirmacion de email
 // Rehabilitar botón si el usuario vuelve atrás
@@ -967,11 +968,11 @@ function buildResumen() {
 
 function previewPhoto(input) {
   if (input.files && input.files[0]) {
+    _fotoFile = input.files[0]; // Guardar globalmente
     const reader = new FileReader();
     reader.onload = e => {
       const prev = document.getElementById('photoPreview');
       prev.innerHTML = `<img src="${e.target.result}" alt="foto perfil">`;
-      // Mostrar nudge si ya eligió plan free, o siempre para recordar el valor de la foto
       document.getElementById('fotoNudge').classList.add('show');
     };
     reader.readAsDataURL(input.files[0]);
@@ -1048,11 +1049,10 @@ async function submit() {
         return;
       }
       // Subir foto si el usuario eligió una
-      const photoInput = document.getElementById('photoInput');
-      if (data.profesional && photoInput.files && photoInput.files[0]) {
+      if (data.profesional && _fotoFile) {
         try {
           const formDataFoto = new FormData();
-          formDataFoto.append('foto', photoInput.files[0]);
+          formDataFoto.append('foto', _fotoFile);
           formDataFoto.append('psy_id', data.profesional.id);
           const fotoRes = await fetch('/upload-foto', { method: 'POST', body: formDataFoto });
           const fotoData = await fotoRes.json();
