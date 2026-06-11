@@ -53,6 +53,27 @@ const limiterLogin = rateLimit({
 });
 
 app.use(limiterGeneral);
+// Inyectar Google Tag en todas las páginas HTML
+const GTAG = `<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=AW-17918674170"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'AW-17918674170');
+</script>`;
+
+app.use((req, res, next) => {
+  const originalSend = res.send.bind(res);
+  res.send = function(body) {
+    if (typeof body === 'string' && body.includes('</head>')) {
+      body = body.replace('</head>', GTAG + '\n</head>');
+    }
+    return originalSend(body);
+  };
+  next();
+});
+
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Sitemap y robots
