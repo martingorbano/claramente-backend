@@ -408,17 +408,33 @@ app.post('/chat', limiterChat, async (req, res) => {
     const jsonStr = firstBrace !== -1 && lastBrace !== -1 ? cleaned.substring(firstBrace, lastBrace + 1) : null;
     const jsonMatch = jsonStr ? [jsonStr] : null;
     
+    // Obtener el último mensaje del usuario
+    const ultimoMensaje = messages[messages.length - 1]?.content || '';
+
     if (jsonMatch) {
       try {
         const parsed = JSON.parse(jsonMatch[0]);
         if (parsed.profesionales) {
-          // Devolver solo el JSON limpio
+          // Guardar consulta en Supabase
+          supabase.from('consultas').insert({
+            mensaje: ultimoMensaje,
+            respuesta: parsed.mensaje || null,
+            profesionales_devueltos: parsed.profesionales || []
+          }).then(() => {}).catch(e => console.error('Error guardando consulta:', e.message));
+
           return res.json({ 
             content: [{ type: 'text', text: JSON.stringify(parsed) }] 
           });
         }
       } catch(e) {}
     }
+
+    // Guardar respuesta de texto (sin profesionales)
+    supabase.from('consultas').insert({
+      mensaje: ultimoMensaje,
+      respuesta: rawText,
+      profesionales_devueltos: null
+    }).then(() => {}).catch(e => console.error('Error guardando consulta:', e.message));
 
     res.json({ content: response.content });
   } catch (error) {
