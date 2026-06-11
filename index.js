@@ -690,7 +690,7 @@ app.get('/check-email', async (req, res) => {
 
 // Registrar profesional
 app.post('/registro', async (req, res) => {
-  const { nombre, matricula, email, whatsapp, password, bio, ciudad, localidad, experiencia,
+  const { nombre, matricula, email, whatsapp, password, bio, ciudad, localidad, genero, experiencia,
     honorario, obras_sociales, enfoques, especializaciones, modalidades, edades,
     dias, franjas, plan } = req.body;
 
@@ -701,7 +701,7 @@ app.post('/registro', async (req, res) => {
   try {
     const password_hash = await bcrypt.hash(password, 10);
     const { data, error } = await supabase.from('profesionales').insert({
-      nombre, matricula, email, whatsapp, password_hash, bio, ciudad, localidad,
+      nombre, matricula, email, whatsapp, password_hash, bio, ciudad, localidad, genero,
       experiencia, honorario, obras_sociales, enfoques, especializaciones,
       modalidades, edades, dias, franjas,
       plan: plan || 'gratuito',
