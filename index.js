@@ -53,7 +53,8 @@ const limiterLogin = rateLimit({
 });
 
 app.use(limiterGeneral);
-// Inyectar Google Tag en todas las páginas HTML
+// Servir páginas HTML con Google Tag inyectado
+const fs = require('fs');
 const GTAG = `<!-- Google tag (gtag.js) -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=AW-17918674170"></script>
 <script>
@@ -63,14 +64,18 @@ const GTAG = `<!-- Google tag (gtag.js) -->
   gtag('config', 'AW-17918674170');
 </script>`;
 
+// Middleware que inyecta GTAG en páginas HTML antes de servirlas
 app.use((req, res, next) => {
-  const originalSend = res.send.bind(res);
-  res.send = function(body) {
-    if (typeof body === 'string' && body.includes('</head>')) {
-      body = body.replace('</head>', GTAG + '\n</head>');
+  if (req.path.endsWith('.html') || req.path === '/') {
+    const filePath = req.path === '/' 
+      ? path.join(__dirname, 'public', 'index.html')
+      : path.join(__dirname, 'public', req.path);
+    if (fs.existsSync(filePath)) {
+      let html = fs.readFileSync(filePath, 'utf8');
+      html = html.replace('</head>', GTAG + '\n</head>');
+      return res.send(html);
     }
-    return originalSend(body);
-  };
+  }
   next();
 });
 
