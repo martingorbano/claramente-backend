@@ -16,6 +16,14 @@ const bcrypt = require('bcryptjs');
 
 const app = express();
 app.set('trust proxy', 1); // Render usa proxy
+
+// Redirigir onrender.com a claramentepsi.com
+app.use((req, res, next) => {
+  if (req.hostname.includes('onrender.com')) {
+    return res.redirect(301, 'https://claramentepsi.com' + req.originalUrl);
+  }
+  next();
+});
 const PORT = process.env.PORT || 3000;
 
 app.use(cors({
