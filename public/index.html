@@ -567,13 +567,14 @@ function renderCards(profesionales, query) {
           <div class="card-sub">${p.especialidad}</div>
           <div class="card-ciudad">
             ${(() => {
-              const esOnline = p.modalidades?.includes('Online');
-              const esPresencial = p.modalidades?.includes('Presencial');
-              if (esPresencial) {
+              const modalidades = p.modalidades || [];
+              const soloOnline = modalidades.length > 0 && modalidades.every(m => m === 'Online');
+              const tienePresencial = modalidades.some(m => m.toLowerCase().includes('presencial'));
+              if (soloOnline) {
+                return '🌐 Online';
+              } else if (tienePresencial) {
                 const ubicacion = [p.ciudad, p.localidad].filter(Boolean).join(' · ');
                 return ubicacion ? `📍 ${ubicacion}` : '📍 Argentina';
-              } else if (esOnline) {
-                return '🌐 Online';
               }
               return p.ciudad ? `📍 ${p.ciudad}` : '';
             })()}
