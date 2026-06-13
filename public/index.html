@@ -567,9 +567,9 @@ function renderCards(profesionales, query) {
           <div class="card-sub">${p.especialidad}</div>
           <div class="card-ciudad">
             ${(() => {
-              const modalidades = p.modalidades || [];
-              const soloOnline = modalidades.length > 0 && modalidades.every(m => m === 'Online');
-              const tienePresencial = modalidades.some(m => m.toLowerCase().includes('presencial'));
+              const modalidad = p.modalidad || '';
+              const soloOnline = modalidad === 'Online';
+              const tienePresencial = modalidad.toLowerCase().includes('presencial');
               if (soloOnline) {
                 return '🌐 Online';
               } else if (tienePresencial) {
