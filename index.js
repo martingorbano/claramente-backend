@@ -138,6 +138,7 @@ Cuando tengas suficiente info (1-2 intercambios alcanza), respondé ÚNICAMENTE 
       "plan": "premium / flex / gratuito",
       "whatsapp": "numero de whatsapp",
       "ciudad": "ciudad donde atiende (copiala del campo ciudad de la base de datos)",
+      "localidad": "localidad donde atiende (copiala del campo localidad de la base de datos, puede ser null)",
       "foto_url": "copiá exactamente el campo foto_url de la base de datos, o null si no tiene"
     }
   ]
@@ -393,7 +394,7 @@ app.post('/chat', limiterChat, async (req, res) => {
     // Traer profesionales activos de Supabase
     const { data: profesionales } = await supabase
       .from('profesionales')
-      .select('id, nombre, matricula, whatsapp, bio, ciudad, experiencia, honorario, obras_sociales, enfoques, especializaciones, modalidades, edades, dias, franjas, foto_url, plan, genero, trial_hasta')
+      .select('id, nombre, matricula, whatsapp, bio, ciudad, localidad, experiencia, honorario, obras_sociales, enfoques, especializaciones, modalidades, edades, dias, franjas, foto_url, plan, genero, trial_hasta')
       .eq('activo', true)
       .order('plan', { ascending: false }); // premium > flex > gratuito
 
