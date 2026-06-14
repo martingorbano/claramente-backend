@@ -70,6 +70,7 @@ const GTAG = `<!-- Google tag (gtag.js) -->
   function gtag(){dataLayer.push(arguments);}
   gtag('js', new Date());
   gtag('config', 'AW-17918674170');
+  gtag('config', 'G-JBYZ5M5M74');
 </script>`;
 
 // Middleware que inyecta GTAG en páginas HTML antes de servirlas
