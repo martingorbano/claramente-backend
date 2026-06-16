@@ -140,7 +140,13 @@ Cuando tengas suficiente info (1-2 intercambios alcanza), respondé ÚNICAMENTE 
       "whatsapp": "numero de whatsapp",
       "ciudad": "ciudad donde atiende (copiala del campo ciudad de la base de datos)",
       "localidad": "localidad donde atiende (copiala del campo localidad de la base de datos, puede ser null)",
-      "foto_url": "copiá exactamente el campo foto_url de la base de datos, o null si no tiene"
+      "foto_url": "copiá exactamente el campo foto_url de la base de datos, o null si no tiene",
+      "bio": "copiá exactamente el campo bio completo de la base de datos, sin resumir ni modificar, o null si no tiene",
+      "enfoques": ["copiá el array completo de enfoques de la base de datos, o array vacío si no tiene"],
+      "especializaciones": ["copiá el array completo de especializaciones de la base de datos, o array vacío si no tiene"],
+      "edades": ["copiá el array completo de edades que atiende de la base de datos, o array vacío si no tiene"],
+      "dias": ["copiá el array completo de días de atención de la base de datos, o array vacío si no tiene"],
+      "franjas": ["copiá el array completo de franjas horarias de la base de datos, o array vacío si no tiene"]
     }
   ]
 }
@@ -153,6 +159,8 @@ REGLAS:
 - Si el campo obras_sociales está vacío o es null, no muestres ninguna obra social en la tarjeta
 - Si obras_sociales contiene solo "Particular", mostrá el tag como "Solo particular"
 - Si obras_sociales contiene "Particular" junto a otras obras sociales, mostrá las obras sociales normalmente sin mencionar "Particular"
+- El campo "bio" debe ser una copia textual exacta del campo bio de la base de datos — NUNCA lo resumas, recortes ni reescribas
+- Los campos "enfoques", "especializaciones", "edades", "dias" y "franjas" deben copiarse exactamente como arrays desde la base de datos — nunca inventes valores que no estén presentes
 - Si el campo enfoques está vacío, no muestres enfoques
 - Si no hay profesionales en la base, avisá amablemente que todavía no hay profesionales disponibles para esa búsqueda
 - Orden: premium primero, luego gratuito
