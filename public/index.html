@@ -170,6 +170,15 @@ nav {
 .card-desc { font-size: 12px; color: var(--text-muted); line-height: 1.5; }
 .card-ciudad { font-size: 11px; color: var(--text-faint); margin-top: 2px; }
 .card-footer { display: flex; align-items: center; justify-content: space-between; margin-top: auto; }
+.card-expand-toggle { font-size: 11px; color: var(--sage); text-align: center; cursor: pointer; padding: 4px 0 0; user-select: none; }
+.card-expand-toggle:hover { text-decoration: underline; }
+.card-detail { display: none; border-top: 1px solid var(--border); margin-top: 4px; padding-top: 10px; font-size: 12px; color: var(--text-muted); line-height: 1.6; }
+.card-detail.open { display: block; animation: fadeUp 0.25s ease both; }
+.card-detail-bio { margin-bottom: 8px; }
+.card-detail-row { margin-bottom: 6px; }
+.card-detail-label { font-weight: 600; color: var(--text-faint); font-size: 11px; text-transform: uppercase; letter-spacing: 0.3px; margin-bottom: 2px; }
+.card-detail-tags { display: flex; flex-wrap: wrap; gap: 4px; }
+.card-detail-tags .tag { font-size: 10px; }
 .match-score { font-size: 12px; color: var(--sage); font-weight: 500; }
 .contact-btn { font-size: 12px; padding: 7px 14px; border-radius: 20px; border: none; background: #25D366; color: white; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.18s; display: flex; align-items: center; gap: 5px; }
 .contact-btn:hover { background: #1DA851; transform: scale(1.03); }
@@ -556,6 +565,40 @@ function renderCards(profesionales, query) {
           </button>
         </div>`;
 
+    const tieneDetalle = !!(p.bio || (p.enfoques && p.enfoques.length) || (p.especializaciones && p.especializaciones.length) || (p.edades && p.edades.length) || (p.dias && p.dias.length) || (p.franjas && p.franjas.length));
+
+    const detailHTML = tieneDetalle ? `
+      <div class="card-detail" id="detail-${p.id}">
+        ${p.bio ? `<div class="card-detail-bio">${p.bio}</div>` : ''}
+        ${(p.enfoques && p.enfoques.length) ? `
+          <div class="card-detail-row">
+            <div class="card-detail-label">Enfoques</div>
+            <div class="card-detail-tags">${p.enfoques.map(e => `<span class="tag tag-sage">${e}</span>`).join('')}</div>
+          </div>` : ''}
+        ${(p.especializaciones && p.especializaciones.length) ? `
+          <div class="card-detail-row">
+            <div class="card-detail-label">Especializaciones</div>
+            <div class="card-detail-tags">${p.especializaciones.map(e => `<span class="tag tag-warm">${e}</span>`).join('')}</div>
+          </div>` : ''}
+        ${(p.edades && p.edades.length) ? `
+          <div class="card-detail-row">
+            <div class="card-detail-label">Edades que atiende</div>
+            <div>${p.edades.join(', ')}</div>
+          </div>` : ''}
+        ${(p.dias && p.dias.length) ? `
+          <div class="card-detail-row">
+            <div class="card-detail-label">Días de atención</div>
+            <div>${p.dias.join(', ')}</div>
+          </div>` : ''}
+        ${(p.franjas && p.franjas.length) ? `
+          <div class="card-detail-row">
+            <div class="card-detail-label">Horarios</div>
+            <div>${p.franjas.join(', ')}</div>
+          </div>` : ''}
+      </div>` : '';
+
+    const toggleHTML = tieneDetalle ? `<div class="card-expand-toggle" data-target="detail-${p.id}">Ver más ▾</div>` : '';
+
     card.innerHTML = `
       ${badgeHTML}
       <div class="card-head">
@@ -583,7 +626,19 @@ function renderCards(profesionales, query) {
       </div>
       <div class="card-tags">${tags.slice(0,4).map((t,i)=>`<span class="tag ${i===0?'tag-sage':'tag-warm'}">${t}</span>`).join('')}</div>
       <div class="card-desc">${p.descripcion}</div>
+      ${detailHTML}
+      ${toggleHTML}
       ${footerHTML}`;
+
+    // Toggle de detalle expandible
+    const toggleEl = card.querySelector('.card-expand-toggle');
+    if (toggleEl) {
+      toggleEl.addEventListener('click', () => {
+        const detailEl = card.querySelector('.card-detail');
+        const isOpen = detailEl.classList.toggle('open');
+        toggleEl.textContent = isOpen ? 'Ver menos ▴' : 'Ver más ▾';
+      });
+    }
 
     // Agregar evento al botón usando data attributes para evitar problemas con comillas
     if (!esGratuito) {
