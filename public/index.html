@@ -95,6 +95,9 @@ nav {
 .dot:nth-child(3) { animation-delay: 0.4s; }
 @keyframes blink { 0%,100%{ opacity:.3; transform:scale(.85); } 50%{ opacity:1; transform:scale(1); } }
 .input-row { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-top: 2px solid var(--sage-light); background: var(--white); }
+.quick-chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; padding: 0 14px 14px; }
+.quick-chip { background: var(--sage-light); color: var(--sage-dark); border: 1px solid var(--border); border-radius: 16px; padding: 6px 12px; font-size: 12.5px; font-weight: 500; cursor: pointer; transition: background 0.15s, transform 0.15s; }
+.quick-chip:hover { background: var(--sage); color: white; transform: translateY(-1px); }
 .chat-input { flex: 1; font-family: 'DM Sans', sans-serif; font-size: 15px; padding: 13px 20px; border: 1.5px solid var(--sage-mid); border-radius: 28px; background: var(--white); color: var(--text); outline: none; transition: all 0.2s; box-shadow: 0 2px 8px rgba(44,80,72,0.06); }
 .chat-input:focus { border-color: var(--sage); box-shadow: 0 0 0 3px rgba(74,124,111,0.12); }
 .chat-input::placeholder { color: var(--text-muted); }
@@ -285,6 +288,15 @@ try {
           <div class="avatar ai">c</div>
           <div class="bubble ai">Hola, contame qué necesitás y te encuentro el psicólogo ideal. Por ejemplo: "busco alguien para ansiedad, online, que atienda OSDE".</div>
         </div>
+      </div>
+      <div class="quick-chips" id="quickChips">
+        <button class="quick-chip" type="button" onclick="startSearch('Busco un psicólogo para ansiedad')">Ansiedad</button>
+        <button class="quick-chip" type="button" onclick="startSearch('Busco un psicólogo para depresión')">Depresión</button>
+        <button class="quick-chip" type="button" onclick="startSearch('Busco un psicólogo para estrés')">Estrés</button>
+        <button class="quick-chip" type="button" onclick="startSearch('Busco terapia de pareja')">Pareja</button>
+        <button class="quick-chip" type="button" onclick="startSearch('Necesito un psicodiagnóstico')">Psicodiagnóstico</button>
+        <button class="quick-chip" type="button" onclick="startSearch('Necesito un apto psicológico')">Apto psicológico</button>
+        <button class="quick-chip" type="button" onclick="startSearch('Busco ayuda para adicciones')">Adicciones</button>
       </div>
       <div class="input-row">
         <input class="chat-input" id="chatInput" type="text" placeholder="Escribí lo que necesitás..." maxlength="500" />
@@ -669,6 +681,8 @@ function renderCards(profesionales, query) {
 function startSearch(text) {
   const input = document.getElementById('chatInput');
   input.value = text;
+  const chips = document.getElementById('quickChips');
+  if (chips) chips.style.display = 'none';
   document.querySelector('.hero-section').scrollIntoView({ behavior: 'smooth' });
   setTimeout(() => sendMessage(), 600);
 }
@@ -676,6 +690,8 @@ function startSearch(text) {
 async function sendMessage() {
   const text = inputEl.value.trim();
   if (!text || isLoading) return;
+  const chips = document.getElementById('quickChips');
+  if (chips) chips.style.display = 'none';
   isLoading = true; sendBtn.disabled = true;
   lastQuery = text; inputEl.value = '';
   addMessage('user', text);
