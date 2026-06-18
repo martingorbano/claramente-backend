@@ -154,7 +154,7 @@ REGLAS:
 - Si obras_sociales contiene solo "Particular", mostrá el tag como "Solo particular"
 - Si obras_sociales contiene "Particular" junto a otras obras sociales, mostrá las obras sociales normalmente sin mencionar "Particular"
 - Si el campo enfoques está vacío, no muestres enfoques
-- Devolvé MÁXIMO 3 profesionales — los 3 más afines a la búsqueda. Nunca devuelvas más de 3.
+- Devolvé MÁXIMO 5 profesionales — los más afines a la búsqueda, ordenados por match descendente. Nunca devuelvas más de 5.
 - Si no hay profesionales en la base, avisá amablemente que todavía no hay profesionales disponibles para esa búsqueda
 - Orden: premium primero, luego gratuito
 - Los profesionales "gratuito" NO tienen whatsapp — poné null en ese campo
@@ -411,7 +411,50 @@ app.get('/profesional/:id', async (req, res) => {
   }
 });
 
-// Chat con agente
+// Rota el orden de profesionales premium cuyo match esté dentro de un rango cercano (empate),
+// para no mostrar siempre al mismo cuando varios son igual de afines.
+// Mantiene el orden premium > gratuito, solo mezcla DENTRO de cada banda de empate.
+function rotarPorEmpate(profesionales, rangoEmpate = 10) {
+  if (!Array.isArray(profesionales) || profesionales.length <= 1) return profesionales;
+
+  const premium = profesionales.filter(p => p.plan === 'premium');
+  const otros = profesionales.filter(p => p.plan !== 'premium');
+
+  // Agrupar premium en bandas: mientras la diferencia de match con el primero de la banda
+  // sea <= rangoEmpate, pertenecen a la misma banda.
+  const ordenadosPorMatch = [...premium].sort((a, b) => (b.match || 0) - (a.match || 0));
+  const bandas = [];
+  let bandaActual = [];
+
+  ordenadosPorMatch.forEach((p) => {
+    if (bandaActual.length === 0) {
+      bandaActual.push(p);
+    } else {
+      const referencia = bandaActual[0].match || 0;
+      if ((referencia - (p.match || 0)) <= rangoEmpate) {
+        bandaActual.push(p);
+      } else {
+        bandas.push(bandaActual);
+        bandaActual = [p];
+      }
+    }
+  });
+  if (bandaActual.length) bandas.push(bandaActual);
+
+  // Mezclar aleatoriamente dentro de cada banda (Fisher-Yates simple)
+  const mezclados = bandas.flatMap(banda => {
+    const copia = [...banda];
+    for (let i = copia.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [copia[i], copia[j]] = [copia[j], copia[i]];
+    }
+    return copia;
+  });
+
+  return [...mezclados, ...otros];
+}
+
+
 app.post('/chat', limiterChat, async (req, res) => {
   const { messages } = req.body;
   if (!messages || !Array.isArray(messages)) {
@@ -480,7 +523,7 @@ app.post('/chat', limiterChat, async (req, res) => {
 
     const response = await anthropic.messages.create({
       model: 'claude-haiku-4-5-20251001',
-      max_tokens: 1200,
+      max_tokens: 1500,
       system: SYSTEM_PROMPT,
       messages: messagesConBase,
     });
@@ -502,6 +545,11 @@ app.post('/chat', limiterChat, async (req, res) => {
       try {
         const parsed = JSON.parse(jsonMatch[0]);
         if (parsed.profesionales) {
+          // Rotar entre profesionales premium con match cercano (empate de hasta 10 puntos)
+          // para no mostrar siempre al mismo cuando varios son igual de afines.
+          // Claude devuelve hasta 5 candidatos; acá rotamos y nos quedamos con los 3 finales a mostrar.
+          parsed.profesionales = rotarPorEmpate(parsed.profesionales, 10).slice(0, 3);
+
           // Guardar consulta en Supabase
           supabase.from('consultas').insert({
             mensaje: ultimoMensaje,
