@@ -140,13 +140,7 @@ Cuando tengas suficiente info (1-2 intercambios alcanza), respondé ÚNICAMENTE 
       "whatsapp": "numero de whatsapp",
       "ciudad": "ciudad donde atiende (copiala del campo ciudad de la base de datos)",
       "localidad": "localidad donde atiende (copiala del campo localidad de la base de datos, puede ser null)",
-      "foto_url": "copiá exactamente el campo foto_url de la base de datos, o null si no tiene",
-      "bio": "copiá exactamente el campo bio completo de la base de datos, sin resumir ni modificar, o null si no tiene",
-      "enfoques": ["copiá el array completo de enfoques de la base de datos, o array vacío si no tiene"],
-      "especializaciones": ["copiá el array completo de especializaciones de la base de datos, o array vacío si no tiene"],
-      "edades": ["copiá el array completo de edades que atiende de la base de datos, o array vacío si no tiene"],
-      "dias": ["copiá el array completo de días de atención de la base de datos, o array vacío si no tiene"],
-      "franjas": ["copiá el array completo de franjas horarias de la base de datos, o array vacío si no tiene"]
+      "foto_url": "copiá exactamente el campo foto_url de la base de datos, o null si no tiene"
     }
   ]
 }
@@ -159,8 +153,6 @@ REGLAS:
 - Si el campo obras_sociales está vacío o es null, no muestres ninguna obra social en la tarjeta
 - Si obras_sociales contiene solo "Particular", mostrá el tag como "Solo particular"
 - Si obras_sociales contiene "Particular" junto a otras obras sociales, mostrá las obras sociales normalmente sin mencionar "Particular"
-- El campo "bio" debe ser una copia textual exacta del campo bio de la base de datos — NUNCA lo resumas, recortes ni reescribas
-- Los campos "enfoques", "especializaciones", "edades", "dias" y "franjas" deben copiarse exactamente como arrays desde la base de datos — nunca inventes valores que no estén presentes
 - Si el campo enfoques está vacío, no muestres enfoques
 - Si no hay profesionales en la base, avisá amablemente que todavía no hay profesionales disponibles para esa búsqueda
 - Orden: premium primero, luego gratuito
@@ -389,6 +381,35 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', service: 'Claramente API' });
 });
 
+// Detalle extendido de un profesional (bio, enfoques, especializaciones, edades, dias, franjas)
+// Se consulta solo cuando el usuario hace click en "Ver más" en una tarjeta
+app.get('/profesional/:id', async (req, res) => {
+  const { id } = req.params;
+  // Validar que sea un UUID válido para evitar consultas raras
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (!uuidRegex.test(id)) {
+    return res.status(400).json({ error: 'id inválido' });
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('profesionales')
+      .select('id, bio, enfoques, especializaciones, edades, dias, franjas')
+      .eq('id', id)
+      .eq('activo', true)
+      .single();
+
+    if (error || !data) {
+      return res.status(404).json({ error: 'Profesional no encontrado' });
+    }
+
+    res.json(data);
+  } catch (err) {
+    console.error('Error en /profesional/:id:', err.message);
+    res.status(500).json({ error: 'Error al obtener detalle' });
+  }
+});
+
 // Chat con agente
 app.post('/chat', limiterChat, async (req, res) => {
   const { messages } = req.body;
@@ -437,7 +458,7 @@ app.post('/chat', limiterChat, async (req, res) => {
 
     const response = await anthropic.messages.create({
       model: 'claude-sonnet-4-6',
-      max_tokens: 3000,
+      max_tokens: 1500,
       system: SYSTEM_PROMPT,
       messages: messagesConBase,
     });
