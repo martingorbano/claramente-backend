@@ -154,6 +154,7 @@ REGLAS:
 - Si obras_sociales contiene solo "Particular", mostrá el tag como "Solo particular"
 - Si obras_sociales contiene "Particular" junto a otras obras sociales, mostrá las obras sociales normalmente sin mencionar "Particular"
 - Si el campo enfoques está vacío, no muestres enfoques
+- Devolvé MÁXIMO 3 profesionales — los 3 más afines a la búsqueda. Nunca devuelvas más de 3.
 - Si no hay profesionales en la base, avisá amablemente que todavía no hay profesionales disponibles para esa búsqueda
 - Orden: premium primero, luego gratuito
 - Los profesionales "gratuito" NO tienen whatsapp — poné null en ese campo
@@ -445,8 +446,29 @@ app.post('/chat', limiterChat, async (req, res) => {
       });
     }
 
-    const listaProfesionales = profesionales && profesionales.length > 0
-      ? `\n\nPROFESIONALES DISPONIBLES EN LA BASE DE DATOS:\n${JSON.stringify(profesionales, null, 2)}`
+    // Reducimos los campos que le mandamos a Claude: no necesita bio completa,
+    // honorario ni foto_url para decidir el match — eso aligera mucho el prompt.
+    const profesionalesLivianos = (profesionales || []).map(p => ({
+      id: p.id,
+      nombre: p.nombre,
+      whatsapp: p.whatsapp,
+      ciudad: p.ciudad,
+      localidad: p.localidad,
+      obras_sociales: p.obras_sociales,
+      enfoques: p.enfoques,
+      especializaciones: p.especializaciones,
+      modalidades: p.modalidades,
+      edades: p.edades,
+      dias: p.dias,
+      franjas: p.franjas,
+      foto_url: p.foto_url,
+      plan: p.plan,
+      genero: p.genero,
+      bio_resumen: (p.bio || '').slice(0, 150) // recorte corto solo para que Claude entienda el perfil
+    }));
+
+    const listaProfesionales = profesionalesLivianos.length > 0
+      ? `\n\nPROFESIONALES DISPONIBLES EN LA BASE DE DATOS:\n${JSON.stringify(profesionalesLivianos, null, 2)}`
       : '\n\nNo hay profesionales cargados en la base de datos todavía.';
 
     // Inyectar lista en el último mensaje
@@ -457,8 +479,8 @@ app.post('/chat', limiterChat, async (req, res) => {
     );
 
     const response = await anthropic.messages.create({
-      model: 'claude-sonnet-4-6',
-      max_tokens: 1500,
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 1200,
       system: SYSTEM_PROMPT,
       messages: messagesConBase,
     });
