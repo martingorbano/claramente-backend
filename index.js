@@ -437,7 +437,7 @@ app.post('/chat', limiterChat, async (req, res) => {
 
     const response = await anthropic.messages.create({
       model: 'claude-sonnet-4-6',
-      max_tokens: 1500,
+      max_tokens: 3000,
       system: SYSTEM_PROMPT,
       messages: messagesConBase,
     });
@@ -470,7 +470,42 @@ app.post('/chat', limiterChat, async (req, res) => {
             content: [{ type: 'text', text: JSON.stringify(parsed) }] 
           });
         }
-      } catch(e) {}
+      } catch(e) {
+        console.error('JSON.parse falló:', e.message);
+        console.error('jsonStr problemático:', jsonStr?.substring(0, 500));
+
+        // Reintento: a veces Claude corta el JSON o agrega texto extra al final.
+        // Probamos recortar hasta el último "}" válido del array de profesionales.
+        try {
+          const repairAttempt = jsonStr?.replace(/,\s*\]/g, ']').replace(/,\s*\}/g, '}');
+          const parsed2 = repairAttempt ? JSON.parse(repairAttempt) : null;
+          if (parsed2?.profesionales) {
+            supabase.from('consultas').insert({
+              mensaje: ultimoMensaje,
+              respuesta: parsed2.mensaje || null,
+              profesionales_devueltos: parsed2.profesionales || []
+            }).then(() => {}).catch(e => console.error('Error guardando consulta:', e.message));
+
+            return res.json({ 
+              content: [{ type: 'text', text: JSON.stringify(parsed2) }] 
+            });
+          }
+        } catch (e2) {
+          console.error('Reintento de reparación también falló:', e2.message);
+        }
+
+        // Si ambos intentos fallan, devolvemos un mensaje de error controlado
+        // en vez de mostrar el JSON crudo al usuario.
+        supabase.from('consultas').insert({
+          mensaje: ultimoMensaje,
+          respuesta: 'ERROR_PARSEO: ' + rawText.substring(0, 1000),
+          profesionales_devueltos: null
+        }).then(() => {}).catch(e => console.error('Error guardando consulta:', e.message));
+
+        return res.json({
+          content: [{ type: 'text', text: JSON.stringify({ respuesta: 'Tuve un problema al procesar tu búsqueda. ¿Podés intentarlo de nuevo?', profesionales: [] }) }]
+        });
+      }
     }
 
     // Guardar respuesta de texto (sin profesionales)
