@@ -629,7 +629,7 @@ function renderCards(profesionales, query) {
           cargado = true;
           try {
             const BACKEND_URL = 'https://claramentepsi.com';
-            const resp = await fetch(`${BACKEND_URL}/profesional/${p.id}`);
+            const resp = await fetch(`${BACKEND_URL}/profesional/${p.id}/detalle`);
             if (!resp.ok) throw new Error('No se pudo cargar el detalle');
             const d = await resp.json();
 
