@@ -1182,6 +1182,12 @@ function addOtroEsp(e) {
 }
 
 function toggleOtraObra() {
+  const wrap = document.getElementById('otraObraWrap');
+  const btn = document.getElementById('otraObraBtn');
+  const visible = wrap.style.display === 'flex';
+  wrap.style.display = visible ? 'none' : 'flex';
+  if (!visible) document.getElementById('otraObra').focus();
+}
 
 function addOtraObra(e) {
   if (e.key !== 'Enter') return;
