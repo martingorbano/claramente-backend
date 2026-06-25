@@ -150,7 +150,7 @@ Cuando tengas suficiente info (1-2 intercambios alcanza), respondé ÚNICAMENTE 
 REGLAS:
 - Usá SOLO profesionales de la lista que se te provee
 - El campo "id" es OBLIGATORIO — copialo exactamente del campo id de la base de datos sin modificarlo
-- El campo "plan" es OBLIGATORIO — copialo exactamente del campo plan de la base de datos (puede ser "premium" o "gratuito") — NUNCA lo cambies ni lo inventes
+- El campo "plan" es OBLIGATORIO — copialo exactamente del campo plan que figura en los datos que se te proveen (puede ser "premium" o "gratuito"). Si figura "premium", copiá "premium". NUNCA lo cambies ni lo inventes.
 - Mostrá SOLO los datos que realmente existen en el perfil — nunca inventes obras sociales, enfoques ni especializaciones que no estén en los datos
 - Si el campo obras_sociales está vacío o es null, no muestres ninguna obra social en la tarjeta
 - Si obras_sociales contiene solo "Particular", mostrá el tag como "Solo particular"
@@ -488,6 +488,11 @@ app.post('/chat', limiterChat, async (req, res) => {
         if (p.trial_hasta && new Date(p.trial_hasta) > ahora) {
           p.plan = 'premium'; // Trial activo → mostrar como premium
         }
+      });
+      // Reordenar después de procesar trials: premium primero
+      profesionales.sort((a, b) => {
+        if (a.plan === b.plan) return 0;
+        return a.plan === 'premium' ? -1 : 1;
       });
     }
 
