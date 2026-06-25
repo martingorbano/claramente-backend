@@ -385,6 +385,8 @@ app.get('/health', (req, res) => {
 // Detalle extendido de un profesional (bio, enfoques, especializaciones, edades, dias, franjas)
 // Se consulta solo cuando el usuario hace click en "Ver más" en una tarjeta
 app.get('/profesional/:id/detalle', async (req, res) => {
+  const { id } = req.params;
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   if (!uuidRegex.test(id)) {
     return res.status(400).json({ error: 'id inválido' });
   }
