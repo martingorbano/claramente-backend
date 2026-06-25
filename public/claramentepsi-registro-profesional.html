@@ -420,6 +420,10 @@ select { cursor: pointer; appearance: none; background-image: url("data:image/sv
           <span class="tag-opt" onclick="toggleEnfoque(this)">Humanista</span>
           <span class="tag-opt" onclick="toggleEnfoque(this)">Mindfulness</span>
           <span class="tag-opt" onclick="toggleEnfoque(this)">Narrativo</span>
+          <span class="tag-opt" id="otroEnfBtn" onclick="toggleOtroEnf()">+ Otro</span>
+        </div>
+        <div id="otroEnfWrap" style="display:none; margin-top:8px; gap:8px; align-items:center; flex-wrap:wrap">
+          <input type="text" id="otroEnf" placeholder="Ej: Fenomenológico, Lacaniano..." style="max-width:260px; display:inline-block" onkeydown="addOtroEnf(event)" />
         </div>
         <span class="field-error" id="error-enfoques" style="display:none"></span>
       </div>
@@ -448,6 +452,10 @@ select { cursor: pointer; appearance: none; background-image: url("data:image/sv
           <span class="tag-opt" onclick="toggleTag(this,'espec')">Aptos psicológicos</span>
           <span class="tag-opt" onclick="toggleTag(this,'espec')">Psicodiagnósticos</span>
           <span class="tag-opt" onclick="toggleTag(this,'espec')">Evaluación neurocognitiva</span>
+          <span class="tag-opt" id="otroEspBtn" onclick="toggleOtroEsp()">+ Otra</span>
+        </div>
+        <div id="otroEspWrap" style="display:none; margin-top:8px; gap:8px; align-items:center; flex-wrap:wrap">
+          <input type="text" id="otroEsp" placeholder="Ej: Psicología deportiva, Neuropsicología..." style="max-width:260px; display:inline-block" onkeydown="addOtroEsp(event)" />
         </div>
         <span class="field-error" id="error-especializaciones" style="display:none"></span>
       </div>
@@ -1123,13 +1131,57 @@ function toggleEnfoque(el) {
 }
 
 // Obra social: campo "Otra"
-function toggleOtraObra() {
-  const wrap = document.getElementById('otraObraWrap');
-  const btn = document.getElementById('otraObraBtn');
+function toggleOtroEnf() {
+  const wrap = document.getElementById('otroEnfWrap');
+  const btn = document.getElementById('otroEnfBtn');
   const visible = wrap.style.display === 'flex';
   wrap.style.display = visible ? 'none' : 'flex';
-  if (!visible) document.getElementById('otraObra').focus();
+  if (!visible) document.getElementById('otroEnf').focus();
 }
+
+function addOtroEnf(e) {
+  if (e.key !== 'Enter') return;
+  e.preventDefault();
+  const val = document.getElementById('otroEnf').value.trim();
+  if (!val) return;
+  const container = document.getElementById('enfoques');
+  const existe = Array.from(container.querySelectorAll('.tag-opt')).some(t => t.textContent.trim().toLowerCase() === val.toLowerCase());
+  if (existe) { document.getElementById('otroEnf').value = ''; return; }
+  const tag = document.createElement('span');
+  tag.className = 'tag-opt selected';
+  tag.textContent = val;
+  tag.onclick = function() { toggleEnfoque(this); };
+  container.insertBefore(tag, document.getElementById('otroEnfBtn'));
+  document.getElementById('otroEnf').value = '';
+  document.getElementById('otroEnfWrap').style.display = 'none';
+}
+
+function toggleOtroEsp() {
+  const wrap = document.getElementById('otroEspWrap');
+  const btn = document.getElementById('otroEspBtn');
+  const visible = wrap.style.display === 'flex';
+  wrap.style.display = visible ? 'none' : 'flex';
+  if (!visible) document.getElementById('otroEsp').focus();
+}
+
+function addOtroEsp(e) {
+  if (e.key !== 'Enter') return;
+  e.preventDefault();
+  const val = document.getElementById('otroEsp').value.trim();
+  if (!val) return;
+  const container = document.getElementById('especializaciones');
+  const existe = Array.from(container.querySelectorAll('.tag-opt')).some(t => t.textContent.trim().toLowerCase() === val.toLowerCase());
+  if (existe) { document.getElementById('otroEsp').value = ''; return; }
+  const tag = document.createElement('span');
+  tag.className = 'tag-opt selected';
+  tag.textContent = val;
+  tag.onclick = function() { toggleTag(this, 'espec'); };
+  container.insertBefore(tag, document.getElementById('otroEspBtn'));
+  document.getElementById('otroEsp').value = '';
+  document.getElementById('otroEspWrap').style.display = 'none';
+}
+
+function toggleOtraObra() {
 
 function addOtraObra(e) {
   if (e.key !== 'Enter') return;
