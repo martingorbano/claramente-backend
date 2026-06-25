@@ -82,6 +82,11 @@ textarea { resize: vertical; min-height: 80px; }
 .tags-selector { display: flex; flex-wrap: wrap; gap: 8px; }
 .tag-opt { font-size: 12px; padding: 6px 14px; border-radius: 20px; border: 1px solid var(--border); background: var(--white); color: var(--text-muted); cursor: pointer; transition: all 0.18s; user-select: none; }
 .tag-opt.selected { background: var(--sage-light); border-color: var(--sage-mid); color: var(--sage-dark); font-weight: 500; }
+.tag-otro-row { display: flex; align-items: center; gap: 6px; margin-top: 4px; }
+.tag-otro-input { font-size: 12px; padding: 5px 12px; border-radius: 20px; border: 1px solid var(--border); background: var(--white); color: var(--text); outline: none; width: 160px; }
+.tag-otro-input:focus { border-color: var(--sage-mid); }
+.tag-otro-btn { font-size: 12px; padding: 5px 14px; border-radius: 20px; border: 1px solid var(--sage-mid); background: var(--sage-light); color: var(--sage-dark); cursor: pointer; font-weight: 500; white-space: nowrap; }
+.tag-otro-btn:hover { background: var(--sage); color: white; }
 .section-label { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-faint); margin: 24px 0 14px; }
 .save-row { display: flex; align-items: center; justify-content: flex-end; gap: 12px; margin-top: 28px; }
 .btn-save { font-size: 14px; padding: 10px 28px; border-radius: 24px; border: none; background: var(--sage); color: white; cursor: pointer; font-family: 'DM Sans', sans-serif; font-weight: 500; transition: all 0.18s; }
@@ -263,6 +268,10 @@ textarea { resize: vertical; min-height: 80px; }
             <span class="tag-opt" onclick="toggleTag(this,'enf')">Mindfulness</span>
             <span class="tag-opt" onclick="toggleTag(this,'enf')">Narrativo</span>
           </div>
+          <div class="tag-otro-row">
+            <input type="text" class="tag-otro-input" id="otro-enfoques" placeholder="Otro enfoque..." />
+            <button type="button" class="tag-otro-btn" onclick="agregarTagOtro('edit-enfoques', 'otro-enfoques', 'enf')">+ Agregar</button>
+          </div>
         </div>
         <div class="field" style="margin-bottom:16px">
           <label>Especializaciones</label>
@@ -287,6 +296,10 @@ textarea { resize: vertical; min-height: 80px; }
             <span class="tag-opt" onclick="toggleTag(this,'esp')">Psicodiagnósticos</span>
             <span class="tag-opt" onclick="toggleTag(this,'esp')">Evaluación neurocognitiva</span>
           </div>
+          <div class="tag-otro-row">
+            <input type="text" class="tag-otro-input" id="otro-especializaciones" placeholder="Otra especialización..." />
+            <button type="button" class="tag-otro-btn" onclick="agregarTagOtro('edit-especializaciones', 'otro-especializaciones', 'esp')">+ Agregar</button>
+          </div>
         </div>
         <div class="field" style="margin-bottom:16px">
           <label>Modalidad</label>
@@ -305,6 +318,10 @@ textarea { resize: vertical; min-height: 80px; }
             <span class="tag-opt" onclick="toggleTag(this,'obra')">PAMI</span>
             <span class="tag-opt" onclick="toggleTag(this,'obra')">Medicus</span>
             <span class="tag-opt" onclick="toggleTag(this,'obra')">Particular</span>
+          </div>
+          <div class="tag-otro-row">
+            <input type="text" class="tag-otro-input" id="otro-obras" placeholder="Otra obra social..." />
+            <button type="button" class="tag-otro-btn" onclick="agregarTagOtro('edit-obras', 'otro-obras', 'obra')">+ Agregar</button>
           </div>
         </div>
 
@@ -446,9 +463,51 @@ function cargarPerfil() {
 }
 
 function marcarTags(containerId, valores) {
-  document.querySelectorAll(`#${containerId} .tag-opt`).forEach(t => {
+  const container = document.getElementById(containerId);
+  // Marcar los tags fijos que coincidan
+  container.querySelectorAll('.tag-opt').forEach(t => {
     if (valores.includes(t.textContent.trim())) t.classList.add('selected');
   });
+  // Agregar como tags personalizados los valores que no están en la lista fija
+  const tagsFijos = Array.from(container.querySelectorAll('.tag-opt')).map(t => t.textContent.trim());
+  valores.forEach(v => {
+    if (!tagsFijos.includes(v)) {
+      const grupo = containerId === 'edit-enfoques' ? 'enf' : containerId === 'edit-especializaciones' ? 'esp' : 'obra';
+      const span = document.createElement('span');
+      span.className = 'tag-opt selected';
+      span.textContent = v;
+      span.setAttribute('data-custom', '1');
+      span.onclick = function() { toggleTag(this, grupo); };
+      // Insertar antes del div tag-otro-row si existe
+      const otroRow = container.parentElement.querySelector('.tag-otro-row');
+      if (otroRow) container.appendChild(span);
+      else container.appendChild(span);
+    }
+  });
+}
+
+function agregarTagOtro(containerId, inputId, grupo) {
+  const input = document.getElementById(inputId);
+  const valor = input.value.trim();
+  if (!valor) return;
+  const container = document.getElementById(containerId);
+  // Verificar que no exista ya
+  const existente = Array.from(container.querySelectorAll('.tag-opt')).find(t => t.textContent.trim().toLowerCase() === valor.toLowerCase());
+  if (existente) {
+    existente.classList.add('selected');
+    input.value = '';
+    actualizarPreview();
+    return;
+  }
+  // Crear nuevo tag seleccionado
+  const span = document.createElement('span');
+  span.className = 'tag-opt selected';
+  span.textContent = valor;
+  span.setAttribute('data-custom', '1');
+  span.onclick = function() { toggleTag(this, grupo); };
+  container.appendChild(span);
+  input.value = '';
+  actualizarPreview();
 }
 
 function toggleTag(el, grupo) {
@@ -602,6 +661,11 @@ async function inicializar() {
 inicializar();
 
 document.getElementById('edit-nombre').addEventListener('input', actualizarPreview);
+
+  // Enter en inputs de "Otro" para agregar tags
+  document.getElementById('otro-enfoques')?.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); agregarTagOtro('edit-enfoques', 'otro-enfoques', 'enf'); } });
+  document.getElementById('otro-especializaciones')?.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); agregarTagOtro('edit-especializaciones', 'otro-especializaciones', 'esp'); } });
+  document.getElementById('otro-obras')?.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); agregarTagOtro('edit-obras', 'otro-obras', 'obra'); } });
 
 function previsualizarFoto(input) {
   if (!input.files || !input.files[0]) return;
