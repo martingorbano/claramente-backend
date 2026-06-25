@@ -156,6 +156,7 @@ REGLAS:
 - Si el campo enfoques está vacío, no muestres enfoques
 - Devolvé MÁXIMO 5 profesionales — los más afines a la búsqueda, ordenados por match descendente. Nunca devuelvas más de 5.
 - Si no hay profesionales en la base, avisá amablemente que todavía no hay profesionales disponibles para esa búsqueda
+- MATCHING ESTRICTO: solo derivá a un profesional si su campo "especializaciones" o "enfoques" tiene una relación directa y clara con lo que busca la persona. NO derivés a alguien solo porque es el único disponible o porque atiende adultos en general. Si ningún profesional de la base tiene la especialización adecuada para lo que busca la persona, respondé con un mensaje cálido avisando que por el momento no contamos con profesionales especializados en esa área, y sugerí que vuelva a intentar con otra búsqueda o que deje sus datos para cuando sumemos más profesionales. En ese caso NO devuelvas JSON con profesionales.
 - Orden: premium primero, luego gratuito
 - Los profesionales "gratuito" NO tienen whatsapp — poné null en ese campo
 - Si TODOS los disponibles son "gratuito", devolvé el JSON igual con "solo_gratuitos": true — NUNCA mezcles texto con el JSON, la respuesta debe ser SOLO el JSON sin nada antes ni después
