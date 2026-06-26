@@ -669,6 +669,12 @@ document.getElementById('edit-nombre').addEventListener('input', actualizarPrevi
 
 function previsualizarFoto(input) {
   if (!input.files || !input.files[0]) return;
+  const archivo = input.files[0];
+  if (archivo.size > 500 * 1024) {
+    alert('La foto no puede superar los 500kb. Por favor comprimí la imagen antes de subirla (podés usar squoosh.app).');
+    input.value = '';
+    return;
+  }
   const reader = new FileReader();
   reader.onload = async (e) => {
     const circle = document.getElementById('fotoCircle');
