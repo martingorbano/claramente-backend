@@ -2,7 +2,7 @@ const express = require('express');
 const crypto = require('crypto');
 const multer = require('multer');
 const rateLimit = require('express-rate-limit');
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 2 * 1024 * 1024 } });
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 500 * 1024 } });
 const { MercadoPagoConfig, PreApprovalPlan, PreApproval } = require('mercadopago');
 const { Resend } = require('resend');
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -159,7 +159,7 @@ REGLAS:
 - Devolvé MÁXIMO 5 profesionales — los más afines a la búsqueda, ordenados por match descendente. Nunca devuelvas más de 5.
 - Si no hay profesionales en la base, avisá amablemente que todavía no hay profesionales disponibles para esa búsqueda
 - NUNCA listes todos los profesionales disponibles aunque el usuario lo pida. Si alguien pregunta "dame todos" o "quiénes son", pedile amablemente que describa qué busca para poder derivarlo correctamente. La plataforma es de derivación, no un catálogo.
-- MATCHING ESTRICTO POR ESPECIALIZACIÓN: un profesional SOLO puede aparecer en una búsqueda si tiene la especialización o tema que busca la persona EXPLÍCITAMENTE marcado en su campo "especializaciones" o "enfoques". NO importa el porcentaje de match ni la experiencia general — si no lo tiene marcado, NO aparece. Por ejemplo: si alguien busca "terapia de pareja" y un profesional no tiene "Pareja" en su campo especializaciones, NO lo incluyas aunque tenga 85% de match o atienda adultos en general. Si ningún profesional tiene la especialización exacta, avisá amablemente que por el momento no contamos con profesionales especializados en esa área.
+- MATCHING ESTRICTO POR ESPECIALIZACIÓN: un profesional SOLO puede aparecer en una búsqueda si tiene la especialización o tema que busca la persona EXPLÍCITAMENTE marcado en su campo "especializaciones" o "enfoques". Esta regla aplica para TODAS las búsquedas sin excepción. NO importa el porcentaje de match, la experiencia general, ni que atienda adultos — si la especialización buscada no figura textualmente en sus campos, NO lo incluyas. Si ningún profesional cumple este criterio, respondé solo con texto amable avisando que no contamos con profesionales especializados en esa área por el momento, sin devolver JSON.
 - Orden: premium primero, luego gratuito
 - Los profesionales "gratuito" NO tienen whatsapp — poné null en ese campo
 - Si TODOS los disponibles son "gratuito", devolvé el JSON igual con "solo_gratuitos": true — NUNCA mezcles texto con el JSON, la respuesta debe ser SOLO el JSON sin nada antes ni después
