@@ -307,7 +307,7 @@ select { cursor: pointer; appearance: none; background-image: url("data:image/sv
           </div>
           <div>
             <button class="photo-upload-btn" onclick="document.getElementById('photoInput').click()">Elegir imagen</button>
-            <p class="field-hint" style="margin-top:6px">JPG o PNG · Máx 2MB · Se recomienda foto profesional</p>
+            <p class="field-hint" style="margin-top:6px">JPG o PNG · Máx 500kb · Se recomienda foto profesional</p>
             <input type="file" id="photoInput" accept="image/*" style="display:none" onchange="previewPhoto(this)" />
           </div>
         </div>
@@ -980,6 +980,12 @@ function buildResumen() {
 
 function previewPhoto(input) {
   if (input.files && input.files[0]) {
+    const archivo = input.files[0];
+    if (archivo.size > 500 * 1024) {
+      alert('La foto no puede superar los 500kb. Por favor comprimí la imagen antes de subirla (podés usar squoosh.app).');
+      input.value = '';
+      return;
+    }
     _fotoFile = input.files[0]; // Guardar globalmente
     const reader = new FileReader();
     reader.onload = e => {
