@@ -161,6 +161,7 @@ REGLAS:
 - Si no hay profesionales en la base, avisá amablemente que todavía no hay profesionales disponibles para esa búsqueda
 - NUNCA listes todos los profesionales disponibles aunque el usuario lo pida. Si alguien pregunta "dame todos" o "quiénes son", pedile amablemente que describa qué busca para poder derivarlo correctamente. La plataforma es de derivación, no un catálogo.
 - MATCHING ESTRICTO POR ESPECIALIZACIÓN: un profesional SOLO puede aparecer en una búsqueda si tiene la especialización o tema que busca la persona EXPLÍCITAMENTE marcado en su campo "especializaciones" o "enfoques". Esta regla aplica para TODAS las búsquedas sin excepción. NO importa el porcentaje de match, la experiencia general, ni que atienda adultos — si la especialización buscada no figura textualmente en sus campos, NO lo incluyas. Si ningún profesional cumple este criterio, respondé solo con texto amable avisando que no contamos con profesionales especializados en esa área por el momento, sin devolver JSON.
+- EVALUACIONES Y TESTS: cuando la persona busca un test, evaluación, psicodiagnóstico, apto psicológico, o evaluación de TDAH/TEA/aprendizaje/neuropsicológica, SOLO podés incluir profesionales que tengan explícitamente "Psicodiagnósticos", "Evaluaciones", "Aptos psicológicos", "Neuropsicología" o similar en sus especializaciones. Que un profesional trate o atienda TDAH no significa que haga evaluaciones — son cosas distintas. NO los mezcles.
 - Orden: premium primero, luego gratuito
 - Los profesionales "gratuito" NO tienen whatsapp — poné null en ese campo
 - Si TODOS los disponibles son "gratuito", devolvé el JSON igual con "solo_gratuitos": true — NUNCA mezcles texto con el JSON, la respuesta debe ser SOLO el JSON sin nada antes ni después
@@ -417,15 +418,14 @@ app.get('/profesional/:id/detalle', async (req, res) => {
 
 // Rota el orden de profesionales premium cuyo match esté dentro de un rango cercano (empate),
 // para no mostrar siempre al mismo cuando varios son igual de afines.
-// Mantiene el orden premium > gratuito, solo mezcla DENTRO de cada banda de empate.
+// Mantiene el orden premium > gratuito, y dentro de cada banda de empate
+// prioriza al que menos apareció en la última semana (según vistas_semana).
 function rotarPorEmpate(profesionales, rangoEmpate = 10) {
   if (!Array.isArray(profesionales) || profesionales.length <= 1) return profesionales;
 
   const premium = profesionales.filter(p => p.plan === 'premium');
   const otros = profesionales.filter(p => p.plan !== 'premium');
 
-  // Agrupar premium en bandas: mientras la diferencia de match con el primero de la banda
-  // sea <= rangoEmpate, pertenecen a la misma banda.
   const ordenadosPorMatch = [...premium].sort((a, b) => (b.match || 0) - (a.match || 0));
   const bandas = [];
   let bandaActual = [];
@@ -445,14 +445,15 @@ function rotarPorEmpate(profesionales, rangoEmpate = 10) {
   });
   if (bandaActual.length) bandas.push(bandaActual);
 
-  // Mezclar aleatoriamente dentro de cada banda (Fisher-Yates simple)
+  // Dentro de cada banda: menos vistas esta semana = aparece primero
+  // Si hay empate exacto en vistas, mezclar aleatoriamente
   const mezclados = bandas.flatMap(banda => {
-    const copia = [...banda];
-    for (let i = copia.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [copia[i], copia[j]] = [copia[j], copia[i]];
-    }
-    return copia;
+    return [...banda].sort((a, b) => {
+      const vistasA = a.vistas_semana || 0;
+      const vistasB = b.vistas_semana || 0;
+      if (vistasA !== vistasB) return vistasA - vistasB;
+      return Math.random() - 0.5;
+    });
   });
 
   return [...mezclados, ...otros];
@@ -500,6 +501,21 @@ app.post('/chat', limiterChat, async (req, res) => {
 
     // Reducimos los campos que le mandamos a Claude: no necesita bio completa,
     // honorario ni foto_url para decidir el match — eso aligera mucho el prompt.
+
+    // Traer vistas de la última semana por profesional para la rotación equitativa
+    const inicioSemana = new Date(ahora);
+    inicioSemana.setDate(inicioSemana.getDate() - 7);
+    const { data: vistasSemana } = await supabase
+      .from('vistas')
+      .select('psy_id')
+      .gte('created_at', inicioSemana.toISOString());
+    
+    // Contar vistas por profesional
+    const vistasPorProfesional = {};
+    (vistasSemana || []).forEach(v => {
+      vistasPorProfesional[v.psy_id] = (vistasPorProfesional[v.psy_id] || 0) + 1;
+    });
+
     const profesionalesLivianos = (profesionales || []).map(p => ({
       id: p.id,
       nombre: p.nombre,
@@ -516,11 +532,12 @@ app.post('/chat', limiterChat, async (req, res) => {
       foto_url: p.foto_url,
       plan: p.plan,
       genero: p.genero,
+      vistas_semana: vistasPorProfesional[p.id] || 0, // para rotación equitativa
       bio_resumen: (p.bio || '').slice(0, 150) // recorte corto solo para que Claude entienda el perfil
     }));
 
     const listaProfesionales = profesionalesLivianos.length > 0
-      ? `\n\nPROFESIONALES DISPONIBLES EN LA BASE DE DATOS:\n${JSON.stringify(profesionalesLivianos, null, 2)}`
+      ? `\n\nPROFESIONALES DISPONIBLES EN LA BASE DE DATOS:\n${JSON.stringify(profesionalesLivianos.map(({ vistas_semana, ...p }) => p), null, 2)}`
       : '\n\nNo hay profesionales cargados en la base de datos todavía.';
 
     // Inyectar lista en el último mensaje
@@ -554,9 +571,13 @@ app.post('/chat', limiterChat, async (req, res) => {
       try {
         const parsed = JSON.parse(jsonMatch[0]);
         if (parsed.profesionales) {
+          // Enriquecer con vistas_semana para la rotación equitativa
+          parsed.profesionales = parsed.profesionales.map(p => ({
+            ...p,
+            vistas_semana: vistasPorProfesional[p.id] || 0
+          }));
           // Rotar entre profesionales premium con match cercano (empate de hasta 10 puntos)
-          // para no mostrar siempre al mismo cuando varios son igual de afines.
-          // Claude devuelve hasta 5 candidatos; acá rotamos y nos quedamos con los 3 finales a mostrar.
+          // priorizando al que menos apareció esta semana. Recortar a 3.
           parsed.profesionales = rotarPorEmpate(parsed.profesionales, 10).slice(0, 3);
 
           // Guardar consulta en Supabase
