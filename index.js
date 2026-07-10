@@ -846,6 +846,40 @@ app.post('/reset-password', async (req, res) => {
   }
 });
 
+// Cambiar contraseña desde el panel (requiere contraseña actual)
+app.post('/cambiar-password', async (req, res) => {
+  const { email, passwordActual, passwordNueva } = req.body;
+  if (!email || !passwordActual || !passwordNueva) {
+    return res.status(400).json({ error: 'Todos los campos son requeridos' });
+  }
+  if (passwordNueva.length < 8) {
+    return res.status(400).json({ error: 'La nueva contraseña debe tener al menos 8 caracteres' });
+  }
+  try {
+    const { data, error } = await supabase
+      .from('profesionales')
+      .select('password_hash')
+      .eq('email', email)
+      .eq('activo', true)
+      .single();
+
+    if (error || !data) return res.status(404).json({ error: 'Profesional no encontrado' });
+
+    const ok = await bcrypt.compare(passwordActual, data.password_hash);
+    if (!ok) return res.status(401).json({ error: 'La contraseña actual es incorrecta' });
+
+    const password_hash = await bcrypt.hash(passwordNueva, 10);
+    await supabase.from('profesionales').update({ password_hash }).eq('email', email);
+
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('Error cambiar-password:', e.message);
+    res.status(500).json({ error: 'Error al cambiar la contraseña' });
+  }
+});
+  }
+});
+
 // Verificar si email ya existe
 app.get('/check-email', async (req, res) => {
   const { email } = req.query;
