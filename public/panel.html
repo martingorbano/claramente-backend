@@ -628,7 +628,7 @@ async function cambiarPassword() {
     return;
   }
 
-  const profesional = JSON.parse(localStorage.getItem('claramente_profesional') || '{}');
+  const profesional = JSON.parse(localStorage.getItem('clm_profesional') || '{}');
   try {
     const res = await fetch('/cambiar-password', {
       method: 'POST',
