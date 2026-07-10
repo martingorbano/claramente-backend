@@ -147,6 +147,7 @@ textarea { resize: vertical; min-height: 80px; }
     <button class="tab active" onclick="switchTab('perfil')">Mi perfil</button>
     <button class="tab" onclick="switchTab('plan')">Plan</button>
     <button class="tab" onclick="switchTab('stats')">Estadísticas</button>
+    <button class="tab" onclick="switchTab('password')">Contraseña</button>
   </div>
 
   <!-- ESTADÍSTICAS -->
@@ -169,6 +170,31 @@ textarea { resize: vertical; min-height: 80px; }
     <div id="graficoWrap" style="display:none;background:var(--white);border:1px solid var(--border);border-radius:var(--radius);padding:20px">
       <div style="font-size:13px;font-weight:500;color:var(--text);margin-bottom:16px">Últimas 8 semanas</div>
       <canvas id="graficoStats" height="120"></canvas>
+    </div>
+  </div>
+
+  <!-- CONTRASEÑA -->
+  <div class="tab-panel" id="tab-password">
+    <div style="max-width:420px">
+      <h3 style="font-family:'Lora',serif;font-size:20px;font-weight:400;margin-bottom:6px">Cambiar contraseña</h3>
+      <p style="font-size:13px;color:var(--text-muted);margin-bottom:24px">Ingresá tu contraseña actual y la nueva que querés usar.</p>
+
+      <div class="field" style="margin-bottom:16px">
+        <label class="field-label">Contraseña actual</label>
+        <input type="password" id="pwActual" class="field-input" placeholder="Tu contraseña actual" />
+      </div>
+      <div class="field" style="margin-bottom:16px">
+        <label class="field-label">Nueva contraseña</label>
+        <input type="password" id="pwNueva" class="field-input" placeholder="Mínimo 8 caracteres" />
+      </div>
+      <div class="field" style="margin-bottom:24px">
+        <label class="field-label">Confirmar nueva contraseña</label>
+        <input type="password" id="pwConfirmar" class="field-input" placeholder="Repetí la nueva contraseña" />
+      </div>
+
+      <div id="pwMsg" style="font-size:13px;margin-bottom:16px;display:none"></div>
+
+      <button class="btn-save" onclick="cambiarPassword()">Guardar nueva contraseña</button>
     </div>
   </div>
 
@@ -574,6 +600,61 @@ async function guardarPerfil() {
   } catch(e) { console.error(e); }
 }
 
+// Cambiar contraseña
+async function cambiarPassword() {
+  const actual = document.getElementById('pwActual').value.trim();
+  const nueva = document.getElementById('pwNueva').value.trim();
+  const confirmar = document.getElementById('pwConfirmar').value.trim();
+  const msg = document.getElementById('pwMsg');
+
+  msg.style.display = 'none';
+
+  if (!actual || !nueva || !confirmar) {
+    msg.style.display = 'block';
+    msg.style.color = 'var(--error, #c0392b)';
+    msg.textContent = 'Completá todos los campos.';
+    return;
+  }
+  if (nueva.length < 8) {
+    msg.style.display = 'block';
+    msg.style.color = 'var(--error, #c0392b)';
+    msg.textContent = 'La nueva contraseña debe tener al menos 8 caracteres.';
+    return;
+  }
+  if (nueva !== confirmar) {
+    msg.style.display = 'block';
+    msg.style.color = 'var(--error, #c0392b)';
+    msg.textContent = 'Las contraseñas no coinciden.';
+    return;
+  }
+
+  const profesional = JSON.parse(localStorage.getItem('claramente_profesional') || '{}');
+  try {
+    const res = await fetch('/cambiar-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: profesional.email, passwordActual: actual, passwordNueva: nueva })
+    });
+    const data = await res.json();
+    if (data.ok) {
+      msg.style.display = 'block';
+      msg.style.color = 'var(--sage)';
+      msg.textContent = '✓ Contraseña actualizada correctamente.';
+      document.getElementById('pwActual').value = '';
+      document.getElementById('pwNueva').value = '';
+      document.getElementById('pwConfirmar').value = '';
+    } else {
+      msg.style.display = 'block';
+      msg.style.color = 'var(--error, #c0392b)';
+      msg.textContent = data.error || 'Error al cambiar la contraseña.';
+    }
+  } catch (e) {
+    msg.style.display = 'block';
+    msg.style.color = 'var(--error, #c0392b)';
+    msg.textContent = 'Error de conexión. Intentá de nuevo.';
+  }
+}
+
 // Plan
 const MP_LINKS = {
   premium: 'https://www.mercadopago.com.ar/subscriptions/checkout?preapproval_plan_id=eefad72a6586412e8a74031b80c9ca0b',
@@ -625,7 +706,7 @@ function upgrade() {
 // Tabs
 function switchTab(tab) {
   document.querySelectorAll('.tab').forEach((t, i) => {
-    const tabs = ['perfil', 'plan', 'stats'];
+    const tabs = ['perfil', 'plan', 'stats', 'password'];
     t.classList.toggle('active', tabs[i] === tab);
   });
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
