@@ -877,8 +877,6 @@ app.post('/cambiar-password', async (req, res) => {
     res.status(500).json({ error: 'Error al cambiar la contraseña' });
   }
 });
-  }
-});
 
 // Verificar si email ya existe
 app.get('/check-email', async (req, res) => {
