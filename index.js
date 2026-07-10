@@ -27,7 +27,7 @@ app.use((req, res, next) => {
 const PORT = process.env.PORT || 3000;
 
 app.use(cors({
-  origin: ['https://claramentepsi.com', 'https://www.claramentepsi.com', 'https://claramente-backend.onrender.com'],
+  origin: ['https://claramentepsi.com', 'https://www.claramentepsi.com'],
   methods: ['GET', 'POST', 'PUT'],
   allowedHeaders: ['Content-Type']
 }));
@@ -1106,7 +1106,7 @@ app.post('/registro-pendiente', async (req, res) => {
       premium: 'eefad72a6586412e8a74031b80c9ca0b'
     };
 
-    const backUrl = `${process.env.APP_URL || 'https://claramente-backend.onrender.com'}/pago-exitoso.html?session_id=${session_id}`;
+    const backUrl = `${process.env.APP_URL || 'https://claramentepsi.com'}/pago-exitoso.html?session_id=${session_id}`;
 
     // Crear suscripción via API de MP con external_reference
     const preApproval = new PreApproval(mp);
