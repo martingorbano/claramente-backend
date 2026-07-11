@@ -109,7 +109,13 @@ app.get('/ayuda', (req, res) => {
 const areas = ['ansiedad', 'pareja', 'ninos', 'adicciones', 'evaluaciones', 'neuropsicologia', 'judicial', 'vocacional'];
 areas.forEach(area => {
   app.get(`/${area}`, (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', `${area}.html`));
+    const filePath = path.join(__dirname, 'public', `${area}.html`);
+    if (fs.existsSync(filePath)) {
+      let html = fs.readFileSync(filePath, 'utf8');
+      html = html.replace('</head>', GTAG + '\n</head>');
+      return res.send(html);
+    }
+    res.status(404).send('Not found');
   });
 });
 
