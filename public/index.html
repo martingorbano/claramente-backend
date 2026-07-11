@@ -525,6 +525,14 @@ function showToast(msg) {
 
 async function trackContact(psy, query) {
   showToast('Abriendo WhatsApp...');
+  // Disparar evento de conversión a Google Ads
+  if (typeof gtag !== 'undefined') {
+    gtag('event', 'conversion', {
+      'send_to': 'AW-17918674170/VvQrCLvwy_cbEPqJpeBC',
+      'value': 15000,
+      'currency': 'ARS'
+    });
+  }
   try {
     await fetch('/contacto', {
       method: 'POST',
