@@ -277,7 +277,7 @@ app.post('/activar-trial', async (req, res) => {
     trial_hasta.setDate(trial_hasta.getDate() + 30); // 30 días
     const { error } = await supabase
       .from('profesionales')
-      .update({ trial_hasta: trial_hasta.toISOString() })
+      .update({ trial_hasta: trial_hasta.toISOString(), trial_mail_enviado: false })
       .eq('id', id);
     if (error) throw error;
     res.json({ ok: true, trial_hasta });
@@ -290,24 +290,18 @@ app.post('/activar-trial', async (req, res) => {
 async function verificarTrialsVencidos() {
   try {
     const ahora = new Date().toISOString();
-    // Buscar profesionales con trial vencido que aún no fueron notificados
-    // Usamos ultimo_mail_gratuito para saber si ya les mandamos el mail de trial vencido
+    // Buscar profesionales con trial vencido que aún NO fueron notificados
     const { data: vencidos } = await supabase
       .from('profesionales')
-      .select('id, nombre, email, trial_hasta, busquedas_semana, ultimo_mail_gratuito')
+      .select('id, nombre, email, trial_hasta, busquedas_semana')
       .lt('trial_hasta', ahora)
       .not('trial_hasta', 'is', null)
-      .eq('plan', 'gratuito'); // Ya están en gratuito, el trial expiró
+      .eq('plan', 'gratuito') // Ya están en gratuito, el trial expiró
+      .eq('trial_mail_enviado', false); // Clave: solo los que no recibieron el mail todavía
 
     if (!vencidos || vencidos.length === 0) return;
 
     for (const prof of vencidos) {
-      // Si ya le mandamos el mail de trial vencido, no volver a mandar
-      // Lo detectamos porque ultimo_mail_gratuito fue actualizado DESPUÉS de que venció el trial
-      if (prof.ultimo_mail_gratuito && new Date(prof.ultimo_mail_gratuito) > new Date(prof.trial_hasta)) {
-        continue; // Ya notificado, saltar
-      }
-
       const nombre = prof.nombre?.split(' ')[0] || 'Lic.';
       const mpLink = 'https://www.mercadopago.com.ar/subscriptions/checkout?preapproval_plan_id=eefad72a6586412e8a74031b80c9ca0b';
 
@@ -341,11 +335,13 @@ async function verificarTrialsVencidos() {
           </div>
         `
       });
-      // Marcar que ya se envió el mail de trial vencido usando ultimo_mail_gratuito
+
+      // Marcar como notificado para que el próximo cron no lo vuelva a mandar
       await supabase
         .from('profesionales')
-        .update({ ultimo_mail_gratuito: new Date().toISOString() })
+        .update({ trial_mail_enviado: true })
         .eq('id', prof.id);
+
       console.log(`Mail de trial vencido enviado a ${prof.email}`);
     }
   } catch(e) {
