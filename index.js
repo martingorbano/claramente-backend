@@ -560,7 +560,7 @@ app.post('/chat', limiterChat, async (req, res) => {
 
     const response = await anthropic.messages.create({
       model: 'claude-haiku-4-5-20251001',
-      max_tokens: 1500,
+      max_tokens: 2500,
       system: SYSTEM_PROMPT,
       messages: messagesConBase,
     });
