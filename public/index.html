@@ -712,7 +712,6 @@ function renderCards(profesionales, query) {
 function startSearch(text) {
   const input = document.getElementById('chatInput');
   input.value = text;
-  const chips =   if (chips) chips.style.display = 'none';
   document.querySelector('.hero-section').scrollIntoView({ behavior: 'smooth' });
   setTimeout(() => sendMessage(), 600);
 }
@@ -720,7 +719,6 @@ function startSearch(text) {
 async function sendMessage() {
   const text = inputEl.value.trim();
   if (!text || isLoading) return;
-  const chips =   if (chips) chips.style.display = 'none';
   isLoading = true; sendBtn.disabled = true;
   lastQuery = text; inputEl.value = '';
   addMessage('user', text);
