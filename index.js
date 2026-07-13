@@ -1,785 +1,1300 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Claramente · Encontrá tu psicólogo en Argentina</title>
-<meta name="description" content="Claramente es la plataforma para encontrar psicólogos en Argentina. Describí lo que necesitás y nuestra IA te conecta con el profesional ideal. Contacto directo por WhatsApp.">
-<meta name="keywords" content="psicólogo, psicóloga, terapia, salud mental, Argentina, Mendoza, ansiedad, pareja, online, presencial">
-<meta name="robots" content="index, follow">
-<link rel="canonical" href="https://claramentepsi.com/">
+const express = require('express');
+const crypto = require('crypto');
+const multer = require('multer');
+const rateLimit = require('express-rate-limit');
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 500 * 1024 } });
+const { MercadoPagoConfig, PreApprovalPlan, PreApproval } = require('mercadopago');
+const { Resend } = require('resend');
+const resend = new Resend(process.env.RESEND_API_KEY);
 
-<!-- Open Graph -->
-<meta property="og:title" content="Claramente · Encontrá tu psicólogo en Argentina">
-<meta property="og:description" content="Describí lo que necesitás y nuestra IA te conecta con el psicólogo ideal. Contacto directo por WhatsApp.">
-<meta property="og:type" content="website">
-<meta property="og:url" content="https://claramentepsi.com/">
-<meta property="og:site_name" content="Claramente">
-<meta property="og:locale" content="es_AR">
+const mp = new MercadoPagoConfig({ accessToken: process.env.MP_ACCESS_TOKEN });
+const cors = require('cors');
+const Anthropic = require('@anthropic-ai/sdk');
+const { createClient } = require('@supabase/supabase-js');
+const path = require('path');
+const bcrypt = require('bcryptjs');
 
-<!-- Twitter Card -->
-<meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="Claramente · Encontrá tu psicólogo en Argentina">
-<meta name="twitter:description" content="Describí lo que necesitás y nuestra IA te conecta con el psicólogo ideal.">
-<link rel="icon" type="image/x-icon" href="/favicon.ico">
-<link rel="icon" type="image/png" sizes="512x512" href="/favicon-512.png">
-<link rel="icon" type="image/png" sizes="192x192" href="/favicon-192.png">
-<link rel="apple-touch-icon" href="/favicon-192.png">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
-<style>
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-:root {
-  --sage: #4A7C6F; --sage-light: #E8F2EF; --sage-mid: #A8C8C0; --sage-dark: #2C5048;
-  --warm: #F7F3EE; --warm-mid: #EDE6DC; --text: #1C2B28; --text-muted: #6B847E;
-  --text-faint: #9AAFAA; --border: #D8E8E4; --white: #FFFFFF; --radius: 16px;
-}
-html { scroll-behavior: smooth; }
-body { font-family: 'DM Sans', sans-serif; background: var(--warm); color: var(--text); min-height: 100vh; }
+const app = express();
+app.set('trust proxy', 1); // Render usa proxy
 
-/* NAV */
-nav {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 16px 36px; background: var(--warm); border-bottom: 1px solid var(--border);
-  position: sticky; top: 0; z-index: 100;
-}
-.logo { font-family: 'Lora', serif; font-size: 20px; color: var(--text); letter-spacing: -0.02em; text-decoration: none; }
-.logo span { color: var(--sage); font-style: italic; }
-.nav-right { display: flex; align-items: center; gap: 12px; }
-.nav-link { font-size: 13px; color: var(--text-muted); cursor: pointer; text-decoration: none; transition: color 0.18s; }
-.nav-link:hover { color: var(--sage); }
-.nav-cta { font-size: 13px; padding: 8px 18px; border-radius: 20px; border: 1px solid var(--sage); background: transparent; color: var(--sage); cursor: pointer; font-family: 'DM Sans', sans-serif; font-weight: 500; transition: all 0.18s; text-decoration: none; }
-.nav-cta:hover { background: var(--sage); color: white; }
-.nav-cta-secondary { font-size: 13px; padding: 8px 18px; border-radius: 20px; border: 1px solid var(--border); background: var(--white); color: var(--text-muted); cursor: pointer; font-family: "DM Sans", sans-serif; font-weight: 500; transition: all 0.18s; text-decoration: none; }
-.nav-cta-secondary:hover { border-color: var(--sage-mid); color: var(--sage-dark); }
-
-/* HERO */
-.hero-section {
-  min-height: calc(100vh - 57px);
-  display: flex; flex-direction: column; justify-content: center;
-  padding: 0 0 40px;
-}
-.hero {
-  text-align: center; padding: 0 24px 24px;
-  max-width: 700px; margin: 0 auto;
-}
-.hero-eyebrow { font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--sage); margin-bottom: 14px; }
-.hero h1 {
-  font-family: 'Lora', serif; font-size: 46px; font-weight: 400;
-  line-height: 1.18; color: var(--text); margin-bottom: 20px; letter-spacing: -0.03em;
-}
-@media (max-width: 600px) { .hero h1 { font-size: 30px; } }
-.hero h1 em { font-style: italic; color: var(--sage); }
-.hero p { font-size: 16px; color: var(--text-muted); line-height: 1.7; max-width: 440px; margin: 0 auto 36px; }
-
-/* CHAT */
-.chat-container { max-width: 600px; margin: 0 auto; width: 100%; padding: 0 20px; }
-.chat-window { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; box-shadow: 0 8px 40px rgba(44,80,72,0.14); }
-.messages { padding: 20px; display: flex; flex-direction: column; gap: 14px; min-height: 140px; max-height: 300px; overflow-y: auto; scroll-behavior: smooth; }
-.messages::-webkit-scrollbar { width: 4px; }
-.messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
-.msg { display: flex; gap: 10px; align-items: flex-start; animation: fadeUp 0.3s ease both; }
-.msg.user { flex-direction: row-reverse; }
-@keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
-.avatar { width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 500; flex-shrink: 0; }
-.avatar.ai { background: var(--sage-light); color: var(--sage-dark); font-family: 'Lora', serif; font-style: italic; font-size: 13px; }
-.avatar.user { background: var(--warm-mid); color: var(--text-muted); font-size: 10px; }
-.bubble { max-width: 82%; padding: 10px 14px; border-radius: 16px; font-size: 14px; line-height: 1.6; }
-.bubble.ai { background: var(--sage-light); color: var(--text); border-bottom-left-radius: 4px; }
-.bubble.user { background: var(--sage); color: white; border-bottom-right-radius: 4px; }
-.bubble.typing { background: var(--sage-light); border-bottom-left-radius: 4px; display: flex; align-items: center; gap: 10px; padding: 13px 18px; }
-.typing-text { font-size: 14px; color: var(--sage-dark); font-style: italic; }
-.typing-dots { display: flex; gap: 4px; align-items: center; }
-.dot { width: 5px; height: 5px; background: var(--sage-mid); border-radius: 50%; animation: blink 1.2s infinite; }
-.dot:nth-child(2) { animation-delay: 0.2s; }
-.dot:nth-child(3) { animation-delay: 0.4s; }
-@keyframes blink { 0%,100%{ opacity:.3; transform:scale(.85); } 50%{ opacity:1; transform:scale(1); } }
-.input-row { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-top: 2px solid var(--sage-light); background: var(--white); }
-.chat-input { flex: 1; font-family: 'DM Sans', sans-serif; font-size: 15px; padding: 13px 20px; border: 1.5px solid var(--sage-mid); border-radius: 28px; background: var(--white); color: var(--text); outline: none; transition: all 0.2s; box-shadow: 0 2px 8px rgba(44,80,72,0.06); }
-.chat-input:focus { border-color: var(--sage); box-shadow: 0 0 0 3px rgba(74,124,111,0.12); }
-.chat-input::placeholder { color: var(--text-muted); }
-.send-btn { width: 46px; height: 46px; border-radius: 50%; background: var(--sage); border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; color: white; transition: background 0.2s, transform 0.1s; flex-shrink: 0; box-shadow: 0 2px 8px rgba(44,80,72,0.25); }
-.send-btn:hover { background: var(--sage-dark); }
-.send-btn:active { transform: scale(0.95); }
-.send-btn:disabled { background: var(--sage-mid); cursor: default; }
-.send-btn svg { width: 17px; height: 17px; }
-
-/* CHIPS */
-.suggestions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; max-width: 640px; margin: 0 auto 60px; padding: 0 20px; }
-.chip { font-size: 12px; padding: 7px 15px; border-radius: 20px; border: 1px solid var(--border); background: var(--white); color: var(--text-muted); cursor: pointer; transition: all 0.18s; white-space: nowrap; }
-.chip:hover { border-color: var(--sage-mid); color: var(--sage-dark); background: var(--sage-light); }
-
-/* RESULTADOS */
-.results-section { max-width: 640px; margin: 0 auto 60px; padding: 32px 20px 0; width: 100%; }
-.results-label { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-faint); margin-bottom: 6px; }
-.results-hint { font-size: 12px; color: var(--text-faint); margin-bottom: 14px; }
-.cards-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
-.cards-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; align-items: stretch; }
-.pro-card { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; display: flex; flex-direction: column; gap: 12px; animation: fadeUp 0.35s ease both; transition: box-shadow 0.2s, transform 0.2s; height: 100%; }
-.pro-card:hover { box-shadow: 0 6px 24px rgba(44,80,72,0.08); transform: translateY(-2px); }
-.pro-card:nth-child(2) { animation-delay: 0.08s; }
-.pro-card:nth-child(3) { animation-delay: 0.16s; }
-
-/* Premium — tarjeta grande y destacada, todas iguales */
-.pro-card.plan-premium { 
-  border: 2px solid #B8860B; 
-  padding: 24px;
-  background: linear-gradient(135deg, #FFFFF8 0%, #FDF8EC 100%);
-  box-shadow: 0 8px 32px rgba(184,134,11,0.12);
-}
-
-.pro-card.plan-premium:hover { 
-  box-shadow: 0 12px 40px rgba(184,134,11,0.18);
-  transform: translateY(-3px);
-}
-.pro-card.plan-premium .card-avatar { width: 52px; height: 52px; font-size: 18px; }
-.pro-card.plan-premium .card-name { font-size: 15px; font-weight: 500; }
-.pro-card.plan-premium .match-score { font-size: 13px; font-weight: 600; }
-
-/* Flex — más visible que gratuito, borde verde, fondo suave */
-.pro-card.plan-flex { 
-  border: 1.5px solid var(--sage-mid);
-  background: var(--sage-light);
-  padding: 18px;
-}
-.pro-card.plan-flex .card-avatar { width: 46px; height: 46px; }
-
-/* Gratuito — más chico, opaco, sin destacar */
-.pro-card.plan-gratuito { 
-  opacity: 0.65;
-  background: var(--warm-mid);
-  border: 1px solid var(--border);
-  padding: 14px;
-}
-.pro-card.plan-gratuito .card-avatar { width: 36px; height: 36px; font-size: 12px; }
-.pro-card.plan-gratuito .card-name { font-size: 13px; }
-.pro-card.plan-gratuito .card-sub { font-size: 11px; }
-
-.plan-badge { display: inline-flex; font-size: 10px; font-weight: 500; padding: 3px 10px; border-radius: 20px; letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 8px; align-self: flex-start; }
-.badge-premium { background: #FDF8E8; color: #B8860B; border: 1px solid #E8D48A; }
-.badge-flex { background: var(--sage-light); color: var(--sage-dark); border: 1px solid var(--sage-mid); }
-.no-contact-msg { font-size: 11px; color: var(--text-faint); text-align: center; padding: 6px 0; font-style: italic; }
-.card-head { display: flex; align-items: center; gap: 12px; }
-.card-avatar { width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: 'Lora', serif; font-size: 15px; font-weight: 500; flex-shrink: 0; }
-.card-name { font-size: 14px; font-weight: 500; color: var(--text); line-height: 1.3; }
-.card-sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
-.card-tags { display: flex; flex-wrap: wrap; gap: 5px; }
-.tag { font-size: 11px; padding: 3px 9px; border-radius: 20px; }
-.tag-sage { background: var(--sage-light); color: var(--sage-dark); }
-.tag-warm { background: var(--warm-mid); color: var(--text-muted); }
-.card-desc { font-size: 12px; color: var(--text-muted); line-height: 1.5; }
-.card-ciudad { font-size: 11px; color: var(--text-faint); margin-top: 2px; }
-.card-footer { display: flex; align-items: center; justify-content: space-between; margin-top: auto; }
-.card-expand-toggle { font-size: 11px; color: var(--sage); text-align: center; cursor: pointer; padding: 4px 0 0; user-select: none; }
-.card-expand-toggle:hover { text-decoration: underline; }
-.card-detail { display: none; border-top: 1px solid var(--border); margin-top: 4px; padding-top: 10px; font-size: 12px; color: var(--text-muted); line-height: 1.6; }
-.card-detail.open { display: block; animation: fadeUp 0.25s ease both; }
-.card-detail-bio { margin-bottom: 8px; }
-.card-detail-row { margin-bottom: 6px; }
-.card-detail-label { font-weight: 600; color: var(--text-faint); font-size: 11px; text-transform: uppercase; letter-spacing: 0.3px; margin-bottom: 2px; }
-.card-detail-tags { display: flex; flex-wrap: wrap; gap: 4px; }
-.card-detail-tags .tag { font-size: 10px; }
-.card-detail-loading { color: var(--text-faint); font-size: 12px; font-style: italic; }
-.match-score { font-size: 12px; color: var(--sage); font-weight: 500; }
-.contact-btn { font-size: 12px; padding: 7px 14px; border-radius: 20px; border: none; background: #25D366; color: white; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.18s; display: flex; align-items: center; gap: 5px; }
-.contact-btn:hover { background: #1DA851; transform: scale(1.03); }
-.contact-btn svg { width: 13px; height: 13px; }
-
-
-.areas-section { padding: 60px 24px; background: var(--warm); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
-.areas-section .section-title em { font-style: italic; color: var(--sage); }
-.areas-grid { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 4px; }
-.area-chip { display: flex; align-items: center; gap: 8px; padding: 10px 18px; border-radius: 24px; border: 1px solid var(--border); background: var(--white); cursor: pointer; transition: all 0.18s; font-size: 14px; color: var(--text-muted); font-family: "DM Sans", sans-serif; text-decoration: none; }
-.area-chip:hover { border-color: var(--sage-mid); background: var(--sage-light); color: var(--sage-dark); }
-.area-chip i { font-size: 16px; color: var(--sage); }
-
-/* COMO FUNCIONA */
-.como-funciona {
-  background: var(--white); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);
-  padding: 72px 24px;
-}
-.section-inner { max-width: 760px; margin: 0 auto; }
-.section-eyebrow { font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--sage); margin-bottom: 12px; }
-.section-title { font-family: 'Lora', serif; font-size: 28px; font-weight: 400; color: var(--text); margin-bottom: 10px; letter-spacing: -0.02em; }
-.section-sub { font-size: 15px; color: var(--text-muted); line-height: 1.7; max-width: 480px; margin-bottom: 48px; }
-.steps-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 32px 48px; }
-@media (max-width: 560px) { .steps-grid { grid-template-columns: 1fr; } }
-.step-card { display: flex; flex-direction: column; gap: 12px; }
-.step-num { width: 36px; height: 36px; border-radius: 50%; background: var(--sage-light); color: var(--sage-dark); display: flex; align-items: center; justify-content: center; font-family: 'Lora', serif; font-size: 16px; font-weight: 500; flex-shrink: 0; }
-.step-title { font-size: 15px; font-weight: 500; color: var(--text); }
-.step-desc { font-size: 13px; color: var(--text-muted); line-height: 1.65; }
-
-/* PARA PROFESIONALES */
-.para-profesionales { padding: 72px 24px; }
-.prof-inner { max-width: 760px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1fr; gap: 48px; align-items: center; }
-@media (max-width: 600px) { 
-  .prof-inner { grid-template-columns: 1fr; } 
-  .hero h1 { font-size: 28px; } 
-  nav { padding: 12px 16px; }
-  .nav-right { gap: 6px; }
-  .nav-link { display: none; }
-  .nav-cta { font-size: 12px; padding: 7px 12px; }
-  .nav-cta-secondary { font-size: 12px; padding: 7px 12px; }
-}
-.prof-features { display: flex; flex-direction: column; gap: 16px; margin: 24px 0 32px; }
-.prof-feat { display: flex; align-items: flex-start; gap: 12px; }
-.prof-feat-icon { width: 32px; height: 32px; border-radius: 8px; background: var(--sage-light); display: flex; align-items: center; justify-content: center; font-size: 15px; flex-shrink: 0; margin-top: 1px; }
-.prof-feat-title { font-size: 14px; font-weight: 500; color: var(--text); margin-bottom: 3px; }
-.prof-feat-desc { font-size: 13px; color: var(--text-muted); line-height: 1.55; }
-.prof-card-preview { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; box-shadow: 0 4px 24px rgba(44,80,72,0.06); }
-.prof-card-head { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
-.prof-card-av { width: 48px; height: 48px; border-radius: 50%; background: var(--sage-light); color: var(--sage-dark); display: flex; align-items: center; justify-content: center; font-family: 'Lora', serif; font-size: 16px; }
-.prof-card-name { font-size: 15px; font-weight: 500; }
-.prof-card-sub { font-size: 12px; color: var(--text-muted); }
-.prof-card-tags { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 14px; }
-.prof-card-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px; }
-.stat-box { background: var(--warm); border-radius: 8px; padding: 10px 12px; }
-.stat-val { font-size: 18px; font-weight: 500; color: var(--sage-dark); }
-.stat-label { font-size: 11px; color: var(--text-faint); }
-.btn-unirse { display: inline-block; font-size: 14px; padding: 12px 28px; border-radius: 24px; border: none; background: var(--sage); color: white; cursor: pointer; font-family: 'DM Sans', sans-serif; font-weight: 500; transition: all 0.18s; text-decoration: none; }
-.btn-unirse:hover { background: var(--sage-dark); transform: translateY(-1px); }
-
-/* FOOTER */
-footer { border-top: 1px solid var(--border); padding: 28px 36px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
-.footer-logo { font-family: 'Lora', serif; font-size: 16px; color: var(--text-muted); }
-.footer-logo span { color: var(--sage); font-style: italic; }
-.footer-note { font-size: 12px; color: var(--text-faint); }
-
-/* TOAST */
-.toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px); background: var(--sage-dark); color: white; font-size: 12px; padding: 10px 18px; border-radius: 20px; opacity: 0; transition: all 0.3s; z-index: 300; white-space: nowrap; }
-.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
-</style>
-</head>
-<body>
-
-<!-- NAV -->
-<nav>
-  <a class="logo" href="#">clara<span>mente</span></a>
-  <div class="nav-right">
-    <a class="nav-link" href="#como-funciona">Cómo funciona</a>
-    <a class="nav-cta-secondary" href="/login.html">Ingresar</a><a class="nav-cta" href="/claramentepsi-registro-profesional.html">Sumate a la red</a>
-  </div>
-</nav>
-<script>
-// Si hay sesión activa, cambiar "Ingresar" por "Mi panel" y ocultar "Sumate a la red"
-try {
-  const prof = JSON.parse(localStorage.getItem('clm_profesional') || 'null');
-  if (prof && prof.id) {
-    const btnIngresar = document.querySelector('a[href="/login.html"]');
-    if (btnIngresar) { btnIngresar.textContent = 'Mi panel'; btnIngresar.href = '/panel.html'; }
-    document.querySelectorAll('a[href="/claramentepsi-registro-profesional.html"], a[href="claramentepsi-registro-profesional.html"]').forEach(btn => btn.style.display = 'none');
+// Redirigir onrender.com a claramentepsi.com
+app.use((req, res, next) => {
+  if (req.hostname.includes('onrender.com')) {
+    return res.redirect(301, 'https://claramentepsi.com' + req.originalUrl);
   }
-} catch(e) {}
-</script>
+  next();
+});
+const PORT = process.env.PORT || 3000;
 
-<!-- HERO + CHAT -->
-<section class="hero-section">
-  <div class="hero">
-    <div class="hero-eyebrow">La red de psicólogos de Argentina</div>
-    <h1>Te derivamos con el especialista<br><em>que necesitás</em></h1>
-  </div>
+app.use(cors({
+  origin: ['https://claramentepsi.com', 'https://www.claramentepsi.com'],
+  methods: ['GET', 'POST', 'PUT'],
+  allowedHeaders: ['Content-Type']
+}));
+app.use(express.json({ limit: '50kb' })); // limitar tamaño de requests
 
-  <div class="chat-container">
-    <div class="chat-window">
-      <div class="messages" id="messages">
-        <div class="msg ai">
-          <div class="avatar ai">c</div>
-          <div class="bubble ai">Hola, contame qué necesitás y te encuentro el psicólogo ideal. Por ejemplo: "busco psicólogo para terapia individual" o "necesito un psicodiagnóstico".</div>
-        </div>
-      </div>
-<div class="input-row">
-        <input class="chat-input" id="chatInput" type="text" placeholder="Escribí lo que necesitás..." maxlength="500" />
-        <button class="send-btn" id="sendBtn" onclick="sendMessage()" aria-label="Enviar">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="22" y1="2" x2="11" y2="13"></line>
-            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-          </svg>
-        </button>
-      </div>
-    </div>
-  </div>
-
-
-
-  <div class="results-section" id="resultsSection" style="display:none">
-    <div class="results-label">Profesionales sugeridos</div>
-    <div class="results-hint" id="resultsHint"></div>
-    <div class="cards-grid" id="cardsGrid"></div>
-  </div>
-</section>
-
-
-<!-- AREAS DE ATENCION -->
-<section class="areas-section">
-  <div class="section-inner">
-    <div class="section-eyebrow">Áreas de atención</div>
-    <div class="section-title">¿En qué podemos <em>ayudarte?</em></div>
-    <div class="section-sub">Tocá un área y el asistente arranca la búsqueda por vos.</div>
-    <div class="areas-grid" id="areasGrid">
-      <a class="area-chip" href="/ansiedad">Psicoterapia individual</a>
-      <a class="area-chip" href="/pareja">Pareja y familia</a>
-      <a class="area-chip" href="/ninos">Niños y adolescentes</a>
-      <a class="area-chip" href="/adicciones">Adicciones</a>
-      <a class="area-chip" href="/evaluaciones">Evaluaciones y aptos</a>
-      <a class="area-chip" href="/vocacional">Orientación vocacional</a>
-      <a class="area-chip" href="/neuropsicologia">Neuropsicología</a>
-      <a class="area-chip" href="/judicial">Causas judiciales</a>
-    </div>
-  </div>
-</section>
-
-<!-- COMO FUNCIONA -->
-<section class="como-funciona" id="como-funciona">
-  <div class="section-inner">
-    <div class="section-eyebrow">El proceso</div>
-    <div class="section-title">Simple como una conversación</div>
-    <div class="section-sub">No hay formularios, no hay filtros interminables. Contás lo que necesitás y el agente IA hace el trabajo.</div>
-    <div class="steps-grid">
-      <div class="step-card">
-        <div class="step-num">1</div>
-        <div class="step-title">Describís lo que buscás</div>
-        <div class="step-desc">Con tus palabras — especialidad, modalidad, obra social, horarios. Sin tecnicismos ni menús de opciones.</div>
-      </div>
-      <div class="step-card">
-        <div class="step-num">2</div>
-        <div class="step-title">La IA interpreta tu consulta</div>
-        <div class="step-desc">Nuestro agente entiende el contexto, hace una pregunta si necesita algo más, y busca en la red de profesionales.</div>
-      </div>
-      <div class="step-card">
-        <div class="step-num">3</div>
-        <div class="step-title">Recibís los mejores matches</div>
-        <div class="step-desc">Tres profesionales afines a tu búsqueda, ordenados por relevancia real — no por quién pagó más.</div>
-      </div>
-      <div class="step-card">
-        <div class="step-num">4</div>
-        <div class="step-title">Contactás directo por WhatsApp</div>
-        <div class="step-desc">Un toque y abrís una conversación con el profesional. Sin intermediarios, sin turnos online, sin burocracia.</div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- PARA PROFESIONALES -->
-<section class="para-profesionales" id="profesionales">
-  <div class="prof-inner">
-    <div>
-      <div class="section-eyebrow">Para profesionales</div>
-      <div class="section-title">Llegá a los pacientes que te necesitan</div>
-      <div class="section-sub" style="margin-bottom:0">Claramente usa IA para matchearte con las personas que buscan exactamente lo que vos hacés.</div>
-      <div class="prof-features">
-        <div class="prof-feat">
-          <div class="prof-feat-icon">🎯</div>
-          <div>
-            <div class="prof-feat-title">Aparición inteligente</div>
-            <div class="prof-feat-desc">Aparecés cuando alguien busca tu especialidad, enfoque y disponibilidad — no en listas genéricas.</div>
-          </div>
-        </div>
-        <div class="prof-feat">
-          <div class="prof-feat-icon">📲</div>
-          <div>
-            <div class="prof-feat-title">Contacto directo por WhatsApp</div>
-            <div class="prof-feat-desc">Los pacientes te escriben a vos directamente. Vínculo tuyo, sin intermediarios.</div>
-          </div>
-        </div>
-        <div class="prof-feat">
-          <div class="prof-feat-icon">📊</div>
-          <div>
-            <div class="prof-feat-title">Estadísticas reales</div>
-            <div class="prof-feat-desc">Sabés cuántas personas vieron tu perfil y cuántas te contactaron cada semana.</div>
-          </div>
-        </div>
-        <div class="prof-feat">
-          <div class="prof-feat-icon">💳</div>
-          <div>
-            <div class="prof-feat-title">Vos cobrás directo, nosotros no tocamos ese dinero</div>
-            <div class="prof-feat-desc">Pagás una suscripción mensual fija por estar en la plataforma. El honorario de cada sesión lo cobrás vos directamente del paciente, como siempre — Claramente no es intermediario de pagos ni se queda con un porcentaje de tus consultas.</div>
-          </div>
-        </div>
-      </div>
-      <a class="btn-unirse" href="claramentepsi-registro-profesional.html">Sumate a la red →</a>
-    </div>
-    <div>
-      <div class="prof-card-preview">
-        <div class="prof-card-head">
-          <div class="prof-card-av">ML</div>
-          <div>
-            <div class="prof-card-name">Lic. M. López</div>
-            <div class="prof-card-sub">Psicóloga clínica · Mendoza</div>
-          </div>
-        </div>
-        <div class="prof-card-tags">
-          <span class="tag tag-sage">TCC</span>
-          <span class="tag tag-sage">Ansiedad</span>
-          <span class="tag tag-warm">Online</span>
-          <span class="tag tag-warm">OSDE</span>
-        </div>
-        <div class="prof-card-stats">
-          <div class="stat-box">
-            <div class="stat-val">38</div>
-            <div class="stat-label">vistas esta semana</div>
-          </div>
-          <div class="stat-box">
-            <div class="stat-val">7</div>
-            <div class="stat-label">contactos este mes</div>
-          </div>
-        </div>
-        <button class="contact-btn" style="width:100%;justify-content:center">
-          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.125.558 4.122 1.532 5.856L.057 23.882l6.197-1.624A11.945 11.945 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.818 9.818 0 01-5.001-1.366l-.36-.214-3.716.974.992-3.623-.234-.373A9.818 9.818 0 012.182 12c0-5.422 4.396-9.818 9.818-9.818 5.422 0 9.818 4.396 9.818 9.818 0 5.422-4.396 9.818-9.818 9.818z"/></svg>
-          Así ven tu perfil los pacientes
-        </button>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- FOOTER -->
-<footer>
-  <div class="footer-logo">clara<span>mente</span></div>
-  <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap">
-    <a href="/ayuda" style="font-size:12px;color:var(--text-faint);text-decoration:none;transition:color 0.18s" onmouseover="this.style.color='var(--sage)'" onmouseout="this.style.color='var(--text-faint)'">Ayuda y soporte</a>
-    <a href="mailto:claramentepsisoporte@gmail.com" style="font-size:12px;color:var(--text-faint);text-decoration:none;transition:color 0.18s" onmouseover="this.style.color='var(--sage)'" onmouseout="this.style.color='var(--text-faint)'">claramentepsisoporte@gmail.com</a>
-    <span class="footer-note">La red de psicólogos de Argentina</span>
-  </div>
-</footer>
-
-<div class="toast" id="toast"></div>
-
-<script>
-let searchCount = parseInt(localStorage.getItem('clm_searches') || '0');
-
-// Pre-cargar búsqueda si viene desde una página de área
-const _urlParams = new URLSearchParams(window.location.search);
-const _buscar = _urlParams.get('buscar');
-if (_buscar) {
-  window.addEventListener('DOMContentLoaded', () => {
-    setTimeout(() => {
-      const decoded = decodeURIComponent(_buscar.replace(/\+/g, ' '));
-      document.getElementById('chatInput').value = decoded;
-      sendMessage();
-    }, 800);
-  });
-}
-
-// El system prompt vive en el backend (index.js)
-let history = [], isLoading = false, lastQuery = '';
-
-const messagesEl = document.getElementById('messages');
-const inputEl    = document.getElementById('chatInput');
-const sendBtn    = document.getElementById('sendBtn');
-
-inputEl.addEventListener('keydown', e => {
-  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+// Rate limiting general
+const limiterGeneral = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutos
+  max: 100,
+  message: { error: 'Demasiadas solicitudes. Intentá en unos minutos.' },
+  standardHeaders: true,
+  legacyHeaders: false,
 });
 
-function useChip(el) { inputEl.value = el.textContent; inputEl.focus(); }
+// Rate limiting estricto para el chat (IA)
+const limiterChat = rateLimit({
+  windowMs: 60 * 1000, // 1 minuto
+  max: 10,
+  message: { error: 'Demasiadas consultas al asistente. Esperá un momento.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
-function addMessage(role, text) {
-  const msg = document.createElement('div');
-  msg.className = `msg ${role}`;
-  const av = document.createElement('div');
-  av.className = `avatar ${role}`;
-  av.textContent = role === 'ai' ? 'c' : 'yo';
-  const bubble = document.createElement('div');
-  bubble.className = `bubble ${role}`;
-  bubble.textContent = text;
-  msg.appendChild(av); msg.appendChild(bubble);
-  messagesEl.appendChild(msg);
-  messagesEl.scrollTop = messagesEl.scrollHeight;
-}
+// Rate limiting para login (anti brute force)
+const limiterLogin = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutos
+  max: 10,
+  message: { error: 'Demasiados intentos de login. Intentá en 15 minutos.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
-function showTyping() {
-  const msg = document.createElement('div');
-  msg.className = 'msg ai'; msg.id = 'typing';
-  const _frases = [
-    'Estamos buscando el mejor profesional para vos...',
-    'Analizando tu consulta con cuidado...',
-    'Buscando psicólogos que se adapten a lo que necesitás...',
-    'Un momento, estamos encontrando el match ideal...',
-    'Revisando perfiles de profesionales especializados...',
-  ];
-  const _frase = _frases[Math.floor(Math.random() * _frases.length)];
-  msg.innerHTML = `<div class="avatar ai">c</div><div class="bubble typing"><span class="typing-text">${_frase}</span><div class="typing-dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div></div>`;
-  messagesEl.appendChild(msg);
-  messagesEl.scrollTop = messagesEl.scrollHeight;
-}
-function removeTyping() { const t = document.getElementById('typing'); if (t) t.remove(); }
+app.use(limiterGeneral);
+// Servir páginas HTML con Google Tag inyectado
+const fs = require('fs');
+const GTAG = `<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=AW-17918674170"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'AW-17918674170');
+  gtag('config', 'G-JBYZ5M5M74');
+</script>`;
 
-function shouldSpotlightFree() {
-  searchCount++;
-  localStorage.setItem('clm_searches', searchCount);
-  return searchCount % 5 === 0;
-}
-
-const COLORS = {
-  sage:   { bg: '#E8F2EF', color: '#2C5048' },
-  warm:   { bg: '#F0EBE0', color: '#5C4A30' },
-  purple: { bg: '#EEEAF7', color: '#3D2F72' }
-};
-
-function showToast(msg) {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 2500);
-}
-
-async function trackContact(psy, query) {
-  showToast('Abriendo WhatsApp...');
-  // Disparar evento de conversión a Google Ads
-  if (typeof gtag !== 'undefined') {
-    gtag('event', 'conversion', {
-      'send_to': 'AW-17918674170/VvQrCLvwy_cbEPqJpeBC',
-      'value': 15000,
-      'currency': 'ARS'
-    });
+// Middleware que inyecta GTAG en páginas HTML antes de servirlas
+app.use((req, res, next) => {
+  if (req.path.endsWith('.html') || req.path === '/') {
+    const filePath = req.path === '/' 
+      ? path.join(__dirname, 'public', 'index.html')
+      : path.join(__dirname, 'public', req.path);
+    if (fs.existsSync(filePath)) {
+      let html = fs.readFileSync(filePath, 'utf8');
+      html = html.replace('</head>', GTAG + '\n</head>');
+      return res.send(html);
+    }
   }
+  next();
+});
+
+app.use(express.static(path.join(__dirname, 'public')));
+
+// Sitemap y robots
+app.get('/sitemap.xml', (req, res) => {
+  res.setHeader('Content-Type', 'application/xml');
+  res.sendFile(path.join(__dirname, 'public', 'sitemap.xml'));
+});
+app.get('/robots.txt', (req, res) => {
+  res.setHeader('Content-Type', 'text/plain');
+  res.sendFile(path.join(__dirname, 'public', 'robots.txt'));
+});
+
+// Ruta de ayuda
+app.get('/ayuda', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'ayuda.html'));
+});
+
+// Rutas de áreas de atención
+const areas = ['ansiedad', 'pareja', 'ninos', 'adicciones', 'evaluaciones', 'neuropsicologia', 'judicial', 'vocacional'];
+areas.forEach(area => {
+  app.get(`/${area}`, (req, res) => {
+    const filePath = path.join(__dirname, 'public', `${area}.html`);
+    if (fs.existsSync(filePath)) {
+      let html = fs.readFileSync(filePath, 'utf8');
+      html = html.replace('</head>', GTAG + '\n</head>');
+      return res.send(html);
+    }
+    res.status(404).send('Not found');
+  });
+});
+
+const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
+
+const SYSTEM_PROMPT = `Sos el asistente de derivación de Claramente, una plataforma argentina que conecta personas con psicólogos mediante IA.
+
+Tu rol es entender qué necesita la persona y devolverle un JSON con los profesionales más adecuados de la base de datos real que se te provee. Hablás en español rioplatense, tono cálido y profesional. Nunca das consejos terapéuticos.
+
+IMPORTANTE: Siempre estás hablando con alguien que BUSCA un psicólogo — nunca con un profesional. NUNCA uses lenguaje como "¿dónde atendés?", "tus pacientes", "tu consultorio" o cualquier expresión que suponga que la persona es el terapeuta. La persona es siempre el paciente o quien busca ayuda.
+
+Cuando tengas suficiente info (1-2 intercambios alcanza), respondé ÚNICAMENTE con este JSON sin texto adicional:
+
+{
+  "respuesta": "Mensaje breve y cálido (1-2 oraciones)",
+  "profesionales": [
+    {
+      "id": "EXACTAMENTE el campo id (UUID) del profesional de la base de datos — este campo es OBLIGATORIO",
+      "nombre": "Lic. Nombre Apellido",
+      "especialidad": "Especialidad principal",
+      "enfoque": "primer enfoque del profesional",
+      "modalidad": "Online / Presencial / Online y Presencial",
+      "obras_sociales": ["OSDE"],
+      "descripcion": "Una frase concreta sobre su especialidad (máx 10 palabras, sin frases genéricas como 'acompaña con calidez' o similares)",
+      "match": 95,
+      "iniciales": "ML",
+      "color": "sage",
+      "plan": "premium / flex / gratuito",
+      "whatsapp": "numero de whatsapp",
+      "ciudad": "ciudad donde atiende (copiala del campo ciudad de la base de datos)",
+      "localidad": "localidad donde atiende (copiala del campo localidad de la base de datos, puede ser null)",
+      "foto_url": "copiá exactamente el campo foto_url de la base de datos, o null si no tiene"
+    }
+  ]
+}
+
+REGLAS:
+- Usá SOLO profesionales de la lista que se te provee
+- El campo "id" es OBLIGATORIO — copialo exactamente del campo id de la base de datos sin modificarlo
+- El campo "plan" es OBLIGATORIO — copialo exactamente del campo plan que figura en los datos que se te proveen (puede ser "premium" o "gratuito"). Si figura "premium", copiá "premium". NUNCA lo cambies ni lo inventes.
+- Mostrá SOLO los datos que realmente existen en el perfil — nunca inventes obras sociales, enfoques ni especializaciones que no estén en los datos
+- Si el campo obras_sociales está vacío o es null, no muestres ninguna obra social en la tarjeta
+- Si obras_sociales contiene solo "Particular", mostrá el tag como "Solo particular"
+- Si obras_sociales contiene "Particular" junto a otras obras sociales, mostrá las obras sociales normalmente sin mencionar "Particular"
+- OBRA SOCIAL SIN COBERTURA: si la persona busca un profesional que acepte una obra social específica y ninguno de los disponibles la acepta, podés igual mostrar los profesionales más afines a su especialización e informarle que si bien no aceptan esa obra social directamente, muchos pacientes optan por abonar la sesión y luego solicitar el reintegro a su obra social presentando la factura del profesional. Aclará que puede consultarle directamente al profesional sobre esta posibilidad antes de comenzar.
+- Si el campo enfoques está vacío, no muestres enfoques
+- Devolvé MÁXIMO 5 profesionales — los más afines a la búsqueda, ordenados por match descendente. Nunca devuelvas más de 5.
+- Si no hay profesionales en la base, avisá amablemente que todavía no hay profesionales disponibles para esa búsqueda
+- NUNCA listes todos los profesionales disponibles aunque el usuario lo pida. Si alguien pregunta "dame todos" o "quiénes son", pedile amablemente que describa qué busca para poder derivarlo correctamente. La plataforma es de derivación, no un catálogo.
+- MATCHING ESTRICTO POR ESPECIALIZACIÓN: un profesional SOLO puede aparecer en una búsqueda si tiene la especialización o tema que busca la persona EXPLÍCITAMENTE marcado en su campo "especializaciones" o "enfoques". Esta regla aplica para TODAS las búsquedas sin excepción. NO importa el porcentaje de match, la experiencia general, ni que atienda adultos — si la especialización buscada no figura textualmente en sus campos, NO lo incluyas. Si ningún profesional cumple este criterio, respondé solo con texto amable avisando que no contamos con profesionales especializados en esa área por el momento, sin devolver JSON.
+- EVALUACIONES Y TESTS: cuando la persona busca un test, evaluación, psicodiagnóstico, apto psicológico, o evaluación de TDAH/TEA/aprendizaje/neuropsicológica, SOLO podés incluir profesionales que tengan explícitamente "Psicodiagnósticos", "Evaluaciones", "Aptos psicológicos", "Neuropsicología" o similar en sus especializaciones. Que un profesional trate o atienda TDAH no significa que haga evaluaciones — son cosas distintas. NO los mezcles.
+- Orden: premium primero, luego gratuito
+- Los profesionales "gratuito" NO tienen whatsapp — poné null en ese campo
+- Si TODOS los disponibles son "gratuito", devolvé el JSON igual con "solo_gratuitos": true — NUNCA mezcles texto con el JSON, la respuesta debe ser SOLO el JSON sin nada antes ni después
+- color: "sage", "warm" o "purple" según tu criterio
+- match: qué tan afín es realmente el profesional a la búsqueda (80-98)
+- Si la persona pide explícitamente un psicólogo (masculino) o una psicóloga (femenino), filtrá los resultados priorizando profesionales del género solicitado. Si no hay suficientes, podés completar con otros aclarando que no encontraste más del género pedido. Si la persona no especifica género, mostrá los más afines sin filtrar.
+
+CONSULTAS SOBRE PRECIO / GRATUITO:
+- Si la persona pregunta por psicólogos gratuitos, sin costo, o que no cobren, respondé con un mensaje cálido explicando que Claramente es una plataforma de profesionales que cobran por sus servicios y que no contamos con psicólogos gratuitos. Podés mencionar que los honorarios varían y que puede haber opciones accesibles según cada profesional. No devuelvas JSON en este caso, solo texto.
+
+MENSAJES FUERA DE CONTEXTO:
+- Mensajes random: respondé brevemente y redirigí a la búsqueda
+- Contención directa: reconocé lo que siente, derivá al profesional indicado
+- IA genérica: sos el asistente de Claramente, nada más
+- Crisis: mencioná el 0800-999-0091 antes que cualquier otra cosa
+- Nunca des consejos terapéuticos ni diagnósticos
+
+Si falta info clave, hacé UNA sola pregunta antes del JSON.`;
+
+// Función para mandar mail al profesional gratuito
+async function notificarGratuito(profesional, queryTexto) {
   try {
-    await fetch('/contacto', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ psy_id: psy.id, query_texto: query, plan: psy.plan })
+    // Traer datos actuales del profesional
+    const { data: prof } = await supabase
+      .from('profesionales')
+      .select('ultimo_mail_gratuito, busquedas_semana, inicio_semana')
+      .eq('id', profesional.id)
+      .single();
+
+    if (!prof) return;
+
+    const ahora = new Date();
+    const inicioSemana = prof.inicio_semana ? new Date(prof.inicio_semana) : new Date();
+    const diasDesdeInicio = (ahora.getTime() - inicioSemana.getTime()) / (1000 * 60 * 60 * 24);
+    const esMismaSemana = diasDesdeInicio < 7;
+
+    if (esMismaSemana) {
+      // Sumar al contador de la semana sin mandar mail
+      await supabase.from('profesionales')
+        .update({ busquedas_semana: (prof.busquedas_semana || 0) + 1 })
+        .eq('id', profesional.id);
+      console.log(`Búsqueda acumulada para ${profesional.email} — total semana: ${(prof.busquedas_semana || 0) + 1}`);
+      return;
+    }
+
+    // Pasó una semana — mandar mail con el resumen y resetear contador
+    const busquedasAcumuladas = (prof.busquedas_semana || 0) + 1;
+
+    const result = await resend.emails.send({
+      from: 'Claramente <soporte@claramentepsi.com>',
+      reply_to: 'claramentepsisoporte@gmail.com',
+      to: profesional.email,
+      subject: `Esta semana apareciste en ${busquedasAcumuladas} búsqueda${busquedasAcumuladas > 1 ? 's' : ''} pero no pudiste ser contactado`,
+      html: `
+        <div style="font-family: 'DM Sans', Arial, sans-serif; max-width: 520px; margin: 0 auto; padding: 32px 24px; color: #1C2B28;">
+          <div style="font-family: Georgia, serif; font-size: 22px; color: #1C2B28; margin-bottom: 24px;">
+            clara<span style="color: #4A7C6F; font-style: italic;">mente</span>
+          </div>
+          <h2 style="font-size: 20px; font-weight: 400; margin-bottom: 12px; font-family: Georgia, serif;">
+            Hola ${profesional.nombre},
+          </h2>
+          <p style="font-size: 15px; line-height: 1.7; color: #6B847E; margin-bottom: 16px;">
+            Esta semana apareciste en <strong style="color: #1C2B28;">` + busquedasAcumuladas + ` búsqueda` + (busquedasAcumuladas > 1 ? 's' : '') + `</strong> en Claramente como una de las opciones más afines. La última fue:
+          </p>
+          <div style="background: #E8F2EF; border-radius: 12px; padding: 16px 20px; margin-bottom: 20px; font-size: 15px; color: #2C5048; font-style: italic;">
+            "${queryTexto}"
+          </div>
+          <p style="font-size: 15px; line-height: 1.7; color: #6B847E; margin-bottom: 24px;">
+            Sin embargo, <strong style="color: #1C2B28;">no pudieron contactarte</strong> porque tu perfil está en el plan gratuito y no muestra tu número de WhatsApp.
+          </p>
+          <p style="font-size: 15px; line-height: 1.7; color: #6B847E; margin-bottom: 28px;">
+            Con el plan <strong style="color: #1C2B28;">Flex ($32.500/mes)</strong> o <strong style="color: #B8860B;">Premium ($32.500/mes)</strong> los pacientes pueden contactarte directamente — y vos aparecés primero cuando sos el match correcto.
+          </p>
+          <a href="https://claramentepsi.com/login.html" 
+             style="display: inline-block; background: #4A7C6F; color: white; padding: 12px 28px; border-radius: 24px; text-decoration: none; font-size: 14px; font-weight: 500;">
+            Activar mi plan →
+          </a>
+          <p style="font-size: 12px; color: #9AAFAA; margin-top: 32px; line-height: 1.6;">
+            Claramente · La red de psicólogos de Argentina<br>
+            <a href="mailto:claramentepsisoporte@gmail.com" style="color: #9AAFAA;">claramentepsisoporte@gmail.com</a>
+          </p>
+        </div>
+      `
     });
+    console.log('Mail enviado a gratuito:', profesional.email, 'result:', JSON.stringify(result));
+    // Resetear contador y actualizar timestamp
+    await supabase.from('profesionales').update({ 
+      ultimo_mail_gratuito: new Date().toISOString(),
+      busquedas_semana: 0,
+      inicio_semana: new Date().toISOString()
+    }).eq('id', profesional.id);
   } catch(e) {
-    console.error('Error tracking:', e);
+    console.error('Error enviando mail:', e.message, e);
   }
 }
 
-function openWhatsapp(psy, query) {
-  trackContact(psy, query);
-  const nombre = psy.nombre.split(' ').slice(1).join(' ') || psy.nombre;
-  const msg = encodeURIComponent(`Hola ${nombre}, te contacto desde Claramente. Busco ayuda con: ${query}`);
-  setTimeout(() => window.open(`https://wa.me/${psy.whatsapp}?text=${msg}`, '_blank'), 600);
+// ============================================================
+// TRIALS
+// ============================================================
+
+// Activar trial para un profesional (llamado desde Supabase SQL o admin)
+app.post('/activar-trial', async (req, res) => {
+  const { id } = req.body;
+  if (!id) return res.status(400).json({ error: 'id requerido' });
+  try {
+    const trial_hasta = new Date();
+    trial_hasta.setDate(trial_hasta.getDate() + 30); // 30 días
+    const { error } = await supabase
+      .from('profesionales')
+      .update({ trial_hasta: trial_hasta.toISOString() })
+      .eq('id', id);
+    if (error) throw error;
+    res.json({ ok: true, trial_hasta });
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Cron: verificar trials vencidos y mandar mail
+async function verificarTrialsVencidos() {
+  try {
+    const ahora = new Date().toISOString();
+    // Buscar profesionales con trial vencido que aún no fueron notificados
+    const { data: vencidos } = await supabase
+      .from('profesionales')
+      .select('id, nombre, email, trial_hasta, busquedas_semana')
+      .lt('trial_hasta', ahora)
+      .not('trial_hasta', 'is', null)
+      .eq('plan', 'gratuito'); // Ya están en gratuito, el trial expiró
+
+    if (!vencidos || vencidos.length === 0) return;
+
+    for (const prof of vencidos) {
+      // Verificar que no le hayamos mandado el mail ya (limpiar trial_hasta después de notificar)
+      const trialFecha = new Date(prof.trial_hasta);
+      const diasVencido = Math.floor((new Date() - trialFecha) / (1000 * 60 * 60 * 24));
+      
+      // Solo mandar mail el primer día que vence
+      if (diasVencido > 1) continue;
+
+      const nombre = prof.nombre?.split(' ')[0] || 'Lic.';
+      const mpLink = 'https://www.mercadopago.com.ar/subscriptions/checkout?preapproval_plan_id=eefad72a6586412e8a74031b80c9ca0b';
+
+      await resend.emails.send({
+        from: 'Claramente <hola@claramentepsi.com>',
+        to: prof.email,
+        subject: 'Tu período de prueba en Claramente terminó',
+        html: `
+          <div style="font-family:'DM Sans',Arial,sans-serif;max-width:520px;margin:0 auto;background:#F7F3EE;padding:32px 20px">
+            <div style="background:white;border-radius:16px;padding:36px;border:1px solid #D8E8E4">
+              <div style="font-family:Georgia,serif;font-size:22px;color:#1C2B28;margin-bottom:20px">
+                clara<span style="color:#4A7C6F;font-style:italic">mente</span>
+              </div>
+              <p style="font-size:16px;color:#1C2B28;margin-bottom:8px">Hola, ${nombre}.</p>
+              <p style="font-size:14px;color:#6B847E;line-height:1.7;margin-bottom:24px">
+                Tu mes de prueba en Claramente terminó. Esperamos que hayas podido ver cómo funciona la plataforma y recibido algunas consultas.
+              </p>
+              <div style="background:#F7F3EE;border-radius:12px;padding:20px;margin-bottom:24px;text-align:center">
+                <p style="font-size:13px;color:#6B847E;margin-bottom:4px">Para seguir apareciendo con foto y contacto directo</p>
+                <p style="font-size:22px;font-weight:600;color:#B8860B;margin:0">$32.500/mes</p>
+                <p style="font-size:11px;color:#B8860B;font-style:italic;margin-top:4px">Precio promocional de lanzamiento</p>
+              </div>
+              <a href="${mpLink}" style="display:block;text-align:center;background:#4A7C6F;color:white;padding:14px 28px;border-radius:24px;text-decoration:none;font-size:14px;font-weight:500;margin-bottom:16px">
+                Activar Plan Premium →
+              </a>
+              <p style="font-size:12px;color:#9AAFAA;text-align:center;line-height:1.6">
+                Si no activás el plan, tu perfil sigue apareciendo en los resultados sin foto ni contacto directo.<br>
+                Podés activar Premium desde tu panel cuando quieras.
+              </p>
+            </div>
+          </div>
+        `
+      });
+      console.log(`Mail de trial vencido enviado a ${prof.email}`);
+    }
+  } catch(e) {
+    console.error('Error verificando trials:', e.message);
+  }
 }
 
-function renderCards(profesionales, query) {
-  const cardsEl   = document.getElementById('cardsGrid');
-  const resultsEl = document.getElementById('resultsSection');
-  const hint      = document.getElementById('resultsHint');
-  cardsEl.innerHTML = '';
-  hint.textContent = 'Los resultados se ordenan por afinidad real · los profesionales destacados aparecen primero';
+// Ejecutar verificación de trials cada 12 horas
+setInterval(verificarTrialsVencidos, 12 * 60 * 60 * 1000);
 
-  profesionales.slice(0, 6).forEach((p) => {
-    const col = COLORS[p.color] || COLORS.sage;
-    const tags = [p.enfoque, p.modalidad, ...(p.obras_sociales || [])].filter(Boolean);
-    const esPremium  = p.plan === 'premium';
-    const esFlex     = p.plan === 'flex';
-    const esGratuito = p.plan === 'gratuito';
-
-    const card = document.createElement('div');
-    card.className = `pro-card plan-${p.plan || 'gratuito'}`;
-
-    let badgeHTML = '';
-    if (esPremium) badgeHTML = `<span class="plan-badge badge-premium">★ Destacado</span>`;
-    if (esFlex)    badgeHTML = `<span class="plan-badge badge-flex">Flex</span>`;
-
-    const footerHTML = esGratuito
-      ? `<div class="no-contact-msg">Este profesional no está disponible para contacto directo</div>`
-      : `<div class="card-footer">
-          <span class="match-score">${p.match}% afín</span>
-          <button class="contact-btn btn-contactar" type="button">
-            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.125.558 4.122 1.532 5.856L.057 23.882l6.197-1.624A11.945 11.945 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.818 9.818 0 01-5.001-1.366l-.36-.214-3.716.974.992-3.623-.234-.373A9.818 9.818 0 012.182 12c0-5.422 4.396-9.818 9.818-9.818 5.422 0 9.818 4.396 9.818 9.818 0 5.422-4.396 9.818-9.818 9.818z"/></svg> Contactar
-          </button>
-        </div>`;
-
-    const detailHTML = `
-      <div class="card-detail" id="detail-${p.id}">
-        <div class="card-detail-loading">Cargando información...</div>
-      </div>`;
-
-    const toggleHTML = `<div class="card-expand-toggle" data-id="${p.id}">Ver más ▾</div>`;
-
-    card.innerHTML = `
-      ${badgeHTML}
-      <div class="card-head">
-        <div class="card-avatar" style="background:${col.bg};color:${col.color};overflow:hidden;padding:0">
-          ${p.foto_url ? `<img src="${p.foto_url}" style="width:100%;height:100%;object-fit:cover;border-radius:50%" onerror="this.parentElement.innerHTML='${p.iniciales}'" />` : p.iniciales}
-        </div>
-        <div>
-          <div class="card-name">${p.nombre}</div>
-          <div class="card-sub">${p.especialidad}</div>
-          <div class="card-ciudad">
-            ${(() => {
-              const modalidad = p.modalidad || '';
-              const soloOnline = modalidad === 'Online';
-              const tienePresencial = modalidad.toLowerCase().includes('presencial');
-              if (soloOnline) {
-                return '🌐 Online';
-              } else if (tienePresencial) {
-                const ubicacion = [p.ciudad, p.localidad].filter(Boolean).join(' · ');
-                return ubicacion ? `📍 ${ubicacion}` : '📍 Argentina';
-              }
-              return p.ciudad ? `📍 ${p.ciudad}` : '';
-            })()}
+// Formulario de soporte
+app.post('/soporte', async (req, res) => {
+  const { nombre, email, tipo, mensaje } = req.body;
+  if (!nombre || !email || !mensaje) return res.status(400).json({ error: 'Faltan campos requeridos' });
+  try {
+    await resend.emails.send({
+      from: 'Claramente <soporte@claramentepsi.com>',
+      to: 'claramentepsisoporte@gmail.com',
+      reply_to: email,
+      subject: `Consulta de soporte — ${tipo || 'General'} · ${nombre}`,
+      html: `
+        <div style="font-family:'DM Sans',Arial,sans-serif;max-width:520px;margin:0 auto;background:#F7F3EE;padding:32px 20px">
+          <div style="background:white;border-radius:16px;padding:36px;border:1px solid #D8E8E4">
+            <div style="font-family:Georgia,serif;font-size:22px;color:#1C2B28;margin-bottom:20px">
+              clara<span style="color:#4A7C6F;font-style:italic">mente</span> · Soporte
+            </div>
+            <table style="width:100%;border-collapse:collapse;margin-bottom:20px">
+              <tr><td style="font-size:12px;color:#9AAFAA;padding:8px 0 2px;text-transform:uppercase;letter-spacing:0.05em">Nombre</td></tr>
+              <tr><td style="font-size:14px;color:#1C2B28;padding-bottom:12px;border-bottom:1px solid #D8E8E4">${nombre}</td></tr>
+              <tr><td style="font-size:12px;color:#9AAFAA;padding:12px 0 2px;text-transform:uppercase;letter-spacing:0.05em">Email</td></tr>
+              <tr><td style="font-size:14px;color:#1C2B28;padding-bottom:12px;border-bottom:1px solid #D8E8E4">${email}</td></tr>
+              <tr><td style="font-size:12px;color:#9AAFAA;padding:12px 0 2px;text-transform:uppercase;letter-spacing:0.05em">Tipo de consulta</td></tr>
+              <tr><td style="font-size:14px;color:#1C2B28;padding-bottom:12px;border-bottom:1px solid #D8E8E4">${tipo || 'General'}</td></tr>
+              <tr><td style="font-size:12px;color:#9AAFAA;padding:12px 0 2px;text-transform:uppercase;letter-spacing:0.05em">Mensaje</td></tr>
+              <tr><td style="font-size:14px;color:#1C2B28;line-height:1.6;white-space:pre-wrap">${mensaje}</td></tr>
+            </table>
+            <p style="font-size:12px;color:#9AAFAA">Podés responder directamente a este mail para contactar a ${nombre}.</p>
           </div>
         </div>
-      </div>
-      <div class="card-tags">${tags.slice(0,4).map((t,i)=>`<span class="tag ${i===0?'tag-sage':'tag-warm'}">${t}</span>`).join('')}</div>
-      <div class="card-desc">${p.descripcion}</div>
-      ${detailHTML}
-      ${toggleHTML}
-      ${footerHTML}`;
+      `
+    });
+    res.json({ ok: true });
+  } catch(e) {
+    console.error('Error soporte:', e.message);
+    res.status(500).json({ error: 'Error al enviar el mensaje' });
+  }
+});
 
-    // Toggle de detalle expandible — carga el detalle bajo demanda desde el backend
-    const toggleEl = card.querySelector('.card-expand-toggle');
-    if (toggleEl) {
-      let cargado = false;
-      toggleEl.addEventListener('click', async () => {
-        const detailEl = card.querySelector('.card-detail');
-        const isOpen = detailEl.classList.toggle('open');
-        toggleEl.textContent = isOpen ? 'Ver menos ▴' : 'Ver más ▾';
+// Health check
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok', service: 'Claramente API' });
+});
 
-        if (isOpen && !cargado) {
-          cargado = true;
-          try {
-            const BACKEND_URL = 'https://claramentepsi.com';
-            const resp = await fetch(`${BACKEND_URL}/profesional/${p.id}/detalle`);
-            if (!resp.ok) throw new Error('No se pudo cargar el detalle');
-            const d = await resp.json();
+// Detalle extendido de un profesional (bio, enfoques, especializaciones, edades, dias, franjas)
+// Se consulta solo cuando el usuario hace click en "Ver más" en una tarjeta
+app.get('/profesional/:id/detalle', async (req, res) => {
+  const { id } = req.params;
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (!uuidRegex.test(id)) {
+    return res.status(400).json({ error: 'id inválido' });
+  }
 
-            const partes = [];
-            if (d.bio) partes.push(`<div class="card-detail-bio">${d.bio}</div>`);
-            if (d.enfoques && d.enfoques.length) {
-              partes.push(`
-                <div class="card-detail-row">
-                  <div class="card-detail-label">Enfoques</div>
-                  <div class="card-detail-tags">${d.enfoques.map(e => `<span class="tag tag-sage">${e}</span>`).join('')}</div>
-                </div>`);
-            }
-            if (d.especializaciones && d.especializaciones.length) {
-              partes.push(`
-                <div class="card-detail-row">
-                  <div class="card-detail-label">Especializaciones</div>
-                  <div class="card-detail-tags">${d.especializaciones.map(e => `<span class="tag tag-warm">${e}</span>`).join('')}</div>
-                </div>`);
-            }
-            if (d.edades && d.edades.length) {
-              partes.push(`
-                <div class="card-detail-row">
-                  <div class="card-detail-label">Edades que atiende</div>
-                  <div>${d.edades.join(', ')}</div>
-                </div>`);
-            }
-            if (d.dias && d.dias.length) {
-              partes.push(`
-                <div class="card-detail-row">
-                  <div class="card-detail-label">Días de atención</div>
-                  <div>${d.dias.join(', ')}</div>
-                </div>`);
-            }
-            if (d.franjas && d.franjas.length) {
-              partes.push(`
-                <div class="card-detail-row">
-                  <div class="card-detail-label">Horarios</div>
-                  <div>${d.franjas.join(', ')}</div>
-                </div>`);
-            }
+  try {
+    const { data, error } = await supabase
+      .from('profesionales')
+      .select('id, bio, enfoques, especializaciones, edades, dias, franjas')
+      .eq('id', id)
+      .eq('activo', true)
+      .single();
 
-            detailEl.innerHTML = partes.length ? partes.join('') : '<div class="card-detail-loading">Sin información adicional.</div>';
-          } catch (e) {
-            detailEl.innerHTML = '<div class="card-detail-loading">No se pudo cargar la información. Probá de nuevo.</div>';
-            cargado = false;
-          }
+    if (error || !data) {
+      return res.status(404).json({ error: 'Profesional no encontrado' });
+    }
+
+    res.json(data);
+  } catch (err) {
+    console.error('Error en /profesional/:id:', err.message);
+    res.status(500).json({ error: 'Error al obtener detalle' });
+  }
+});
+
+// Rota el orden de profesionales premium cuyo match esté dentro de un rango cercano (empate),
+// para no mostrar siempre al mismo cuando varios son igual de afines.
+// Mantiene el orden premium > gratuito, y dentro de cada banda de empate
+// prioriza al que menos apareció en la última semana (según vistas_semana).
+function rotarPorEmpate(profesionales, rangoEmpate = 10) {
+  if (!Array.isArray(profesionales) || profesionales.length <= 1) return profesionales;
+
+  const premium = profesionales.filter(p => p.plan === 'premium');
+  const otros = profesionales.filter(p => p.plan !== 'premium');
+
+  const ordenadosPorMatch = [...premium].sort((a, b) => (b.match || 0) - (a.match || 0));
+  const bandas = [];
+  let bandaActual = [];
+
+  ordenadosPorMatch.forEach((p) => {
+    if (bandaActual.length === 0) {
+      bandaActual.push(p);
+    } else {
+      const referencia = bandaActual[0].match || 0;
+      if ((referencia - (p.match || 0)) <= rangoEmpate) {
+        bandaActual.push(p);
+      } else {
+        bandas.push(bandaActual);
+        bandaActual = [p];
+      }
+    }
+  });
+  if (bandaActual.length) bandas.push(bandaActual);
+
+  // Dentro de cada banda: menos vistas esta semana = aparece primero
+  // Si hay empate exacto en vistas, mezclar aleatoriamente
+  const mezclados = bandas.flatMap(banda => {
+    return [...banda].sort((a, b) => {
+      const vistasA = a.vistas_semana || 0;
+      const vistasB = b.vistas_semana || 0;
+      if (vistasA !== vistasB) return vistasA - vistasB;
+      return Math.random() - 0.5;
+    });
+  });
+
+  return [...mezclados, ...otros];
+}
+
+
+app.post('/chat', limiterChat, async (req, res) => {
+  const { messages } = req.body;
+  if (!messages || !Array.isArray(messages)) {
+    return res.status(400).json({ error: 'messages requerido' });
+  }
+  if (messages.length > 20) return res.status(400).json({ error: 'Conversación demasiado larga' });
+  const lastMsg = messages[messages.length - 1]?.content || '';
+  if (typeof lastMsg === 'string' && lastMsg.length > 2000) return res.status(400).json({ error: 'Mensaje demasiado largo' });
+
+  try {
+    // Traer profesionales activos de Supabase
+    const { data: profesionales } = await supabase
+      .from('profesionales')
+      .select('id, nombre, matricula, whatsapp, bio, ciudad, localidad, experiencia, honorario, obras_sociales, enfoques, especializaciones, modalidades, edades, dias, franjas, foto_url, plan, genero, trial_hasta')
+      .eq('activo', true)
+      .order('plan', { ascending: false }); // premium > flex > gratuito
+
+    // Verificar trials vencidos y bajarlos a gratuito
+    const ahora = new Date();
+    const trialsVencidos = profesionales?.filter(p => 
+      p.trial_hasta && new Date(p.trial_hasta) < ahora && p.plan === 'gratuito'
+    ) || [];
+    
+    // No hacemos nada acá — el trial se procesa en el endpoint /verificar-trial
+    
+    // Tratar profesionales con trial activo como premium
+    if (profesionales) {
+      profesionales.forEach(p => {
+        if (p.trial_hasta && new Date(p.trial_hasta) > ahora) {
+          p.plan = 'premium'; // Trial activo → mostrar como premium
         }
+      });
+      // Reordenar después de procesar trials: premium primero
+      profesionales.sort((a, b) => {
+        if (a.plan === b.plan) return 0;
+        return a.plan === 'premium' ? -1 : 1;
       });
     }
 
-    // Agregar evento al botón usando data attributes para evitar problemas con comillas
-    if (!esGratuito) {
-      const btn = card.querySelector('.btn-contactar');
-      if (btn) {
-        btn.addEventListener('click', () => openWhatsapp(p, query));
+    // Reducimos los campos que le mandamos a Claude: no necesita bio completa,
+    // honorario ni foto_url para decidir el match — eso aligera mucho el prompt.
+
+    // Traer vistas de la última semana por profesional para la rotación equitativa
+    const inicioSemana = new Date(ahora);
+    inicioSemana.setDate(inicioSemana.getDate() - 7);
+    const { data: vistasSemana } = await supabase
+      .from('vistas')
+      .select('psy_id')
+      .gte('created_at', inicioSemana.toISOString());
+    
+    // Contar vistas por profesional
+    const vistasPorProfesional = {};
+    (vistasSemana || []).forEach(v => {
+      vistasPorProfesional[v.psy_id] = (vistasPorProfesional[v.psy_id] || 0) + 1;
+    });
+
+    const profesionalesLivianos = (profesionales || []).map(p => ({
+      id: p.id,
+      nombre: p.nombre,
+      whatsapp: p.whatsapp,
+      ciudad: p.ciudad,
+      localidad: p.localidad,
+      obras_sociales: p.obras_sociales,
+      enfoques: p.enfoques,
+      especializaciones: p.especializaciones,
+      modalidades: p.modalidades,
+      edades: p.edades,
+      dias: p.dias,
+      franjas: p.franjas,
+      foto_url: p.foto_url,
+      plan: p.plan,
+      genero: p.genero,
+      vistas_semana: vistasPorProfesional[p.id] || 0, // para rotación equitativa
+      bio_resumen: (p.bio || '').slice(0, 150) // recorte corto solo para que Claude entienda el perfil
+    }));
+
+    const listaProfesionales = profesionalesLivianos.length > 0
+      ? `\n\nPROFESIONALES DISPONIBLES EN LA BASE DE DATOS:\n${JSON.stringify(profesionalesLivianos.map(({ vistas_semana, ...p }) => p), null, 2)}`
+      : '\n\nNo hay profesionales cargados en la base de datos todavía.';
+
+    // Inyectar lista en el último mensaje
+    const messagesConBase = messages.map((m, i) =>
+      i === messages.length - 1 && m.role === 'user'
+        ? { ...m, content: m.content + listaProfesionales }
+        : m
+    );
+
+    const response = await anthropic.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 1500,
+      system: SYSTEM_PROMPT,
+      messages: messagesConBase,
+    });
+
+    const rawText = response.content?.[0]?.text || '';
+    console.log('RAW RESPONSE:', rawText.substring(0, 300));
+    
+    // Intentar extraer y limpiar JSON del texto
+    const cleaned = rawText.replace(/```json\s*/gi, '').replace(/```/g, '').trim();
+    const firstBrace = cleaned.indexOf('{');
+    const lastBrace = cleaned.lastIndexOf('}');
+    const jsonStr = firstBrace !== -1 && lastBrace !== -1 ? cleaned.substring(firstBrace, lastBrace + 1) : null;
+    const jsonMatch = jsonStr ? [jsonStr] : null;
+    
+    // Obtener el último mensaje del usuario
+    const ultimoMensaje = messages[messages.length - 1]?.content || '';
+
+    if (jsonMatch) {
+      try {
+        const parsed = JSON.parse(jsonMatch[0]);
+        if (parsed.profesionales) {
+          // Enriquecer con vistas_semana para la rotación equitativa
+          parsed.profesionales = parsed.profesionales.map(p => ({
+            ...p,
+            vistas_semana: vistasPorProfesional[p.id] || 0
+          }));
+          // Rotar entre profesionales premium con match cercano (empate de hasta 10 puntos)
+          // priorizando al que menos apareció esta semana. Recortar a 3.
+          parsed.profesionales = rotarPorEmpate(parsed.profesionales, 10).slice(0, 3);
+
+          // Guardar consulta en Supabase
+          supabase.from('consultas').insert({
+            mensaje: ultimoMensaje,
+            respuesta: parsed.mensaje || null,
+            profesionales_devueltos: parsed.profesionales || []
+          }).then(() => {}).catch(e => console.error('Error guardando consulta:', e.message));
+
+          return res.json({ 
+            content: [{ type: 'text', text: JSON.stringify(parsed) }] 
+          });
+        }
+      } catch(e) {
+        console.error('JSON.parse falló:', e.message);
+        console.error('jsonStr problemático:', jsonStr?.substring(0, 500));
+
+        // Reintento: a veces Claude corta el JSON o agrega texto extra al final.
+        // Probamos recortar hasta el último "}" válido del array de profesionales.
+        try {
+          const repairAttempt = jsonStr?.replace(/,\s*\]/g, ']').replace(/,\s*\}/g, '}');
+          const parsed2 = repairAttempt ? JSON.parse(repairAttempt) : null;
+          if (parsed2?.profesionales) {
+            supabase.from('consultas').insert({
+              mensaje: ultimoMensaje,
+              respuesta: parsed2.mensaje || null,
+              profesionales_devueltos: parsed2.profesionales || []
+            }).then(() => {}).catch(e => console.error('Error guardando consulta:', e.message));
+
+            return res.json({ 
+              content: [{ type: 'text', text: JSON.stringify(parsed2) }] 
+            });
+          }
+        } catch (e2) {
+          console.error('Reintento de reparación también falló:', e2.message);
+        }
+
+        // Si ambos intentos fallan, devolvemos un mensaje de error controlado
+        // en vez de mostrar el JSON crudo al usuario.
+        supabase.from('consultas').insert({
+          mensaje: ultimoMensaje,
+          respuesta: 'ERROR_PARSEO: ' + rawText.substring(0, 1000),
+          profesionales_devueltos: null
+        }).then(() => {}).catch(e => console.error('Error guardando consulta:', e.message));
+
+        return res.json({
+          content: [{ type: 'text', text: JSON.stringify({ respuesta: 'Tuve un problema al procesar tu búsqueda. ¿Podés intentarlo de nuevo?', profesionales: [] }) }]
+        });
       }
     }
 
-    cardsEl.appendChild(card);
-  });
+    // Guardar respuesta de texto (sin profesionales)
+    supabase.from('consultas').insert({
+      mensaje: ultimoMensaje,
+      respuesta: rawText,
+      profesionales_devueltos: null
+    }).then(() => {}).catch(e => console.error('Error guardando consulta:', e.message));
 
-  resultsEl.style.display = 'block';
-  resultsEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    res.json({ content: response.content });
+  } catch (error) {
+    console.error('Error:', error.message);
+    res.status(500).json({ error: 'Error al conectar con el agente' });
+  }
+});
 
-  // Registrar aparición en búsqueda para TODOS los profesionales
-  profesionales.filter(p => p.id).forEach(p => {
-    fetch('/vista', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ psy_id: p.id, query_texto: query, plan: p.plan })
-    }).catch(() => {});
-  });
-}
-
-
-
-function startSearch(text) {
-  const input = document.getElementById('chatInput');
-  input.value = text;
-  document.querySelector('.hero-section').scrollIntoView({ behavior: 'smooth' });
-  setTimeout(() => sendMessage(), 600);
-}
-
-async function sendMessage() {
-  const text = inputEl.value.trim();
-  if (!text || isLoading) return;
-  const chips =   if (chips) chips.style.display = 'none';
-  isLoading = true; sendBtn.disabled = true;
-  lastQuery = text; inputEl.value = '';
-  addMessage('user', text);
-  history.push({ role: 'user', content: text });
-  showTyping();
-  const spotlight = shouldSpotlightFree();
-  const messagesWithCtx = history.map((m, i) =>
-    i === history.length - 1 && m.role === 'user'
-      ? { ...m, content: m.content + (spotlight ? '\n\n[spotlight_free: true]' : '\n\n[spotlight_free: false]') }
-      : m
-  );
+// Registrar aparición en búsqueda
+app.post('/vista', async (req, res) => {
+  const { psy_id, query_texto, plan } = req.body;
+  if (!psy_id) return res.status(400).json({ error: 'psy_id requerido' });
   try {
-    // Reemplazá BACKEND_URL con tu URL de Railway una vez deployado
-    // Ej: https://claramente-backend.up.railway.app
-    const BACKEND_URL = 'https://claramentepsi.com';
+    await supabase.from('vistas').insert({ psy_id });
 
-    const res = await fetch(`${BACKEND_URL}/chat`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ messages: messagesWithCtx })
-    });
-    const data = await res.json();
-    const raw = data.content?.[0]?.text || '';
-    removeTyping();
-    // Extraer JSON buscando primer { y último }
-    const cleanRaw = raw.replace(/```json\s*/gi, '').replace(/```/g, '').trim();
-    const firstBrace = cleanRaw.indexOf('{');
-    const lastBrace = cleanRaw.lastIndexOf('}');
-    const jsonStr = firstBrace !== -1 && lastBrace !== -1 ? cleanRaw.substring(firstBrace, lastBrace + 1) : null;
-    console.log('jsonStr preview:', jsonStr ? jsonStr.substring(0, 100) : 'null');
-    if (jsonStr) {
-      try {
-        const parsed = JSON.parse(jsonStr);
-        console.log('parsed ok:', !!parsed.profesionales);
-        if (parsed.profesionales) {
-          addMessage('ai', parsed.respuesta || 'Encontré estas opciones para vos:');
-          history.push({ role: 'assistant', content: raw });
-          renderCards(parsed.profesionales, lastQuery);
-          return;
-        }
-      } catch(e) { console.error('JSON parse error:', e.message); }
+    // Si es gratuito, manejar el mail semanal
+    if (plan === 'gratuito') {
+      const { data: prof } = await supabase
+        .from('profesionales')
+        .select('email, nombre, id, ultimo_mail_gratuito, busquedas_semana, inicio_semana')
+        .eq('id', psy_id)
+        .single();
+      if (prof) await notificarGratuito({ ...prof }, query_texto);
     }
-    addMessage('ai', raw.replace(/```json\s*/gi,'').replace(/```/g,'').trim());
-    history.push({ role: 'assistant', content: raw });
-  } catch(err) {
-    removeTyping();
-    addMessage('ai', 'Tuve un problema al conectarme. ¿Podés intentarlo de nuevo?');
-  } finally {
-    isLoading = false; sendBtn.disabled = false; inputEl.focus();
+
+    res.json({ ok: true });
+  } catch (error) {
+    console.error('Error vista:', error.message);
+    res.status(500).json({ error: 'Error al registrar vista' });
+  }
+});
+
+// Trackear contacto de WhatsApp
+app.post('/contacto', async (req, res) => {
+  const { psy_id, query_texto, plan } = req.body;
+  if (!psy_id) return res.status(400).json({ error: 'psy_id requerido' });
+  try {
+    await supabase.from('contactos').insert({ psy_id, query_texto });
+
+    // El mail al gratuito se maneja desde /vista
+
+    res.json({ ok: true });
+  } catch (error) {
+    console.error('Error tracking:', error.message);
+    res.status(500).json({ error: 'Error al registrar contacto' });
+  }
+});
+
+// Enviar mail de verificación de email
+app.post('/verificar-email', async (req, res) => {
+  const { email, datos } = req.body;
+  if (!email) return res.status(400).json({ error: 'Email requerido' });
+  try {
+    // Verificar que no esté ya registrado
+    const { data: existe } = await supabase
+      .from('profesionales')
+      .select('id')
+      .eq('email', email)
+      .single();
+    if (existe) return res.status(400).json({ error: 'Este email ya está registrado.' });
+
+    const token = crypto.randomBytes(32).toString('hex');
+    const expires_at = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(); // 24 horas
+
+    // Guardar o actualizar verificación pendiente
+    await supabase.from('email_verifications').upsert({ email, token, datos, verified: false, expires_at }, { onConflict: 'email' });
+
+    const verifyUrl = `${process.env.APP_URL || 'https://claramentepsi.com'}/confirmar-email?token=${token}`;
+
+    await resend.emails.send({
+      from: 'Claramente <soporte@claramentepsi.com>',
+      reply_to: 'claramentepsisoporte@gmail.com',
+      to: email,
+      subject: 'Confirmá tu email para unirte a Claramente',
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 520px; margin: 0 auto; padding: 32px 24px; color: #1C2B28;">
+          <div style="font-family: Georgia, serif; font-size: 22px; margin-bottom: 24px;">
+            clara<span style="color: #4A7C6F; font-style: italic;">mente</span>
+          </div>
+          <h2 style="font-size: 20px; font-weight: 400; margin-bottom: 12px; font-family: Georgia, serif;">
+            Confirma tu email
+          </h2>
+          <p style="font-size: 15px; line-height: 1.7; color: #6B847E; margin-bottom: 24px;">
+            Hacé click en el botón para confirmar tu email y continuar con el registro en Claramente.
+          </p>
+          <a href="${verifyUrl}" style="display:inline-block;background:#4A7C6F;color:white;padding:12px 28px;border-radius:24px;text-decoration:none;font-size:14px;font-weight:500;">
+            Confirmar email →
+          </a>
+          <p style="font-size:13px;color:#9AAFAA;margin-top:24px;">
+            Este link expira en 24 horas. Si no creaste una cuenta en Claramente, ignorá este mail.
+          </p>
+        </div>
+      `
+    });
+
+    res.json({ ok: true });
+  } catch(e) {
+    console.error('Error verificar email:', e.message);
+    res.status(500).json({ error: 'Error al enviar verificación' });
+  }
+});
+
+// Confirmar email y retomar registro
+app.get('/confirmar-email', async (req, res) => {
+  const { token } = req.query;
+  if (!token) return res.redirect('/claramentepsi-registro-profesional.html');
+  try {
+    const { data: ver } = await supabase
+      .from('email_verifications')
+      .select('*')
+      .eq('token', token)
+      .single();
+
+    if (!ver) return res.redirect('/claramentepsi-registro-profesional.html?error=token-invalido');
+    if (new Date(ver.expires_at) < new Date()) return res.redirect('/claramentepsi-registro-profesional.html?error=token-expirado');
+
+    await supabase.from('email_verifications').update({ verified: true }).eq('token', token);
+
+    // Redirigir al registro con los datos del paso 1 encoded
+    const datos = encodeURIComponent(JSON.stringify(ver.datos));
+    res.redirect(`/claramentepsi-registro-profesional.html?verified=true&datos=${datos}`);
+  } catch(e) {
+    console.error('Error confirmar email:', e.message);
+    res.redirect('/claramentepsi-registro-profesional.html?error=error');
+  }
+});
+
+// Solicitar recuperación de contraseña
+app.post('/recuperar-password', async (req, res) => {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ error: 'Email requerido' });
+  try {
+    const { data: prof } = await supabase
+      .from('profesionales')
+      .select('id, nombre, email')
+      .eq('email', email)
+      .single();
+
+    // Siempre respondemos ok para no revelar si el email existe
+    if (!prof) return res.json({ ok: true });
+
+    const token = crypto.randomBytes(32).toString('hex');
+    const expires_at = new Date(Date.now() + 60 * 60 * 1000).toISOString(); // 1 hora
+
+    await supabase.from('password_resets').insert({ email, token, expires_at });
+
+    const resetUrl = `${process.env.APP_URL || 'https://claramentepsi.com'}/reset-password.html?token=${token}`;
+
+    await resend.emails.send({
+      from: 'Claramente <soporte@claramentepsi.com>',
+      reply_to: 'claramentepsisoporte@gmail.com',
+      to: email,
+      subject: 'Recuperá tu contraseña de Claramente',
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 520px; margin: 0 auto; padding: 32px 24px; color: #1C2B28;">
+          <div style="font-family: Georgia, serif; font-size: 22px; color: #1C2B28; margin-bottom: 24px;">
+            clara<span style="color: #4A7C6F; font-style: italic;">mente</span>
+          </div>
+          <h2 style="font-size: 20px; font-weight: 400; margin-bottom: 12px; font-family: Georgia, serif;">
+            Hola ${prof.nombre},
+          </h2>
+          <p style="font-size: 15px; line-height: 1.7; color: #6B847E; margin-bottom: 24px;">
+            Recibimos una solicitud para recuperar tu contraseña. Hacé click en el botón para crear una nueva.
+          </p>
+          <a href="${resetUrl}" 
+             style="display: inline-block; background: #4A7C6F; color: white; padding: 12px 28px; border-radius: 24px; text-decoration: none; font-size: 14px; font-weight: 500;">
+            Crear nueva contraseña →
+          </a>
+          <p style="font-size: 13px; color: #9AAFAA; margin-top: 24px; line-height: 1.6;">
+            Este link expira en 1 hora. Si no solicitaste esto, ignorá este mail.
+          </p>
+          <p style="font-size: 12px; color: #9AAFAA; margin-top: 16px;">
+            Claramente · <a href="mailto:claramentepsisoporte@gmail.com" style="color: #9AAFAA;">claramentepsisoporte@gmail.com</a>
+          </p>
+        </div>
+      `
+    });
+
+    res.json({ ok: true });
+  } catch(e) {
+    console.error('Error recuperar password:', e.message);
+    res.status(500).json({ error: 'Error al procesar la solicitud' });
+  }
+});
+
+// Resetear contraseña con token
+app.post('/reset-password', async (req, res) => {
+  const { token, password } = req.body;
+  if (!token || !password) return res.status(400).json({ error: 'Token y contraseña requeridos' });
+  try {
+    const { data: reset } = await supabase
+      .from('password_resets')
+      .select('*')
+      .eq('token', token)
+      .eq('used', false)
+      .single();
+
+    if (!reset) return res.status(400).json({ error: 'Token inválido o expirado' });
+    if (new Date(reset.expires_at) < new Date()) return res.status(400).json({ error: 'El link expiró. Solicitá uno nuevo.' });
+
+    const password_hash = await bcrypt.hash(password, 10);
+    await supabase.from('profesionales').update({ password_hash }).eq('email', reset.email);
+    await supabase.from('password_resets').update({ used: true }).eq('token', token);
+
+    res.json({ ok: true });
+  } catch(e) {
+    console.error('Error reset password:', e.message);
+    res.status(500).json({ error: 'Error al actualizar la contraseña' });
+  }
+});
+
+// Cambiar contraseña desde el panel (requiere contraseña actual)
+app.post('/cambiar-password', async (req, res) => {
+  const { email, passwordActual, passwordNueva } = req.body;
+  if (!email || !passwordActual || !passwordNueva) {
+    return res.status(400).json({ error: 'Todos los campos son requeridos' });
+  }
+  if (passwordNueva.length < 8) {
+    return res.status(400).json({ error: 'La nueva contraseña debe tener al menos 8 caracteres' });
+  }
+  try {
+    const { data, error } = await supabase
+      .from('profesionales')
+      .select('password_hash')
+      .eq('email', email)
+      .eq('activo', true)
+      .single();
+
+    if (error || !data) return res.status(404).json({ error: 'Profesional no encontrado' });
+
+    const ok = await bcrypt.compare(passwordActual, data.password_hash);
+    if (!ok) return res.status(401).json({ error: 'La contraseña actual es incorrecta' });
+
+    const password_hash = await bcrypt.hash(passwordNueva, 10);
+    await supabase.from('profesionales').update({ password_hash }).eq('email', email);
+
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('Error cambiar-password:', e.message);
+    res.status(500).json({ error: 'Error al cambiar la contraseña' });
+  }
+});
+
+// Verificar si email ya existe
+app.get('/check-email', async (req, res) => {
+  const { email } = req.query;
+  if (!email) return res.json({ exists: false });
+  try {
+    const { data } = await supabase
+      .from('profesionales')
+      .select('id')
+      .eq('email', email)
+      .single();
+    res.json({ exists: !!data });
+  } catch(e) {
+    res.json({ exists: false });
+  }
+});
+
+// Registrar profesional
+app.post('/registro', async (req, res) => {
+  const { nombre, matricula, email, whatsapp, password, bio, ciudad, localidad, genero, experiencia,
+    honorario, obras_sociales, enfoques, especializaciones, modalidades, edades,
+    dias, franjas, plan } = req.body;
+
+  if (!nombre || !email || !password || !whatsapp) {
+    return res.status(400).json({ error: 'Faltan campos requeridos' });
+  }
+
+  try {
+    const password_hash = await bcrypt.hash(password, 10);
+    const { data, error } = await supabase.from('profesionales').insert({
+      nombre, matricula, email, whatsapp, password_hash, bio, ciudad, localidad, genero,
+      experiencia, honorario, obras_sociales, enfoques, especializaciones,
+      modalidades, edades, dias, franjas,
+      plan: plan || 'gratuito',
+      activo: true
+    }).select().single();
+
+    if (error) throw error;
+    const { password_hash: _ph, ...profesional } = data;
+    res.json({ ok: true, profesional });
+  } catch (error) {
+    console.error('Error registro:', error.message);
+    if (error.message.includes('unique')) {
+      return res.status(400).json({ error: 'Ese email ya está registrado' });
+    }
+    res.status(500).json({ error: 'Error al registrar profesional' });
+  }
+});
+
+// Login profesional
+app.post('/login', limiterLogin, async (req, res) => {
+  const { email, password } = req.body;
+  if (!email || !password) return res.status(400).json({ error: 'Email y contraseña requeridos' });
+
+  try {
+    const { data, error } = await supabase
+      .from('profesionales')
+      .select('*')
+      .eq('email', email)
+      .single();
+
+    if (error || !data) return res.status(401).json({ error: 'Email o contraseña incorrectos' });
+
+    const ok = await bcrypt.compare(password, data.password_hash);
+    if (!ok) return res.status(401).json({ error: 'Email o contraseña incorrectos' });
+
+    const { password_hash, ...profesional } = data;
+    
+    // Si tiene trial activo, devolver plan como premium
+    if (profesional.trial_hasta && new Date(profesional.trial_hasta) > new Date()) {
+      profesional.plan = 'premium';
+      profesional.es_trial = true;
+    }
+    
+    res.json({ ok: true, profesional });
+  } catch (error) {
+    console.error('Error login:', error.message);
+    res.status(500).json({ error: 'Error al iniciar sesión' });
+  }
+});
+
+// Upload foto de perfil
+app.post('/upload-foto', upload.single('foto'), async (req, res) => {
+  const { psy_id } = req.body;
+  console.log('upload-foto: psy_id=', psy_id, 'file=', req.file?.originalname, 'size=', req.file?.size);
+  if (!req.file || !psy_id) return res.status(400).json({ error: 'Faltan datos' });
+  try {
+    const ext = req.file.mimetype.split('/')[1] || 'jpg';
+    const filename = `fotos/${psy_id}.${ext}`;
+    console.log('upload-foto: subiendo a storage como', filename);
+    
+    const { error: uploadError } = await supabase.storage
+      .from('claramente')
+      .upload(filename, req.file.buffer, {
+        contentType: req.file.mimetype,
+        upsert: true
+      });
+    
+    if (uploadError) {
+      console.error('upload-foto: error en storage:', JSON.stringify(uploadError));
+      throw uploadError;
+    }
+
+    const { data: { publicUrl } } = supabase.storage
+      .from('claramente')
+      .getPublicUrl(filename);
+
+    console.log('upload-foto: publicUrl=', publicUrl);
+
+    const { error: updateError } = await supabase
+      .from('profesionales')
+      .update({ foto_url: publicUrl })
+      .eq('id', psy_id);
+
+    if (updateError) {
+      console.error('upload-foto: error actualizando profesional:', JSON.stringify(updateError));
+      throw updateError;
+    }
+
+    console.log('upload-foto: OK, foto guardada');
+    res.json({ ok: true, foto_url: publicUrl });
+  } catch(e) {
+    console.error('Error upload foto:', e.message, JSON.stringify(e));
+    res.status(500).json({ error: 'Error al subir foto', detalle: e.message });
+  }
+});
+
+// Actualizar perfil del profesional
+app.get('/profesional/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const { data, error } = await supabase
+      .from('profesionales')
+      .select('*')
+      .eq('id', id)
+      .single();
+    if (error || !data) return res.status(404).json({ error: 'No encontrado' });
+    const { password_hash, ...profesional } = data;
+    // Si tiene trial activo, devolver plan como premium
+    if (profesional.trial_hasta && new Date(profesional.trial_hasta) > new Date()) {
+      profesional.plan = 'premium';
+      profesional.es_trial = true;
+    }
+    res.json(profesional);
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.put('/profesional/:id', async (req, res) => {
+  const { id } = req.params;
+  const { nombre, whatsapp, ciudad, localidad, honorario, bio, enfoques, especializaciones, modalidades, obras_sociales, foto_url, genero } = req.body;
+  try {
+    const updateData = { nombre, whatsapp, ciudad, localidad, honorario, bio, enfoques, especializaciones, modalidades, obras_sociales, genero };
+    if (foto_url !== undefined) updateData.foto_url = foto_url;
+    const { error } = await supabase
+      .from('profesionales')
+      .update(updateData)
+      .eq('id', id);
+    if (error) throw error;
+    res.json({ ok: true });
+  } catch (error) {
+    console.error('Error update:', error.message);
+    res.status(500).json({ error: 'Error al actualizar perfil' });
+  }
+});
+
+// Estadísticas del profesional
+app.get('/stats/:psy_id', async (req, res) => {
+  const { psy_id } = req.params;
+  try {
+    const [{ count: contactos }, { count: vistas }] = await Promise.all([
+      supabase.from('contactos').select('*', { count: 'exact', head: true }).eq('psy_id', psy_id),
+      supabase.from('vistas').select('*', { count: 'exact', head: true }).eq('psy_id', psy_id)
+    ]);
+
+    // Datos semanales para gráficos (últimas 8 semanas)
+    const hace8semanas = new Date();
+    hace8semanas.setDate(hace8semanas.getDate() - 56);
+
+    const [{ data: contactosSemana }, { data: vistasSemana }] = await Promise.all([
+      supabase.from('contactos').select('created_at').eq('psy_id', psy_id).gte('created_at', hace8semanas.toISOString()),
+      supabase.from('vistas').select('created_at').eq('psy_id', psy_id).gte('created_at', hace8semanas.toISOString())
+    ]);
+
+    // Agrupar por semana
+    const agruparPorSemana = (registros) => {
+      const semanas = {};
+      (registros || []).forEach(r => {
+        const fecha = new Date(r.created_at);
+        const inicioSemana = new Date(fecha);
+        inicioSemana.setDate(fecha.getDate() - fecha.getDay());
+        const key = inicioSemana.toISOString().split('T')[0];
+        semanas[key] = (semanas[key] || 0) + 1;
+      });
+      return semanas;
+    };
+
+    res.json({
+      contactos,
+      vistas,
+      grafico: {
+        contactos: agruparPorSemana(contactosSemana),
+        vistas: agruparPorSemana(vistasSemana)
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Error al obtener estadísticas' });
+  }
+});
+
+// Guardar registro pendiente y generar link de pago via API de MP
+app.post('/registro-pendiente', async (req, res) => {
+  const { datos, plan } = req.body;
+  if (!datos || !plan) return res.status(400).json({ error: 'Faltan datos' });
+  try {
+    const session_id = crypto.randomUUID();
+
+    // Guardar en Supabase
+    const { error } = await supabase
+      .from('registros_pendientes')
+      .insert({ session_id, datos, plan });
+    if (error) throw error;
+
+    // IDs de los planes en MP
+    const planIds = {
+      premium: 'eefad72a6586412e8a74031b80c9ca0b'
+    };
+
+    const backUrl = `${process.env.APP_URL || 'https://claramentepsi.com'}/pago-exitoso.html?session_id=${session_id}`;
+
+    // Crear suscripción via API de MP con external_reference
+    const preApproval = new PreApproval(mp);
+    const subscription = await preApproval.create({
+      body: {
+        preapproval_plan_id: planIds[plan],
+        payer_email: datos.email,
+        external_reference: session_id,
+        back_url: backUrl,
+      }
+    });
+
+    res.json({ ok: true, session_id, init_point: subscription.init_point });
+  } catch (e) {
+    console.error('Error registro pendiente:', e.message);
+    res.status(500).json({ error: 'Error al generar link de pago: ' + e.message });
+  }
+});
+
+// Verificar firma del webhook de MP
+function verificarFirmaMP(req) {
+  try {
+    const secret = process.env.MP_WEBHOOK_SECRET;
+    if (!secret) return true; // Si no hay secret configurado, dejar pasar
+    const xSignature = req.headers['x-signature'];
+    const xRequestId = req.headers['x-request-id'];
+    if (!xSignature) return false;
+    const parts = xSignature.split(',');
+    let ts, hash;
+    parts.forEach(part => {
+      const [key, val] = part.trim().split('=');
+      if (key === 'ts') ts = val;
+      if (key === 'v1') hash = val;
+    });
+    const dataId = req.query?.['data.id'] || req.body?.data?.id || '';
+    const manifest = `id:${dataId};request-id:${xRequestId};ts:${ts};`;
+    const expectedHash = crypto.createHmac('sha256', secret).update(manifest).digest('hex');
+    return hash === expectedHash;
+  } catch(e) {
+    return true; // En caso de error, dejar pasar
   }
 }
-</script>
-<script>
-// Ocultar botones de registro si hay sesión activa (ejecutar después de cargar el DOM)
-try {
-  const _prof = JSON.parse(localStorage.getItem('clm_profesional') || 'null');
-  if (_prof && _prof.id) {
-    document.querySelectorAll('a[href="/claramentepsi-registro-profesional.html"], a[href="claramentepsi-registro-profesional.html"]').forEach(btn => btn.style.display = 'none');
+
+// Webhook de MercadoPago
+app.post('/webhook/mp', async (req, res) => {
+  if (!verificarFirmaMP(req)) return res.sendStatus(401);
+  try {
+    const { type, data } = req.body;
+    if (type !== 'payment' && type !== 'preapproval') return res.sendStatus(200);
+
+    const paymentId = data?.id;
+    if (!paymentId) return res.sendStatus(200);
+
+    // Verificar el pago con la API de MP
+    const mpRes = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
+      headers: { 'Authorization': `Bearer ${process.env.MP_ACCESS_TOKEN}` }
+    });
+    const payment = await mpRes.json();
+
+    if (payment.status !== 'approved') return res.sendStatus(200);
+
+    const session_id = payment.external_reference;
+    if (!session_id) return res.sendStatus(200);
+
+    // Buscar el registro pendiente
+    const { data: pendiente } = await supabase
+      .from('registros_pendientes')
+      .select('*')
+      .eq('session_id', session_id)
+      .single();
+
+    if (!pendiente) return res.sendStatus(200);
+
+    // Crear el profesional
+    const d = pendiente.datos;
+    const password_hash = await bcrypt.hash(d.password, 10);
+    await supabase.from('profesionales').insert({
+      nombre: d.nombre, matricula: d.matricula, email: d.email,
+      whatsapp: d.whatsapp, password_hash, bio: d.bio || '',
+      ciudad: d.ciudad || '', experiencia: d.experiencia || null,
+      honorario: d.honorario || null, obras_sociales: d.obras_sociales || [],
+      enfoques: d.enfoques || [], especializaciones: d.especializaciones || [],
+      modalidades: d.modalidades || [], edades: d.edades || [],
+      dias: d.dias || [], franjas: d.franjas || [],
+      plan: pendiente.plan, activo: true,
+      plan_activo_desde: new Date().toISOString()
+    });
+
+    // Borrar el registro pendiente
+    await supabase.from('registros_pendientes').delete().eq('session_id', session_id);
+
+    res.sendStatus(200);
+  } catch (e) {
+    console.error('Error webhook MP:', e.message);
+    res.sendStatus(500);
   }
-} catch(e) {}
-</script>
-</body>
-</html>
+});
+
+// Webhook de suscripciones de MP (preapproval)
+app.post('/webhook/mp-sub', async (req, res) => {
+  if (!verificarFirmaMP(req)) return res.sendStatus(401);
+  try {
+    const { type, data } = req.body;
+    if (type !== 'preapproval') return res.sendStatus(200);
+
+    const subId = data?.id;
+    if (!subId) return res.sendStatus(200);
+
+    const mpRes = await fetch(`https://api.mercadopago.com/preapproval/${subId}`, {
+      headers: { 'Authorization': `Bearer ${process.env.MP_ACCESS_TOKEN}` }
+    });
+    const sub = await mpRes.json();
+
+    if (sub.status !== 'authorized') return res.sendStatus(200);
+
+    const session_id = sub.external_reference;
+    if (!session_id) return res.sendStatus(200);
+
+    const { data: pendiente } = await supabase
+      .from('registros_pendientes')
+      .select('*')
+      .eq('session_id', session_id)
+      .single();
+
+    if (!pendiente) return res.sendStatus(200);
+
+    const d = pendiente.datos;
+    const password_hash = await bcrypt.hash(d.password, 10);
+    await supabase.from('profesionales').insert({
+      nombre: d.nombre, matricula: d.matricula, email: d.email,
+      whatsapp: d.whatsapp, password_hash, bio: d.bio || '',
+      ciudad: d.ciudad || '', experiencia: d.experiencia || null,
+      honorario: d.honorario || null, obras_sociales: d.obras_sociales || [],
+      enfoques: d.enfoques || [], especializaciones: d.especializaciones || [],
+      modalidades: d.modalidades || [], edades: d.edades || [],
+      dias: d.dias || [], franjas: d.franjas || [],
+      plan: pendiente.plan, activo: true,
+      plan_activo_desde: new Date().toISOString()
+    });
+
+    await supabase.from('registros_pendientes').delete().eq('session_id', session_id);
+    res.sendStatus(200);
+  } catch (e) {
+    console.error('Error webhook MP sub:', e.message);
+    res.sendStatus(500);
+  }
+});
+
+// Verificar estado del pago (el frontend consulta esto después del redirect)
+app.get('/verificar-pago', async (req, res) => {
+  const { session_id } = req.query;
+  if (!session_id) return res.status(400).json({ error: 'session_id requerido' });
+  try {
+    // Si el registro pendiente ya no existe, el pago fue procesado
+    const { data: pendiente } = await supabase
+      .from('registros_pendientes')
+      .select('id')
+      .eq('session_id', session_id)
+      .single();
+
+    if (!pendiente) {
+      // Buscar el profesional recién creado por email no es posible sin el email
+      // Devolvemos ok: true y el frontend redirige al login
+      return res.json({ ok: true, procesado: true });
+    }
+    res.json({ ok: true, procesado: false });
+  } catch(e) {
+    // Error real — devolver no procesado para que el frontend siga esperando
+    console.error('Error verificar-pago:', e.message);
+    res.json({ ok: true, procesado: false });
+  }
+});
+
+app.get('/verificar-email.html', (req, res) => res.sendFile(path.join(__dirname, 'public', 'verificar-email.html')));
+app.get('/recuperar-password.html', (req, res) => res.sendFile(path.join(__dirname, 'public', 'recuperar-password.html')));
+app.get('/reset-password.html', (req, res) => res.sendFile(path.join(__dirname, 'public', 'reset-password.html')));
+app.get('/pago-exitoso.html', (req, res) => res.sendFile(path.join(__dirname, 'public', 'pago-exitoso.html')));
+
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+app.listen(PORT, () => {
+  console.log(`Claramente corriendo en puerto ${PORT}`);
+});
