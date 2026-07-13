@@ -291,9 +291,10 @@ async function verificarTrialsVencidos() {
   try {
     const ahora = new Date().toISOString();
     // Buscar profesionales con trial vencido que aún no fueron notificados
+    // Usamos ultimo_mail_gratuito para saber si ya les mandamos el mail de trial vencido
     const { data: vencidos } = await supabase
       .from('profesionales')
-      .select('id, nombre, email, trial_hasta, busquedas_semana')
+      .select('id, nombre, email, trial_hasta, busquedas_semana, ultimo_mail_gratuito')
       .lt('trial_hasta', ahora)
       .not('trial_hasta', 'is', null)
       .eq('plan', 'gratuito'); // Ya están en gratuito, el trial expiró
@@ -301,12 +302,11 @@ async function verificarTrialsVencidos() {
     if (!vencidos || vencidos.length === 0) return;
 
     for (const prof of vencidos) {
-      // Verificar que no le hayamos mandado el mail ya (limpiar trial_hasta después de notificar)
-      const trialFecha = new Date(prof.trial_hasta);
-      const diasVencido = Math.floor((new Date() - trialFecha) / (1000 * 60 * 60 * 24));
-      
-      // Solo mandar mail el primer día que vence
-      if (diasVencido > 1) continue;
+      // Si ya le mandamos el mail de trial vencido, no volver a mandar
+      // Lo detectamos porque ultimo_mail_gratuito fue actualizado DESPUÉS de que venció el trial
+      if (prof.ultimo_mail_gratuito && new Date(prof.ultimo_mail_gratuito) > new Date(prof.trial_hasta)) {
+        continue; // Ya notificado, saltar
+      }
 
       const nombre = prof.nombre?.split(' ')[0] || 'Lic.';
       const mpLink = 'https://www.mercadopago.com.ar/subscriptions/checkout?preapproval_plan_id=eefad72a6586412e8a74031b80c9ca0b';
@@ -341,6 +341,11 @@ async function verificarTrialsVencidos() {
           </div>
         `
       });
+      // Marcar que ya se envió el mail de trial vencido usando ultimo_mail_gratuito
+      await supabase
+        .from('profesionales')
+        .update({ ultimo_mail_gratuito: new Date().toISOString() })
+        .eq('id', prof.id);
       console.log(`Mail de trial vencido enviado a ${prof.email}`);
     }
   } catch(e) {
