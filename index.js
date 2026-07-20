@@ -287,6 +287,26 @@ app.post('/activar-trial', async (req, res) => {
   }
 });
 
+// Genera un link de pago de MP personalizado para un profesional EXISTENTE
+// (a diferencia de /registro-pendiente, que es para altas nuevas).
+// Usa el id del profesional como external_reference para que el webhook
+// pueda identificarlo y actualizar su plan directamente.
+async function generarLinkUpgrade(profesional) {
+  const planIds = { premium: 'eefad72a6586412e8a74031b80c9ca0b' };
+  const backUrl = `${process.env.APP_URL || 'https://claramentepsi.com'}/panel.html?upgrade=ok`;
+
+  const preApproval = new PreApproval(mp);
+  const subscription = await preApproval.create({
+    body: {
+      preapproval_plan_id: planIds.premium,
+      payer_email: profesional.email,
+      external_reference: `prof_${profesional.id}`,
+      back_url: backUrl,
+    }
+  });
+  return subscription.init_point;
+}
+
 // Cron: verificar trials vencidos y mandar mail
 async function verificarTrialsVencidos() {
   try {
@@ -304,7 +324,12 @@ async function verificarTrialsVencidos() {
 
     for (const prof of vencidos) {
       const nombre = prof.nombre?.split(' ')[0] || 'Lic.';
-      const mpLink = 'https://www.mercadopago.com.ar/subscriptions/checkout?preapproval_plan_id=eefad72a6586412e8a74031b80c9ca0b';
+      let mpLink = 'https://www.mercadopago.com.ar/subscriptions/checkout?preapproval_plan_id=eefad72a6586412e8a74031b80c9ca0b';
+      try {
+        mpLink = await generarLinkUpgrade(prof); // link personalizado con external_reference
+      } catch (e) {
+        console.error(`No se pudo generar link personalizado para ${prof.email}, usando link genérico:`, e.message);
+      }
 
       await resend.emails.send({
         from: 'Claramente <hola@claramentepsi.com>',
@@ -1141,6 +1166,32 @@ app.post('/registro-pendiente', async (req, res) => {
   }
 });
 
+// Generar link de pago para un profesional YA EXISTENTE que quiere pasar a Premium
+// (botón "Actualizar plan" del panel — pestaña Plan). Usar este endpoint en vez de
+// linkear directamente al checkout de MP, para que el webhook pueda identificar
+// a qué profesional corresponde el pago.
+app.post('/generar-link-premium', async (req, res) => {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ error: 'email requerido' });
+  try {
+    const { data: profesional, error } = await supabase
+      .from('profesionales')
+      .select('id, email, plan')
+      .eq('email', email)
+      .eq('activo', true)
+      .single();
+
+    if (error || !profesional) return res.status(404).json({ error: 'Profesional no encontrado' });
+    if (profesional.plan === 'premium') return res.status(400).json({ error: 'Ya tenés el plan Premium activo' });
+
+    const init_point = await generarLinkUpgrade(profesional);
+    res.json({ ok: true, init_point });
+  } catch (e) {
+    console.error('Error generando link de upgrade:', e.message);
+    res.status(500).json({ error: 'Error al generar link de pago: ' + e.message });
+  }
+});
+
 // Verificar firma del webhook de MP
 function verificarFirmaMP(req) {
   try {
@@ -1237,8 +1288,23 @@ app.post('/webhook/mp-sub', async (req, res) => {
 
     if (sub.status !== 'authorized') return res.sendStatus(200);
 
-    const session_id = sub.external_reference;
-    if (!session_id) return res.sendStatus(200);
+    const external_ref = sub.external_reference;
+    if (!external_ref) return res.sendStatus(200);
+
+    // Caso 1: upgrade de un profesional YA EXISTENTE (link generado por generarLinkUpgrade)
+    if (external_ref.startsWith('prof_')) {
+      const profesionalId = external_ref.replace('prof_', '');
+      const { error: updateError } = await supabase
+        .from('profesionales')
+        .update({ plan: 'premium', plan_activo_desde: new Date().toISOString() })
+        .eq('id', profesionalId);
+      if (updateError) console.error('Error actualizando plan de profesional existente:', updateError.message);
+      else console.log(`Plan actualizado a premium para profesional existente: ${profesionalId}`);
+      return res.sendStatus(200);
+    }
+
+    // Caso 2: alta nueva (viene de /registro-pendiente)
+    const session_id = external_ref;
 
     const { data: pendiente } = await supabase
       .from('registros_pendientes')
