@@ -240,7 +240,7 @@ async function notificarGratuito(profesional, queryTexto) {
             Sin embargo, <strong style="color: #1C2B28;">no pudieron contactarte</strong> porque tu perfil está en el plan gratuito y no muestra tu número de WhatsApp.
           </p>
           <p style="font-size: 15px; line-height: 1.7; color: #6B847E; margin-bottom: 28px;">
-            Con el plan <strong style="color: #1C2B28;">Flex ($32.500/mes)</strong> o <strong style="color: #B8860B;">Premium ($32.500/mes)</strong> los pacientes pueden contactarte directamente — y vos aparecés primero cuando sos el match correcto.
+            Con el plan <strong style="color: #B8860B;">Premium ($32.500/mes)</strong> los pacientes pueden contactarte directamente — y vos aparecés primero cuando sos el match correcto.
           </p>
           <a href="https://claramentepsi.com/login.html" 
              style="display: inline-block; background: #4A7C6F; color: white; padding: 12px 28px; border-radius: 24px; text-decoration: none; font-size: 14px; font-weight: 500;">
@@ -653,19 +653,26 @@ app.post('/chat', limiterChat, async (req, res) => {
 
 // Registrar aparición en búsqueda
 app.post('/vista', async (req, res) => {
-  const { psy_id, query_texto, plan } = req.body;
+  const { psy_id, query_texto } = req.body;
   if (!psy_id) return res.status(400).json({ error: 'psy_id requerido' });
   try {
     await supabase.from('vistas').insert({ psy_id });
 
-    // Si es gratuito, manejar el mail semanal
-    if (plan === 'gratuito') {
-      const { data: prof } = await supabase
-        .from('profesionales')
-        .select('email, nombre, id, ultimo_mail_gratuito, busquedas_semana, inicio_semana')
-        .eq('id', psy_id)
-        .single();
-      if (prof) await notificarGratuito({ ...prof }, query_texto);
+    // IMPORTANTE: nunca confiar en un plan mandado por el frontend para decidir
+    // si se manda el mail de "estás en el plan gratuito" — se verifica siempre
+    // contra la base de datos, igual que hace /chat (plan real + trial activo).
+    const { data: prof } = await supabase
+      .from('profesionales')
+      .select('email, nombre, id, plan, trial_hasta, ultimo_mail_gratuito, busquedas_semana, inicio_semana')
+      .eq('id', psy_id)
+      .single();
+
+    if (prof) {
+      const enTrialActivo = prof.trial_hasta && new Date(prof.trial_hasta) > new Date();
+      const esRealmenteGratuito = prof.plan === 'gratuito' && !enTrialActivo;
+      if (esRealmenteGratuito) {
+        await notificarGratuito({ ...prof }, query_texto);
+      }
     }
 
     res.json({ ok: true });
