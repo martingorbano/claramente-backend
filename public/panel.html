@@ -657,9 +657,33 @@ async function cambiarPassword() {
 
 // Plan
 const MP_LINKS = {
-  premium: 'https://www.mercadopago.com.ar/subscriptions/checkout?preapproval_plan_id=eefad72a6586412e8a74031b80c9ca0b',
   cancelar: 'https://www.mercadopago.com.ar/subscriptions#from-section=menu'
 };
+
+// Genera un link de pago personalizado (con external_reference) para que el
+// webhook pueda identificar a este profesional y actualizar su plan al pagar.
+// Abrimos la pestaña ANTES del fetch para evitar que el navegador bloquee el popup.
+async function activarPremium() {
+  const nuevaVentana = window.open('', '_blank');
+  try {
+    const res = await fetch('/generar-link-premium', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: profesional.email })
+    });
+    const data = await res.json();
+    if (!res.ok || !data.init_point) {
+      if (nuevaVentana) nuevaVentana.close();
+      alert(data.error || 'Error al generar el link de pago. Intentá de nuevo.');
+      return;
+    }
+    if (nuevaVentana) nuevaVentana.location.href = data.init_point;
+    else window.location.href = data.init_point; // fallback si el navegador bloqueó el popup
+  } catch (e) {
+    if (nuevaVentana) nuevaVentana.close();
+    alert('Error de conexión. Intentá de nuevo.');
+  }
+}
 
 function cargarPlan() {
   const plan = profesional.plan || 'gratuito';
@@ -693,14 +717,18 @@ function cargarPlan() {
   };
 
   if (plan === 'gratuito') {
-    mkBtn('Activar Premium', MP_LINKS.premium, 'background:#B8860B;color:white');
+    const b = document.createElement('button');
+    b.textContent = 'Activar Premium';
+    b.style.cssText = "font-size:13px;padding:9px 18px;border-radius:20px;border:none;font-family:'DM Sans',sans-serif;font-weight:500;cursor:pointer;background:#B8860B;color:white";
+    b.onclick = activarPremium;
+    btns.appendChild(b);
   } else if (plan === 'premium') {
     mkBtn('Cancelar suscripción', MP_LINKS.cancelar, 'background:transparent;color:var(--text-faint);border:1px solid var(--border)');
   }
 }
 
 function upgrade() {
-  window.open(MP_LINKS.premium, '_blank');
+  activarPremium();
 }
 
 // Tabs
