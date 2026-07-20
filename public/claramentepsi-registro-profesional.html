@@ -792,12 +792,9 @@ async function next(step) {
 
   if (step === 4) { setupPago(); }
   if (step === 5) {
-    const plan = formData.plan || 'gratuito';
-    if (plan === 'premium' && window._mpLink) {
-      // Redirigir a MercadoPago — el webhook confirmará el pago
-      window.location.href = window._mpLink;
-      return;
-    }
+    // El envío real (plan gratuito → /registro, plan pago → /registro-pendiente
+    // con link de MP personalizado) sucede en el botón "Publicar perfil" del
+    // paso de resumen. Acá solo armamos el resumen y avanzamos.
     buildResumen();
   }
   showStep(step + 1);
@@ -1229,26 +1226,18 @@ function setupPago() {
     btnPago.disabled = true;
     btnPago.textContent = 'Ir a pagar →';
 
-    // Actualizar el monto según el plan
-    const monto = plan === 'premium' ? '$32.500' : '$32.500';
+    const monto = '$32.500';
     const nombrePlan = 'Plan Premium · claramentepsi';
-    const linkMP = plan === 'premium'
-      ? 'https://www.mercadopago.com.ar/subscriptions/checkout?preapproval_plan_id=eefad72a6586412e8a74031b80c9ca0b'
-      : 'https://www.mercadopago.com.ar/subscriptions/checkout?preapproval_plan_id=eefad72a6586412e8a74031b80c9ca0b';
 
     document.querySelector('.pago-monto-label').textContent = nombrePlan;
     document.querySelector('.pago-monto-val').textContent = monto;
     pagoSub.textContent = 'Elegí cómo querés pagar el Plan Premium. Podés cancelar cuando quieras.';
-
-    // Guardar link de MP para usar al continuar
-    window._mpLink = linkMP;
   } else {
     pagoPro.style.display = 'none';
     pagoFree.style.display = 'block';
     btnPago.disabled = false;
     btnPago.textContent = 'Continuar →';
     pagoSub.textContent = 'Empezás gratis, sin necesidad de pagar nada ahora.';
-    window._mpLink = null;
   }
 }
 
