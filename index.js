@@ -8,6 +8,7 @@ const { Resend } = require('resend');
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 const mp = new MercadoPagoConfig({ accessToken: process.env.MP_ACCESS_TOKEN });
+const PREMIUM_MONTO = 32500; // ARS/mes — plan Premium
 const cors = require('cors');
 const Anthropic = require('@anthropic-ai/sdk');
 const { createClient } = require('@supabase/supabase-js');
@@ -291,17 +292,30 @@ app.post('/activar-trial', async (req, res) => {
 // (a diferencia de /registro-pendiente, que es para altas nuevas).
 // Usa el id del profesional como external_reference para que el webhook
 // pueda identificarlo y actualizar su plan directamente.
+//
+// IMPORTANTE: se crea SIN preapproval_plan_id. Usar preapproval_plan_id acá
+// requiere pasar un card_token_id ya tokenizado (o sea, vos mismo capturando
+// la tarjeta en tu frontend con el SDK de MP) — si no lo tenés, la API tira
+// "card_token_id is required". Mandando auto_recurring completo en cambio,
+// MP crea una suscripción "sin plan asociado" con status pendiente y devuelve
+// un init_point para que el usuario complete el pago en el checkout hosteado.
 async function generarLinkUpgrade(profesional) {
-  const planIds = { premium: 'eefad72a6586412e8a74031b80c9ca0b' };
   const backUrl = `${process.env.APP_URL || 'https://claramentepsi.com'}/panel.html?upgrade=ok`;
 
   const preApproval = new PreApproval(mp);
   const subscription = await preApproval.create({
     body: {
-      preapproval_plan_id: planIds.premium,
+      reason: 'Plan Premium · claramentepsi',
       payer_email: profesional.email,
       external_reference: `prof_${profesional.id}`,
       back_url: backUrl,
+      status: 'pending',
+      auto_recurring: {
+        frequency: 1,
+        frequency_type: 'months',
+        transaction_amount: PREMIUM_MONTO,
+        currency_id: 'ARS',
+      },
     }
   });
   return subscription.init_point;
@@ -1141,21 +1155,26 @@ app.post('/registro-pendiente', async (req, res) => {
       .insert({ session_id, datos, plan });
     if (error) throw error;
 
-    // IDs de los planes en MP
-    const planIds = {
-      premium: 'eefad72a6586412e8a74031b80c9ca0b'
-    };
-
     const backUrl = `${process.env.APP_URL || 'https://claramentepsi.com'}/pago-exitoso.html?session_id=${session_id}`;
 
-    // Crear suscripción via API de MP con external_reference
+    // Crear suscripción via API de MP con external_reference.
+    // Sin preapproval_plan_id (ver nota en generarLinkUpgrade): con auto_recurring
+    // completo, MP devuelve un init_point de checkout hosteado sin necesitar
+    // un card_token_id tokenizado de antemano.
     const preApproval = new PreApproval(mp);
     const subscription = await preApproval.create({
       body: {
-        preapproval_plan_id: planIds[plan],
+        reason: 'Plan Premium · claramentepsi',
         payer_email: datos.email,
         external_reference: session_id,
         back_url: backUrl,
+        status: 'pending',
+        auto_recurring: {
+          frequency: 1,
+          frequency_type: 'months',
+          transaction_amount: PREMIUM_MONTO,
+          currency_id: 'ARS',
+        },
       }
     });
 
