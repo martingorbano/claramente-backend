@@ -532,14 +532,11 @@ app.post('/chat', limiterChat, async (req, res) => {
       enfoques: p.enfoques,
       especializaciones: p.especializaciones,
       modalidades: p.modalidades,
-      edades: p.edades,
-      dias: p.dias,
-      franjas: p.franjas,
       foto_url: p.foto_url,
       plan: p.plan,
       genero: p.genero,
-      vistas_semana: vistasPorProfesional[p.id] || 0, // para rotación equitativa
-      bio_resumen: (p.bio || '').slice(0, 150) // recorte corto solo para que Claude entienda el perfil
+      vistas_semana: vistasPorProfesional[p.id] || 0,
+      bio_resumen: (p.bio || '').slice(0, 100)
     }));
 
     const listaProfesionales = profesionalesLivianos.length > 0
@@ -555,7 +552,7 @@ app.post('/chat', limiterChat, async (req, res) => {
 
     const response = await anthropic.messages.create({
       model: 'claude-haiku-4-5-20251001',
-      max_tokens: 1500,
+      max_tokens: 3000,
       system: SYSTEM_PROMPT,
       messages: messagesConBase,
     });
