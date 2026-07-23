@@ -543,38 +543,14 @@ app.post('/chat', limiterChat, async (req, res) => {
     const premiumList = profesionalesLivianos.filter(p => p.plan === 'premium');
     const gratuitoList = profesionalesLivianos.filter(p => p.plan !== 'premium');
 
-    // Dentro de premium: mezclar con peso inverso a vistas_semana
-    // Los que menos aparecieron tienen más chance de quedar al frente
-    const mezclarConPeso = (lista) => {
-      if (lista.length <= 1) return lista;
-      const maxVistas = Math.max(...lista.map(p => p.vistas_semana || 0), 1);
-      // Asignar peso: menos vistas = más peso
-      const conPeso = lista.map(p => ({
-        ...p,
-        _peso: maxVistas - (p.vistas_semana || 0) + 1
-      }));
-      // Ordenar aleatoriamente ponderado por peso
-      const resultado = [];
-      const pool = [...conPeso];
-      while (pool.length > 0) {
-        const totalPeso = pool.reduce((sum, p) => sum + p._peso, 0);
-        let rand = Math.random() * totalPeso;
-        for (let i = 0; i < pool.length; i++) {
-          rand -= pool[i]._peso;
-          if (rand <= 0) {
-            const { _peso, ...p } = pool.splice(i, 1)[0];
-            resultado.push(p);
-            break;
-          }
-        }
-      }
-      return resultado;
-    };
+    // Rotación equitativa: ordenar por vistas_semana ascendente (el que menos apareció va primero)
+    // y mandar solo los primeros 10 de cada grupo para no inflar el prompt.
+    // En la siguiente búsqueda, los que aparecieron subirán en el ranking y cederán el lugar.
+    const ordenarPorVistas = (lista) => [...lista].sort((a, b) => (a.vistas_semana || 0) - (b.vistas_semana || 0));
 
-    // Premium mezclados con peso, gratuitos también mezclados
-    const premiumMezclados = mezclarConPeso(premiumList);
-    const gratuitosMezclados = mezclarConPeso(gratuitoList);
-    const listaMezclada = [...premiumMezclados, ...gratuitosMezclados];
+    const premiumRotados = ordenarPorVistas(premiumList).slice(0, 10);
+    const gratuitosRotados = ordenarPorVistas(gratuitoList).slice(0, 10);
+    const listaMezclada = [...premiumRotados, ...gratuitosRotados];
 
     const listaProfesionales = listaMezclada.length > 0
       ? `\n\nPROFESIONALES DISPONIBLES EN LA BASE DE DATOS:\n${JSON.stringify(listaMezclada.map(({ vistas_semana, ...p }) => p), null, 2)}`
