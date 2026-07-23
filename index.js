@@ -170,7 +170,9 @@ REGLAS:
 - EVALUACIONES Y TESTS: cuando la persona busca un test, evaluación, psicodiagnóstico, apto psicológico, o evaluación de TDAH/TEA/aprendizaje/neuropsicológica, SOLO podés incluir profesionales que tengan explícitamente "Psicodiagnósticos", "Evaluaciones", "Aptos psicológicos", "Neuropsicología" o similar en sus especializaciones. Que un profesional trate o atienda TDAH no significa que haga evaluaciones — son cosas distintas. NO los mezcles.
 - Orden: premium primero, luego gratuito
 - Los profesionales "gratuito" NO tienen whatsapp — poné null en ese campo
-- Si TODOS los disponibles son "gratuito", devolvé el JSON igual con "solo_gratuitos": true — NUNCA mezcles texto con el JSON, la respuesta debe ser SOLO el JSON sin nada antes ni después
+- NUNCA mezcles texto con el JSON, la respuesta debe ser SOLO el JSON sin nada antes ni después
+- NUNCA generes dos JSONs separados en la misma respuesta. Si necesitás corregirte, borrá mentalmente el anterior y generá uno solo al final. Un único bloque JSON, nada más.
+- NUNCA escribas frases como "Espera", "Permíteme", "Déjame" seguidas de otro JSON — si vas a mostrar profesionales, hacelo en un solo JSON desde el principio
 - color: "sage", "warm" o "purple" según tu criterio
 - match: qué tan afín es realmente el profesional a la búsqueda (80-98). El porcentaje debe basarse ÚNICAMENTE en la relevancia de sus especializaciones y enfoques con lo que busca la persona — NO en la cantidad de especializaciones que tiene. Un profesional con pocas especializaciones pero exactas debe recibir igual o más match que uno con muchas especializaciones genéricas.
 - Si la persona pide explícitamente un psicólogo (masculino) o una psicóloga (femenino), filtrá los resultados priorizando profesionales del género solicitado. Si no hay suficientes, podés completar con otros aclarando que no encontraste más del género pedido. Si la persona no especifica género, mostrá los más afines sin filtrar.
@@ -574,11 +576,32 @@ app.post('/chat', limiterChat, async (req, res) => {
     console.log('RAW RESPONSE:', rawText.substring(0, 300));
     
     // Intentar extraer y limpiar JSON del texto
-    const cleaned = rawText.replace(/```json\s*/gi, '').replace(/```/g, '').trim();
-    const firstBrace = cleaned.indexOf('{');
-    const lastBrace = cleaned.lastIndexOf('}');
-    const jsonStr = firstBrace !== -1 && lastBrace !== -1 ? cleaned.substring(firstBrace, lastBrace + 1) : null;
-    const jsonMatch = jsonStr ? [jsonStr] : null;
+    // Si hay múltiples bloques JSON, tomar el último (Claude a veces genera dos y el segundo es el correcto)
+    const cleaned = rawText.replace(/```json\s*/gi, '').replace(/```js\s*/gi, '').replace(/```/g, '').trim();
+    
+    // Buscar todos los bloques JSON y quedarse con el último que tenga profesionales
+    let jsonStr = null;
+    let searchFrom = 0;
+    let lastValidJson = null;
+    while (true) {
+      const firstBrace = cleaned.indexOf('{', searchFrom);
+      if (firstBrace === -1) break;
+      // Encontrar el cierre correspondiente
+      let depth = 0;
+      let end = -1;
+      for (let i = firstBrace; i < cleaned.length; i++) {
+        if (cleaned[i] === '{') depth++;
+        else if (cleaned[i] === '}') { depth--; if (depth === 0) { end = i; break; } }
+      }
+      if (end === -1) break;
+      const candidate = cleaned.substring(firstBrace, end + 1);
+      try {
+        const parsed = JSON.parse(candidate);
+        if (parsed.respuesta !== undefined) lastValidJson = candidate; // es un JSON de Claramente
+      } catch(e) {}
+      searchFrom = end + 1;
+    }
+    const jsonMatch = lastValidJson ? [lastValidJson] : null;
     
     // Obtener el último mensaje del usuario
     const ultimoMensaje = messages[messages.length - 1]?.content || '';
