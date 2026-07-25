@@ -8,6 +8,7 @@ const { Resend } = require('resend');
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 const mp = new MercadoPagoConfig({ accessToken: process.env.MP_ACCESS_TOKEN });
+const PREMIUM_MONTO = 32500; // ARS/mes — plan Premium
 const cors = require('cors');
 const Anthropic = require('@anthropic-ai/sdk');
 const { createClient } = require('@supabase/supabase-js');
@@ -162,14 +163,17 @@ REGLAS:
 - Si obras_sociales contiene solo "Particular", mostrá el tag como "Solo particular"
 - Si obras_sociales contiene "Particular" junto a otras obras sociales, mostrá las obras sociales normalmente sin mencionar "Particular"
 - OBRA SOCIAL SIN COBERTURA: si la persona busca un profesional que acepte una obra social específica y ninguno de los disponibles la acepta, podés igual mostrar los profesionales más afines a su especialización e informarle que si bien no aceptan esa obra social directamente, muchos pacientes optan por abonar la sesión y luego solicitar el reintegro a su obra social presentando la factura del profesional. Aclará que puede consultarle directamente al profesional sobre esta posibilidad antes de comenzar.
+- ZONA/LOCALIDAD SIN PROFESIONALES: si la persona busca profesionales en una localidad o zona puntual (ej: Luján de Cuyo, Godoy Cruz, San Rafael) y ninguno de los disponibles atiende exactamente ahí, podés igual mostrar los profesionales más afines por especialización, pero en el campo "respuesta" aclará explícitamente que no contás con profesionales en esa localidad puntual por el momento, mencioná en qué ciudad/localidad real atienden los que le estás mostrando, y si tienen modalidad online ofrecela como alternativa. NUNCA des a entender, ni de forma implícita, que un profesional atiende en una zona donde no atiende.
 - Si el campo enfoques está vacío, no muestres enfoques
 - Devolvé MÁXIMO 5 profesionales — los más afines a la búsqueda, ordenados por match descendente. Nunca devuelvas más de 5.
 - Si no hay profesionales en la base, avisá amablemente que todavía no hay profesionales disponibles para esa búsqueda
 - NUNCA listes todos los profesionales disponibles aunque el usuario lo pida. Si alguien pregunta "dame todos" o "quiénes son", pedile amablemente que describa qué busca para poder derivarlo correctamente. La plataforma es de derivación, no un catálogo.
 - MATCHING ESTRICTO POR ESPECIALIZACIÓN: un profesional SOLO puede aparecer en una búsqueda si tiene la especialización o tema que busca la persona EXPLÍCITAMENTE marcado en su campo "especializaciones" o "enfoques". Esta regla aplica para TODAS las búsquedas sin excepción. NO importa el porcentaje de match, la experiencia general, ni que atienda adultos — si la especialización buscada no figura textualmente en sus campos, NO lo incluyas. Si ningún profesional cumple este criterio, respondé solo con texto amable avisando que no contamos con profesionales especializados en esa área por el momento, sin devolver JSON.
 - EVALUACIONES Y TESTS: cuando la persona busca un test, evaluación, psicodiagnóstico, apto psicológico, o evaluación de TDAH/TEA/aprendizaje/neuropsicológica, SOLO podés incluir profesionales que tengan explícitamente "Psicodiagnósticos", "Evaluaciones", "Aptos psicológicos", "Neuropsicología" o similar en sus especializaciones. Que un profesional trate o atienda TDAH no significa que haga evaluaciones — son cosas distintas. NO los mezcles.
+- EVALUACIÓN MUY ESPECÍFICA SIN ESPECIALISTA EXACTO (ej: evaluación ADOS para autismo, evaluación vocacional puntual, etc.): esta es una EXCEPCIÓN al matching estricto de la regla anterior. Si buscan una evaluación puntual y ningún profesional la tiene marcada textualmente, pero SÍ hay profesionales con "Neuropsicología", "Evaluaciones" o "Psicodiagnósticos" en sus especializaciones, mostralos igual — no dejes la búsqueda sin resultados. En el campo "respuesta" aclará que no contás con un especialista puntual en esa evaluación específica por el momento, que estos profesionales realizan evaluaciones neurocognitivas/psicodiagnósticas en general, y recomendá que la persona consulte directamente si abordan ese tipo de evaluación en particular antes de agendar.
 - Orden: premium primero, luego gratuito
 - Los profesionales "gratuito" NO tienen whatsapp — poné null en ese campo
+- Si TODOS los disponibles son "gratuito", devolvé el JSON igual con "solo_gratuitos": true
 - NUNCA mezcles texto con el JSON, la respuesta debe ser SOLO el JSON sin nada antes ni después
 - NUNCA generes dos JSONs separados en la misma respuesta. Si necesitás corregirte, borrá mentalmente el anterior y generá uno solo al final. Un único bloque JSON, nada más.
 - NUNCA escribas frases como "Espera", "Permíteme", "Déjame" seguidas de otro JSON — si vas a mostrar profesionales, hacelo en un solo JSON desde el principio
@@ -241,7 +245,7 @@ async function notificarGratuito(profesional, queryTexto) {
             Sin embargo, <strong style="color: #1C2B28;">no pudieron contactarte</strong> porque tu perfil está en el plan gratuito y no muestra tu número de WhatsApp.
           </p>
           <p style="font-size: 15px; line-height: 1.7; color: #6B847E; margin-bottom: 28px;">
-            Con el plan <strong style="color: #1C2B28;">Flex ($32.500/mes)</strong> o <strong style="color: #B8860B;">Premium ($32.500/mes)</strong> los pacientes pueden contactarte directamente — y vos aparecés primero cuando sos el match correcto.
+            Con el plan <strong style="color: #B8860B;">Premium ($32.500/mes)</strong> los pacientes pueden contactarte directamente — y vos aparecés primero cuando sos el match correcto.
           </p>
           <a href="https://claramentepsi.com/login.html" 
              style="display: inline-block; background: #4A7C6F; color: white; padding: 12px 28px; border-radius: 24px; text-decoration: none; font-size: 14px; font-weight: 500;">
@@ -279,7 +283,7 @@ app.post('/activar-trial', async (req, res) => {
     trial_hasta.setDate(trial_hasta.getDate() + 30); // 30 días
     const { error } = await supabase
       .from('profesionales')
-      .update({ trial_hasta: trial_hasta.toISOString() })
+      .update({ trial_hasta: trial_hasta.toISOString(), trial_mail_enviado: false })
       .eq('id', id);
     if (error) throw error;
     res.json({ ok: true, trial_hasta });
@@ -288,30 +292,62 @@ app.post('/activar-trial', async (req, res) => {
   }
 });
 
+// Genera un link de pago de MP personalizado para un profesional EXISTENTE
+// (a diferencia de /registro-pendiente, que es para altas nuevas).
+// Usa el id del profesional como external_reference para que el webhook
+// pueda identificarlo y actualizar su plan directamente.
+//
+// IMPORTANTE: se crea SIN preapproval_plan_id. Usar preapproval_plan_id acá
+// requiere pasar un card_token_id ya tokenizado (o sea, vos mismo capturando
+// la tarjeta en tu frontend con el SDK de MP) — si no lo tenés, la API tira
+// "card_token_id is required". Mandando auto_recurring completo en cambio,
+// MP crea una suscripción "sin plan asociado" con status pendiente y devuelve
+// un init_point para que el usuario complete el pago en el checkout hosteado.
+async function generarLinkUpgrade(profesional) {
+  const backUrl = `${process.env.APP_URL || 'https://claramentepsi.com'}/panel.html?upgrade=ok`;
+
+  const preApproval = new PreApproval(mp);
+  const subscription = await preApproval.create({
+    body: {
+      reason: 'Plan Premium · claramentepsi',
+      payer_email: profesional.email,
+      external_reference: `prof_${profesional.id}`,
+      back_url: backUrl,
+      status: 'pending',
+      auto_recurring: {
+        frequency: 1,
+        frequency_type: 'months',
+        transaction_amount: PREMIUM_MONTO,
+        currency_id: 'ARS',
+      },
+    }
+  });
+  return subscription.init_point;
+}
+
 // Cron: verificar trials vencidos y mandar mail
 async function verificarTrialsVencidos() {
   try {
     const ahora = new Date().toISOString();
-    // Buscar profesionales con trial vencido que aún no fueron notificados
+    // Buscar profesionales con trial vencido que aún NO fueron notificados
     const { data: vencidos } = await supabase
       .from('profesionales')
       .select('id, nombre, email, trial_hasta, busquedas_semana')
       .lt('trial_hasta', ahora)
       .not('trial_hasta', 'is', null)
-      .eq('plan', 'gratuito'); // Ya están en gratuito, el trial expiró
+      .eq('plan', 'gratuito') // Ya están en gratuito, el trial expiró
+      .eq('trial_mail_enviado', false); // Clave: solo los que no recibieron el mail todavía
 
     if (!vencidos || vencidos.length === 0) return;
 
     for (const prof of vencidos) {
-      // Verificar que no le hayamos mandado el mail ya (limpiar trial_hasta después de notificar)
-      const trialFecha = new Date(prof.trial_hasta);
-      const diasVencido = Math.floor((new Date() - trialFecha) / (1000 * 60 * 60 * 24));
-      
-      // Solo mandar mail el primer día que vence
-      if (diasVencido > 1) continue;
-
       const nombre = prof.nombre?.split(' ')[0] || 'Lic.';
-      const mpLink = 'https://www.mercadopago.com.ar/subscriptions/checkout?preapproval_plan_id=eefad72a6586412e8a74031b80c9ca0b';
+      let mpLink = 'https://www.mercadopago.com.ar/subscriptions/checkout?preapproval_plan_id=eefad72a6586412e8a74031b80c9ca0b';
+      try {
+        mpLink = await generarLinkUpgrade(prof); // link personalizado con external_reference
+      } catch (e) {
+        console.error(`No se pudo generar link personalizado para ${prof.email}, usando link genérico:`, e.message);
+      }
 
       await resend.emails.send({
         from: 'Claramente <hola@claramentepsi.com>',
@@ -343,6 +379,13 @@ async function verificarTrialsVencidos() {
           </div>
         `
       });
+
+      // Marcar como notificado para que el próximo cron no lo vuelva a mandar
+      await supabase
+        .from('profesionales')
+        .update({ trial_mail_enviado: true })
+        .eq('id', prof.id);
+
       console.log(`Mail de trial vencido enviado a ${prof.email}`);
     }
   } catch(e) {
@@ -684,19 +727,26 @@ app.post('/chat', limiterChat, async (req, res) => {
 
 // Registrar aparición en búsqueda
 app.post('/vista', async (req, res) => {
-  const { psy_id, query_texto, plan } = req.body;
+  const { psy_id, query_texto } = req.body;
   if (!psy_id) return res.status(400).json({ error: 'psy_id requerido' });
   try {
     await supabase.from('vistas').insert({ psy_id });
 
-    // Si es gratuito, manejar el mail semanal
-    if (plan === 'gratuito') {
-      const { data: prof } = await supabase
-        .from('profesionales')
-        .select('email, nombre, id, ultimo_mail_gratuito, busquedas_semana, inicio_semana')
-        .eq('id', psy_id)
-        .single();
-      if (prof) await notificarGratuito({ ...prof }, query_texto);
+    // IMPORTANTE: nunca confiar en un plan mandado por el frontend para decidir
+    // si se manda el mail de "estás en el plan gratuito" — se verifica siempre
+    // contra la base de datos, igual que hace /chat (plan real + trial activo).
+    const { data: prof } = await supabase
+      .from('profesionales')
+      .select('email, nombre, id, plan, trial_hasta, ultimo_mail_gratuito, busquedas_semana, inicio_semana')
+      .eq('id', psy_id)
+      .single();
+
+    if (prof) {
+      const enTrialActivo = prof.trial_hasta && new Date(prof.trial_hasta) > new Date();
+      const esRealmenteGratuito = prof.plan === 'gratuito' && !enTrialActivo;
+      if (esRealmenteGratuito) {
+        await notificarGratuito({ ...prof }, query_texto);
+      }
     }
 
     res.json({ ok: true });
@@ -1140,27 +1190,58 @@ app.post('/registro-pendiente', async (req, res) => {
       .insert({ session_id, datos, plan });
     if (error) throw error;
 
-    // IDs de los planes en MP
-    const planIds = {
-      premium: 'eefad72a6586412e8a74031b80c9ca0b'
-    };
-
     const backUrl = `${process.env.APP_URL || 'https://claramentepsi.com'}/pago-exitoso.html?session_id=${session_id}`;
 
-    // Crear suscripción via API de MP con external_reference
+    // Crear suscripción via API de MP con external_reference.
+    // Sin preapproval_plan_id (ver nota en generarLinkUpgrade): con auto_recurring
+    // completo, MP devuelve un init_point de checkout hosteado sin necesitar
+    // un card_token_id tokenizado de antemano.
     const preApproval = new PreApproval(mp);
     const subscription = await preApproval.create({
       body: {
-        preapproval_plan_id: planIds[plan],
+        reason: 'Plan Premium · claramentepsi',
         payer_email: datos.email,
         external_reference: session_id,
         back_url: backUrl,
+        status: 'pending',
+        auto_recurring: {
+          frequency: 1,
+          frequency_type: 'months',
+          transaction_amount: PREMIUM_MONTO,
+          currency_id: 'ARS',
+        },
       }
     });
 
     res.json({ ok: true, session_id, init_point: subscription.init_point });
   } catch (e) {
     console.error('Error registro pendiente:', e.message);
+    res.status(500).json({ error: 'Error al generar link de pago: ' + e.message });
+  }
+});
+
+// Generar link de pago para un profesional YA EXISTENTE que quiere pasar a Premium
+// (botón "Actualizar plan" del panel — pestaña Plan). Usar este endpoint en vez de
+// linkear directamente al checkout de MP, para que el webhook pueda identificar
+// a qué profesional corresponde el pago.
+app.post('/generar-link-premium', async (req, res) => {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ error: 'email requerido' });
+  try {
+    const { data: profesional, error } = await supabase
+      .from('profesionales')
+      .select('id, email, plan')
+      .eq('email', email)
+      .eq('activo', true)
+      .single();
+
+    if (error || !profesional) return res.status(404).json({ error: 'Profesional no encontrado' });
+    if (profesional.plan === 'premium') return res.status(400).json({ error: 'Ya tenés el plan Premium activo' });
+
+    const init_point = await generarLinkUpgrade(profesional);
+    res.json({ ok: true, init_point });
+  } catch (e) {
+    console.error('Error generando link de upgrade:', e.message);
     res.status(500).json({ error: 'Error al generar link de pago: ' + e.message });
   }
 });
@@ -1261,8 +1342,23 @@ app.post('/webhook/mp-sub', async (req, res) => {
 
     if (sub.status !== 'authorized') return res.sendStatus(200);
 
-    const session_id = sub.external_reference;
-    if (!session_id) return res.sendStatus(200);
+    const external_ref = sub.external_reference;
+    if (!external_ref) return res.sendStatus(200);
+
+    // Caso 1: upgrade de un profesional YA EXISTENTE (link generado por generarLinkUpgrade)
+    if (external_ref.startsWith('prof_')) {
+      const profesionalId = external_ref.replace('prof_', '');
+      const { error: updateError } = await supabase
+        .from('profesionales')
+        .update({ plan: 'premium', plan_activo_desde: new Date().toISOString() })
+        .eq('id', profesionalId);
+      if (updateError) console.error('Error actualizando plan de profesional existente:', updateError.message);
+      else console.log(`Plan actualizado a premium para profesional existente: ${profesionalId}`);
+      return res.sendStatus(200);
+    }
+
+    // Caso 2: alta nueva (viene de /registro-pendiente)
+    const session_id = external_ref;
 
     const { data: pendiente } = await supabase
       .from('registros_pendientes')
