@@ -9,6 +9,8 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 
 const mp = new MercadoPagoConfig({ accessToken: process.env.MP_ACCESS_TOKEN });
 const PREMIUM_MONTO = 32500; // ARS/mes — plan Premium
+const SIN_SENTIDO_LIMITE = 2; // mensajes sin sentido antes de bloquear la IP
+const BLOQUEO_HORAS = 24; // duración del bloqueo
 const cors = require('cors');
 const Anthropic = require('@anthropic-ai/sdk');
 const { createClient } = require('@supabase/supabase-js');
@@ -167,6 +169,7 @@ REGLAS:
 - Si el campo enfoques está vacío, no muestres enfoques
 - Devolvé MÁXIMO 5 profesionales — los más afines a la búsqueda, ordenados por match descendente. Nunca devuelvas más de 5.
 - Si no hay profesionales en la base, avisá amablemente que todavía no hay profesionales disponibles para esa búsqueda
+- MENSAJE SIN SENTIDO O SPAM: si el último mensaje del usuario es incoherente, texto aleatorio, spam, prueba/testing, o no tiene ninguna relación real con buscar apoyo psicológico (incluso después de pedir una aclaración), respondé ÚNICAMENTE con este JSON, sin nada de texto antes ni después: {"sin_sentido": true, "respuesta": "mensaje breve y amable pidiendo que cuente qué está buscando", "profesionales": []}. Esta regla tiene prioridad sobre todas las demás — evaluala primero. No confundas esto con un mensaje breve pero válido (ej: "ansiedad", "necesito ayuda", "busco terapeuta de pareja") — esos SÍ tienen sentido y siguen el flujo normal.
 - NUNCA listes todos los profesionales disponibles aunque el usuario lo pida. Si alguien pregunta "dame todos" o "quiénes son", pedile amablemente que describa qué busca para poder derivarlo correctamente. La plataforma es de derivación, no un catálogo.
 - MATCHING ESTRICTO POR ESPECIALIZACIÓN: un profesional SOLO puede aparecer en una búsqueda si tiene la especialización o tema que busca la persona EXPLÍCITAMENTE marcado en su campo "especializaciones" o "enfoques". Esta regla aplica para TODAS las búsquedas sin excepción. NO importa el porcentaje de match, la experiencia general, ni que atienda adultos — si la especialización buscada no figura textualmente en sus campos, NO lo incluyas. Si ningún profesional cumple este criterio, respondé solo con texto amable avisando que no contamos con profesionales especializados en esa área por el momento, sin devolver JSON.
 - EVALUACIONES Y TESTS: cuando la persona busca un test, evaluación, psicodiagnóstico, apto psicológico, o evaluación de TDAH/TEA/aprendizaje/neuropsicológica, SOLO podés incluir profesionales que tengan explícitamente "Psicodiagnósticos", "Evaluaciones", "Aptos psicológicos", "Neuropsicología" o similar en sus especializaciones. Que un profesional trate o atienda TDAH no significa que haga evaluaciones — son cosas distintas. NO los mezcles.
@@ -520,7 +523,26 @@ app.post('/chat', limiterChat, async (req, res) => {
   const lastMsg = messages[messages.length - 1]?.content || '';
   if (typeof lastMsg === 'string' && lastMsg.length > 2000) return res.status(400).json({ error: 'Mensaje demasiado largo' });
 
+  const ip = req.ip;
+
   try {
+    // Cortar acá si esta IP ya está bloqueada por mensajes sin sentido reiterados —
+    // así no gastamos ni una llamada a Claude con alguien que ya sabemos que es spam.
+    const { data: abuso } = await supabase
+      .from('chat_abuso')
+      .select('strikes, bloqueado_hasta')
+      .eq('ip', ip)
+      .maybeSingle();
+
+    if (abuso?.bloqueado_hasta && new Date(abuso.bloqueado_hasta) > new Date()) {
+      return res.json({
+        content: [{ type: 'text', text: JSON.stringify({
+          respuesta: 'Este chat quedó temporalmente restringido por mensajes reiterados sin sentido. Si necesitás ayuda para encontrar un psicólogo, escribinos de nuevo más tarde.',
+          profesionales: []
+        }) }]
+      });
+    }
+
     // Traer profesionales activos de Supabase
     const { data: profesionales } = await supabase
       .from('profesionales')
@@ -652,6 +674,38 @@ app.post('/chat', limiterChat, async (req, res) => {
     if (jsonMatch) {
       try {
         const parsed = JSON.parse(jsonMatch[0]);
+
+        if (parsed.sin_sentido === true) {
+          const nuevoStrikes = (abuso?.strikes || 0) + 1;
+          const bloquear = nuevoStrikes >= SIN_SENTIDO_LIMITE;
+
+          await supabase.from('chat_abuso').upsert({
+            ip,
+            strikes: nuevoStrikes,
+            bloqueado_hasta: bloquear ? new Date(Date.now() + BLOQUEO_HORAS * 60 * 60 * 1000).toISOString() : null,
+            updated_at: new Date().toISOString(),
+          });
+
+          supabase.from('consultas').insert({
+            mensaje: ultimoMensaje,
+            respuesta: 'SIN_SENTIDO: ' + (parsed.respuesta || ''),
+            profesionales_devueltos: null
+          }).then(() => {}).catch(e => console.error('Error guardando consulta:', e.message));
+
+          const respuestaFinal = bloquear
+            ? 'Noté varios mensajes seguidos sin sentido, así que voy a cerrar esta conversación por ahora. Si en algún momento necesitás ayuda real para encontrar un psicólogo, escribinos de nuevo.'
+            : (parsed.respuesta || 'No entendí bien tu mensaje. ¿Podés contarme qué estás buscando?');
+
+          return res.json({
+            content: [{ type: 'text', text: JSON.stringify({ respuesta: respuestaFinal, profesionales: [] }) }]
+          });
+        }
+
+        // Mensaje válido: si esta IP tenía strikes previos sin haber llegado a bloquearse, resetear
+        if (abuso?.strikes) {
+          supabase.from('chat_abuso').update({ strikes: 0, updated_at: new Date().toISOString() }).eq('ip', ip).then(() => {}).catch(() => {});
+        }
+
         if (parsed.profesionales) {
           // Enriquecer con vistas_semana para la rotación equitativa
           parsed.profesionales = parsed.profesionales.map(p => ({
@@ -665,7 +719,7 @@ app.post('/chat', limiterChat, async (req, res) => {
           // Guardar consulta en Supabase
           supabase.from('consultas').insert({
             mensaje: ultimoMensaje,
-            respuesta: parsed.mensaje || null,
+            respuesta: parsed.respuesta || null,
             profesionales_devueltos: parsed.profesionales || []
           }).then(() => {}).catch(e => console.error('Error guardando consulta:', e.message));
 
@@ -685,7 +739,7 @@ app.post('/chat', limiterChat, async (req, res) => {
           if (parsed2?.profesionales) {
             supabase.from('consultas').insert({
               mensaje: ultimoMensaje,
-              respuesta: parsed2.mensaje || null,
+              respuesta: parsed2.respuesta || null,
               profesionales_devueltos: parsed2.profesionales || []
             }).then(() => {}).catch(e => console.error('Error guardando consulta:', e.message));
 
@@ -717,6 +771,11 @@ app.post('/chat', limiterChat, async (req, res) => {
       respuesta: rawText,
       profesionales_devueltos: null
     }).then(() => {}).catch(e => console.error('Error guardando consulta:', e.message));
+
+    // Respuesta de texto legítima (ej: "no tenemos especialistas en X área") — resetear strikes previos
+    if (abuso?.strikes) {
+      supabase.from('chat_abuso').update({ strikes: 0, updated_at: new Date().toISOString() }).eq('ip', ip).then(() => {}).catch(() => {});
+    }
 
     res.json({ content: response.content });
   } catch (error) {
