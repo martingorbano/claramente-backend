@@ -136,14 +136,6 @@ nav {
 .pro-card.plan-premium .card-name { font-size: 15px; font-weight: 500; }
 .pro-card.plan-premium .match-score { font-size: 13px; font-weight: 600; }
 
-/* Flex — más visible que gratuito, borde verde, fondo suave */
-.pro-card.plan-flex { 
-  border: 1.5px solid var(--sage-mid);
-  background: var(--sage-light);
-  padding: 18px;
-}
-.pro-card.plan-flex .card-avatar { width: 46px; height: 46px; }
-
 /* Gratuito — más chico, opaco, sin destacar */
 .pro-card.plan-gratuito { 
   opacity: 0.65;
@@ -157,7 +149,6 @@ nav {
 
 .plan-badge { display: inline-flex; font-size: 10px; font-weight: 500; padding: 3px 10px; border-radius: 20px; letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 8px; align-self: flex-start; }
 .badge-premium { background: #FDF8E8; color: #B8860B; border: 1px solid #E8D48A; }
-.badge-flex { background: var(--sage-light); color: var(--sage-dark); border: 1px solid var(--sage-mid); }
 .no-contact-msg { font-size: 11px; color: var(--text-faint); text-align: center; padding: 6px 0; font-style: italic; }
 .card-head { display: flex; align-items: center; gap: 12px; }
 .card-avatar { width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: 'Lora', serif; font-size: 15px; font-weight: 500; flex-shrink: 0; }
@@ -397,6 +388,7 @@ try {
         </div>
       </div>
       <a class="btn-unirse" href="claramentepsi-registro-profesional.html">Sumate a la red →</a>
+      <div style="margin-top:12px;font-size:13px;color:#8A6A1F;font-family:'DM Sans',sans-serif;">✨ Probá el plan Premium gratis por 30 días — sin tarjeta.</div>
     </div>
     <div>
       <div class="prof-card-preview">
@@ -562,7 +554,6 @@ function renderCards(profesionales, query) {
     const col = COLORS[p.color] || COLORS.sage;
     const tags = [p.enfoque, p.modalidad, ...(p.obras_sociales || [])].filter(Boolean);
     const esPremium  = p.plan === 'premium';
-    const esFlex     = p.plan === 'flex';
     const esGratuito = p.plan === 'gratuito';
 
     const card = document.createElement('div');
@@ -570,7 +561,6 @@ function renderCards(profesionales, query) {
 
     let badgeHTML = '';
     if (esPremium) badgeHTML = `<span class="plan-badge badge-premium">★ Destacado</span>`;
-    if (esFlex)    badgeHTML = `<span class="plan-badge badge-flex">Flex</span>`;
 
     const footerHTML = esGratuito
       ? `<div class="no-contact-msg">Este profesional no está disponible para contacto directo</div>`
@@ -753,10 +743,17 @@ async function sendMessage() {
       try {
         const parsed = JSON.parse(jsonStr);
         console.log('parsed ok:', !!parsed.profesionales);
-        if (parsed.profesionales) {
+        if (parsed.profesionales && parsed.profesionales.length > 0) {
           addMessage('ai', parsed.respuesta || 'Encontré estas opciones para vos:');
           history.push({ role: 'assistant', content: raw });
           renderCards(parsed.profesionales, lastQuery);
+          return;
+        }
+        // JSON válido pero sin profesionales (ej: mensaje sin sentido, o "no hay match")
+        // — mostrar solo el texto, sin abrir la sección de resultados vacía
+        if (parsed.respuesta) {
+          addMessage('ai', parsed.respuesta);
+          history.push({ role: 'assistant', content: raw });
           return;
         }
       } catch(e) { console.error('JSON parse error:', e.message); }
