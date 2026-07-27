@@ -325,6 +325,7 @@ async function generarLinkUpgrade(profesional) {
       },
     }
   });
+  console.log(`Suscripción creada (upgrade existente) — email: ${profesional.email}, prof_id: ${profesional.id}, init_point: ${subscription.init_point}, mp_id: ${subscription.id}`);
   return subscription.init_point;
 }
 
@@ -1271,6 +1272,8 @@ app.post('/registro-pendiente', async (req, res) => {
         },
       }
     });
+
+    console.log(`Suscripción creada (alta nueva) — email: ${datos.email}, session_id: ${session_id}, init_point: ${subscription.init_point}, mp_id: ${subscription.id}`);
 
     res.json({ ok: true, session_id, init_point: subscription.init_point });
   } catch (e) {
