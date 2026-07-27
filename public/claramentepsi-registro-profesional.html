@@ -190,6 +190,10 @@ select { cursor: pointer; appearance: none; background-image: url("data:image/sv
   <span class="nav-tag">Área profesionales</span>
 </nav>
 
+<div style="background:linear-gradient(90deg,#FDF8E8,#FFFFF8);border-bottom:1px solid #E8D48A;padding:10px 20px;text-align:center;font-family:'DM Sans',sans-serif;font-size:13.5px;color:#8A6A1F;">
+  ✨ <strong>Probá el plan Premium gratis por 30 días</strong> — sin tarjeta.
+</div>
+
 <div class="layout">
 
   <!-- Progress -->
@@ -530,7 +534,7 @@ select { cursor: pointer; appearance: none; background-image: url("data:image/sv
   <!-- PASO 5: Plan -->
   <div class="panel" id="panel-4">
     <div class="panel-title">Elegí tu plan</div>
-    <div class="panel-sub">Podés empezar gratis. Cuando veas que llegan consultas, el plan Premium te asegura aparecer primero y ser contactado.</div>
+    <div class="panel-sub">Empezá con 30 días de Premium gratis, sin tarjeta. Si preferís, también podés activar el plan Premium pago directamente.</div>
 
     <div class="plan-card" id="planPro" style="cursor:pointer;border:2px solid #B8860B;background:linear-gradient(135deg,#FFFFF8 0%,#FDF8E8 100%)" onclick="selectPlan('premium')">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
@@ -557,10 +561,10 @@ select { cursor: pointer; appearance: none; background-image: url("data:image/sv
 
 
 
-    <!-- Gratuito -->
+    <!-- Gratuito / Trial -->
     <div class="plan-free" id="planFree" style="cursor:pointer" onclick="selectPlan('gratuito')">
-      <div class="plan-free-label">Plan gratuito</div>
-      <div class="plan-free-desc">Tu perfil aparece en los resultados sin foto ni contacto directo. Cuando alguien te encuentre, te avisamos por mail para que puedas evaluar si vale la pena suscribirte al plan Premium.</div>
+      <div class="plan-free-label">✨ 30 días de Premium gratis</div>
+      <div class="plan-free-desc">Arrancás con todos los beneficios del plan Premium sin cargo y sin tarjeta: foto visible, contacto directo por WhatsApp y prioridad en los resultados. Antes de que termine el mes te avisamos por mail para que decidas si seguís con la suscripción — si no, tu perfil sigue publicado en el plan gratuito.</div>
     </div>
 
     <div id="planSelected" style="font-size:13px;color:var(--sage);margin-top:14px;font-weight:500;display:none"></div>
@@ -617,8 +621,8 @@ select { cursor: pointer; appearance: none; background-image: url("data:image/sv
     </div>
     <div id="pagoFree" style="display:none">
       <div class="pago-free-notice">
-        <strong>Empezas con el plan gratuito</strong>
-        Tu perfil se publica sin costo. Cuando quieras activar Premium para aparecer primero y ser contactado, podés hacerlo desde tu panel en cualquier momento.
+        <strong>Empezás con 30 días de Premium gratis</strong>
+        Tu perfil se publica de entrada con foto, contacto directo por WhatsApp y prioridad en los resultados — sin cargo y sin necesidad de tarjeta. Antes de que termine el mes te avisamos por mail para que decidas si querés seguir con la suscripción.
       </div>
     </div>
     <div class="nav-btns">
@@ -909,8 +913,7 @@ function selectPlan(plan) {
 
   const labels = {
     premium:  '✓ Seleccionaste Plan Premium — $32.500/mes',
-    flex:     '✓ Seleccionaste Plan Flex — $32.500/mes',
-    gratuito: '✓ Seleccionaste Plan Gratuito'
+    gratuito: '✓ Seleccionaste 30 días de Premium gratis'
   };
   const lbl = document.getElementById('planSelected');
   lbl.textContent = labels[plan] || '';
@@ -922,11 +925,11 @@ function buildResumen() {
   collectStep(4);
   const r = document.getElementById('resumen');
   const fotoSubida = document.getElementById('photoPreview').querySelector('img') !== null;
-  const planEsFree = formData.plan === 'free';
+  const planEsFree = formData.plan === 'gratuito';
 
-  const fotoVal = planEsFree
-    ? `<span class="photo-locked"><span>🔒</span> Guardada · no visible en plan gratuito</span>`
-    : (fotoSubida ? '✓ Foto subida — visible en tu perfil' : 'Sin foto');
+  // Durante el trial (30 días) el perfil se muestra igual que uno Premium,
+  // incluida la foto — no hay que ocultarla acá.
+  const fotoVal = fotoSubida ? '✓ Foto subida — visible en tu perfil' : 'Sin foto';
 
   const rows = [
     ['Nombre', formData.nombre],
@@ -943,7 +946,7 @@ function buildResumen() {
     ['Edades', formData.edades?.join(', ') || '—'],
     ['Disponibilidad', formData.dias?.join(', ') || '—'],
     ['Franjas', formData.franjas?.join(', ') || '—'],
-    ['Plan', formData.plan === 'pro' ? 'Pro — $32.500/mes' : 'Gratuito'],
+    ['Plan', formData.plan === 'premium' ? 'Premium — $32.500/mes' : 'Prueba Premium gratis (30 días)'],
   ];
 
   r.innerHTML = rows.map(([k, val]) => `
@@ -952,7 +955,7 @@ function buildResumen() {
       <span class="resumen-val">${val || '—'}</span>
     </div>`).join('');
 
-  // Nudge si eligió free y subió foto
+  // Nudge informativo si eligió el trial gratuito
   const existing = document.getElementById('resumenNudge');
   if (existing) existing.remove();
 
@@ -963,12 +966,11 @@ function buildResumen() {
     nudge.innerHTML = `
       <div class="resumen-nudge-icon">✨</div>
       <div class="resumen-nudge-body">
-        <div class="resumen-nudge-title">Tu perfil va a aparecer, pero sin foto</div>
+        <div class="resumen-nudge-title">Tenés 30 días de Premium gratis</div>
         <div class="resumen-nudge-text">
-          Con el plan gratuito tus pacientes ven solo tus iniciales en lugar de tu foto. 
-          Los perfiles con foto generan mucha más confianza — especialmente en salud mental, donde el vínculo empieza antes del primer encuentro.
+          Durante el mes de prueba tu perfil aparece exactamente igual que uno Premium: con foto, contacto directo y prioridad en los resultados.
+          Antes de que termine te avisamos por mail para que decidas si seguís con la suscripción.
         </div>
-        <button class="resumen-nudge-btn" onclick="prev(5); selectPlan('pro')">Activar Plan Pro y mostrar mi foto</button>
       </div>`;
     r.after(nudge);
   }
