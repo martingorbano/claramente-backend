@@ -1055,11 +1055,21 @@ app.post('/registro', async (req, res) => {
 
   try {
     const password_hash = await bcrypt.hash(password, 10);
+
+    // Todo profesional nuevo arranca con 30 días de trial Premium gratis,
+    // sin importar que haya elegido "gratuito" en el form — es la forma en la
+    // que ofrecemos la prueba. El cron de verificarTrialsVencidos ya sabe
+    // avisar por mail cuando este trial expira y volver a tratarlo como
+    // gratuito real a partir de ahí.
+    const trial_hasta = new Date();
+    trial_hasta.setDate(trial_hasta.getDate() + 30);
+
     const { data, error } = await supabase.from('profesionales').insert({
       nombre, matricula, email, whatsapp, password_hash, bio, ciudad, localidad, genero,
       experiencia, honorario, obras_sociales, enfoques, especializaciones,
       modalidades, edades, dias, franjas,
       plan: plan || 'gratuito',
+      trial_hasta: trial_hasta.toISOString(),
       activo: true
     }).select().single();
 
