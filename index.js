@@ -279,6 +279,15 @@ async function notificarGratuito(profesional, queryTexto) {
 
 // Activar trial para un profesional (llamado desde Supabase SQL o admin)
 app.post('/activar-trial', async (req, res) => {
+  // Endpoint de uso manual/admin (activar trial a mano para un profesional puntual) —
+  // nunca debe ser llamable públicamente, porque de otra forma cualquiera con el id
+  // de un profesional (que es público, aparece en las respuestas del chat) podría
+  // reactivarse el trial indefinidamente sin pagar.
+  const adminKey = req.headers['x-admin-key'];
+  if (!adminKey || adminKey !== process.env.ADMIN_SECRET) {
+    return res.status(401).json({ error: 'No autorizado' });
+  }
+
   const { id } = req.body;
   if (!id) return res.status(400).json({ error: 'id requerido' });
   try {
