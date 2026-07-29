@@ -172,8 +172,9 @@ REGLAS:
 - MENSAJE SIN SENTIDO O SPAM: si el último mensaje del usuario es incoherente, texto aleatorio, spam, prueba/testing, o no tiene ninguna relación real con buscar apoyo psicológico (incluso después de pedir una aclaración), respondé ÚNICAMENTE con este JSON, sin nada de texto antes ni después: {"sin_sentido": true, "respuesta": "mensaje breve y amable pidiendo que cuente qué está buscando", "profesionales": []}. Esta regla tiene prioridad sobre todas las demás — evaluala primero. No confundas esto con un mensaje breve pero válido (ej: "ansiedad", "necesito ayuda", "busco terapeuta de pareja") — esos SÍ tienen sentido y siguen el flujo normal.
 - NUNCA listes todos los profesionales disponibles aunque el usuario lo pida. Si alguien pregunta "dame todos" o "quiénes son", pedile amablemente que describa qué busca para poder derivarlo correctamente. La plataforma es de derivación, no un catálogo.
 - MATCHING ESTRICTO POR ESPECIALIZACIÓN: un profesional SOLO puede aparecer en una búsqueda si tiene la especialización o tema que busca la persona EXPLÍCITAMENTE marcado en su campo "especializaciones" o "enfoques". Esta regla aplica para TODAS las búsquedas sin excepción. NO importa el porcentaje de match, la experiencia general, ni que atienda adultos — si la especialización buscada no figura textualmente en sus campos, NO lo incluyas. Si ningún profesional cumple este criterio, respondé solo con texto amable avisando que no contamos con profesionales especializados en esa área por el momento, sin devolver JSON.
+- MATCHING ESTRICTO POR EDAD/POBLACIÓN: si la persona busca atención para un niño (o menciona "mi hijo", "mi hija", "nene", "nena", etc.), adolescente, adulto mayor, o menciona la edad del paciente, el profesional SOLO puede incluirse si tiene ese grupo etario EXPLÍCITAMENTE marcado en su campo "edades" (valores posibles: "Niños (4-12)", "Adolescentes (13-17)", "Adultos (18-60)", "Adultos mayores (60+)"). Un profesional que solo atiende adultos NUNCA debe aparecer en una búsqueda para niños o adolescentes, aunque tenga la especialización correcta y un % de match alto — la edad del paciente es un filtro duro, no un factor de afinidad. Si nadie cumple especialización Y grupo etario a la vez, respondé solo con texto amable avisando que no contamos con profesionales para esa combinación por el momento, sin devolver JSON.
 - EVALUACIONES Y TESTS: cuando la persona busca un test, evaluación, psicodiagnóstico, apto psicológico, o evaluación de TDAH/TEA/aprendizaje/neuropsicológica, SOLO podés incluir profesionales que tengan explícitamente "Psicodiagnósticos", "Evaluaciones", "Aptos psicológicos", "Neuropsicología" o similar en sus especializaciones. Que un profesional trate o atienda TDAH no significa que haga evaluaciones — son cosas distintas. NO los mezcles.
-- EVALUACIÓN MUY ESPECÍFICA SIN ESPECIALISTA EXACTO (ej: evaluación ADOS para autismo, evaluación vocacional puntual, etc.): esta es una EXCEPCIÓN al matching estricto de la regla anterior. Si buscan una evaluación puntual y ningún profesional la tiene marcada textualmente, pero SÍ hay profesionales con "Neuropsicología", "Evaluaciones" o "Psicodiagnósticos" en sus especializaciones, mostralos igual — no dejes la búsqueda sin resultados. En el campo "respuesta" aclará que no contás con un especialista puntual en esa evaluación específica por el momento, que estos profesionales realizan evaluaciones neurocognitivas/psicodiagnósticas en general, y recomendá que la persona consulte directamente si abordan ese tipo de evaluación en particular antes de agendar.
+- EVALUACIÓN MUY ESPECÍFICA SIN ESPECIALISTA EXACTO (ej: evaluación ADOS para autismo, evaluación vocacional puntual, etc.): esta es una EXCEPCIÓN al matching estricto de especialización (no a la de edad/población, que sigue aplicando siempre). Si buscan una evaluación puntual y ningún profesional la tiene marcada textualmente, pero SÍ hay profesionales con "Neuropsicología", "Evaluaciones" o "Psicodiagnósticos" en sus especializaciones Y que atienden el grupo etario correspondiente, mostralos igual — no dejes la búsqueda sin resultados. En el campo "respuesta" aclará que no contás con un especialista puntual en esa evaluación específica por el momento, que estos profesionales realizan evaluaciones neurocognitivas/psicodiagnósticas en general, y recomendá que la persona consulte directamente si abordan ese tipo de evaluación en particular antes de agendar.
 - Orden: premium primero, luego gratuito
 - Los profesionales "gratuito" NO tienen whatsapp — poné null en ese campo
 - Si TODOS los disponibles son "gratuito", devolvé el JSON igual con "solo_gratuitos": true
@@ -1411,19 +1412,32 @@ app.post('/webhook/mp-sub', async (req, res) => {
   if (!verificarFirmaMP(req)) return res.sendStatus(401);
   try {
     const { type, data } = req.body;
-    if (type !== 'preapproval') return res.sendStatus(200);
+    const resourceId = data?.id;
+    if (!resourceId) return res.sendStatus(200);
 
-    const subId = data?.id;
-    if (!subId) return res.sendStatus(200);
+    let external_ref = null;
 
-    const mpRes = await fetch(`https://api.mercadopago.com/preapproval/${subId}`, {
-      headers: { 'Authorization': `Bearer ${process.env.MP_ACCESS_TOKEN}` }
-    });
-    const sub = await mpRes.json();
+    if (type === 'preapproval') {
+      // Suscripciones creadas con preapproval_plan_id (flujo viejo/alternativo)
+      const mpRes = await fetch(`https://api.mercadopago.com/preapproval/${resourceId}`, {
+        headers: { 'Authorization': `Bearer ${process.env.MP_ACCESS_TOKEN}` }
+      });
+      const sub = await mpRes.json();
+      if (sub.status === 'authorized') external_ref = sub.external_reference;
 
-    if (sub.status !== 'authorized') return res.sendStatus(200);
+    } else if (type === 'payment') {
+      // Suscripciones "sin plan asociado" (auto_recurring) — el cobro real avisa
+      // por acá, con action payment.created/payment.updated, no por preapproval.
+      const mpRes = await fetch(`https://api.mercadopago.com/v1/payments/${resourceId}`, {
+        headers: { 'Authorization': `Bearer ${process.env.MP_ACCESS_TOKEN}` }
+      });
+      const pago = await mpRes.json();
+      if (pago.status === 'approved') external_ref = pago.external_reference;
 
-    const external_ref = sub.external_reference;
+    } else {
+      return res.sendStatus(200); // otro tipo de evento, lo ignoramos
+    }
+
     if (!external_ref) return res.sendStatus(200);
 
     // Caso 1: upgrade de un profesional YA EXISTENTE (link generado por generarLinkUpgrade)
@@ -1434,7 +1448,7 @@ app.post('/webhook/mp-sub', async (req, res) => {
         .update({ plan: 'premium', plan_activo_desde: new Date().toISOString() })
         .eq('id', profesionalId);
       if (updateError) console.error('Error actualizando plan de profesional existente:', updateError.message);
-      else console.log(`Plan actualizado a premium para profesional existente: ${profesionalId}`);
+      else console.log(`Plan actualizado a premium para profesional existente (${type}): ${profesionalId}`);
       return res.sendStatus(200);
     }
 
