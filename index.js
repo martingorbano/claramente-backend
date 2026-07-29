@@ -135,6 +135,7 @@ Cuando tengas suficiente info (1-2 intercambios alcanza), respondé ÚNICAMENTE 
 
 {
   "respuesta": "Mensaje breve y cálido (1-2 oraciones)",
+  "edad_requerida": "Uno de: 'Niños (4-12)', 'Adolescentes (13-17)', 'Adultos (18-60)', 'Adultos mayores (60+)' — SOLO si la persona pidió atención para alguien de ese grupo etario específico (ej: 'para mi hijo', 'tengo 70 años'). Si no mencionó edad o es ambiguo, omitir este campo o poner null. Este campo lo usa el backend para filtrar, así que sé preciso.",
   "profesionales": [
     {
       "id": "EXACTAMENTE el campo id (UUID) del profesional de la base de datos — este campo es OBLIGATORIO",
@@ -147,7 +148,7 @@ Cuando tengas suficiente info (1-2 intercambios alcanza), respondé ÚNICAMENTE 
       "match": 95,
       "iniciales": "ML",
       "color": "sage",
-      "plan": "premium / flex / gratuito",
+      "plan": "premium / gratuito",
       "whatsapp": "numero de whatsapp",
       "ciudad": "ciudad donde atiende (copiala del campo ciudad de la base de datos)",
       "localidad": "localidad donde atiende (copiala del campo localidad de la base de datos, puede ser null)",
@@ -172,7 +173,7 @@ REGLAS:
 - MENSAJE SIN SENTIDO O SPAM: si el último mensaje del usuario es incoherente, texto aleatorio, spam, prueba/testing, o no tiene ninguna relación real con buscar apoyo psicológico (incluso después de pedir una aclaración), respondé ÚNICAMENTE con este JSON, sin nada de texto antes ni después: {"sin_sentido": true, "respuesta": "mensaje breve y amable pidiendo que cuente qué está buscando", "profesionales": []}. Esta regla tiene prioridad sobre todas las demás — evaluala primero. No confundas esto con un mensaje breve pero válido (ej: "ansiedad", "necesito ayuda", "busco terapeuta de pareja") — esos SÍ tienen sentido y siguen el flujo normal.
 - NUNCA listes todos los profesionales disponibles aunque el usuario lo pida. Si alguien pregunta "dame todos" o "quiénes son", pedile amablemente que describa qué busca para poder derivarlo correctamente. La plataforma es de derivación, no un catálogo.
 - MATCHING ESTRICTO POR ESPECIALIZACIÓN: un profesional SOLO puede aparecer en una búsqueda si tiene la especialización o tema que busca la persona EXPLÍCITAMENTE marcado en su campo "especializaciones" o "enfoques". Esta regla aplica para TODAS las búsquedas sin excepción. NO importa el porcentaje de match, la experiencia general, ni que atienda adultos — si la especialización buscada no figura textualmente en sus campos, NO lo incluyas. Si ningún profesional cumple este criterio, respondé solo con texto amable avisando que no contamos con profesionales especializados en esa área por el momento, sin devolver JSON.
-- MATCHING ESTRICTO POR EDAD/POBLACIÓN: si la persona busca atención para un niño (o menciona "mi hijo", "mi hija", "nene", "nena", etc.), adolescente, adulto mayor, o menciona la edad del paciente, el profesional SOLO puede incluirse si tiene ese grupo etario EXPLÍCITAMENTE marcado en su campo "edades" (valores posibles: "Niños (4-12)", "Adolescentes (13-17)", "Adultos (18-60)", "Adultos mayores (60+)"). Un profesional que solo atiende adultos NUNCA debe aparecer en una búsqueda para niños o adolescentes, aunque tenga la especialización correcta y un % de match alto — la edad del paciente es un filtro duro, no un factor de afinidad. Si nadie cumple especialización Y grupo etario a la vez, respondé solo con texto amable avisando que no contamos con profesionales para esa combinación por el momento, sin devolver JSON.
+- MATCHING ESTRICTO POR EDAD/POBLACIÓN: si la persona busca atención para un niño (o menciona "mi hijo", "mi hija", "nene", "nena", etc.), adolescente, adulto mayor, o menciona la edad del paciente, el profesional SOLO puede incluirse si tiene ese grupo etario EXPLÍCITAMENTE marcado en su campo "edades" (valores posibles: "Niños (4-12)", "Adolescentes (13-17)", "Adultos (18-60)", "Adultos mayores (60+)"). El campo "edades" es la ÚNICA fuente de verdad para esto — NUNCA lo deduzcas de las especializaciones/enfoques. En particular: "Infancia" como especialización NO significa que el profesional atienda pacientes niños — casi siempre significa que trabaja temas de la infancia (apego, historia, desarrollo) CON PACIENTES ADULTOS. Mismo cuidado con "Familia" o "Vínculos tempranos": son enfoques de trabajo, no garantía de que acepten pacientes niños. Un profesional que solo tiene "Adultos (18-60)" en "edades" NUNCA debe aparecer en una búsqueda para niños o adolescentes, sin importar qué palabras tenga en sus especializaciones ni qué tan alto sea el % de match — la edad del paciente es un filtro duro sobre el campo "edades", no un factor de afinidad textual. Si nadie cumple especialización Y grupo etario a la vez, respondé solo con texto amable avisando que no contamos con profesionales para esa combinación por el momento, sin devolver JSON.
 - EVALUACIONES Y TESTS: cuando la persona busca un test, evaluación, psicodiagnóstico, apto psicológico, o evaluación de TDAH/TEA/aprendizaje/neuropsicológica, SOLO podés incluir profesionales que tengan explícitamente "Psicodiagnósticos", "Evaluaciones", "Aptos psicológicos", "Neuropsicología" o similar en sus especializaciones. Que un profesional trate o atienda TDAH no significa que haga evaluaciones — son cosas distintas. NO los mezcles.
 - EVALUACIÓN MUY ESPECÍFICA SIN ESPECIALISTA EXACTO (ej: evaluación ADOS para autismo, evaluación vocacional puntual, etc.): esta es una EXCEPCIÓN al matching estricto de especialización (no a la de edad/población, que sigue aplicando siempre). Si buscan una evaluación puntual y ningún profesional la tiene marcada textualmente, pero SÍ hay profesionales con "Neuropsicología", "Evaluaciones" o "Psicodiagnósticos" en sus especializaciones Y que atienden el grupo etario correspondiente, mostralos igual — no dejes la búsqueda sin resultados. En el campo "respuesta" aclará que no contás con un especialista puntual en esa evaluación específica por el momento, que estos profesionales realizan evaluaciones neurocognitivas/psicodiagnósticas en general, y recomendá que la persona consulte directamente si abordan ese tipo de evaluación en particular antes de agendar.
 - Orden: premium primero, luego gratuito
@@ -610,12 +611,18 @@ app.post('/chat', limiterChat, async (req, res) => {
       enfoques: p.enfoques,
       especializaciones: p.especializaciones,
       modalidades: p.modalidades,
+      edades: p.edades,
       foto_url: p.foto_url,
       plan: p.plan,
       genero: p.genero,
       vistas_semana: vistasPorProfesional[p.id] || 0,
       bio_resumen: (p.bio || '').slice(0, 100)
     }));
+
+    // Mapa id -> edades, para poder filtrar de forma determinística la respuesta
+    // de Claude más abajo, sin depender 100% de que el modelo respete la regla.
+    const edadesPorId = {};
+    (profesionales || []).forEach(p => { edadesPorId[p.id] = p.edades || []; });
 
     // Separar premium y gratuitos
     const premiumList = profesionalesLivianos.filter(p => p.plan === 'premium');
@@ -718,6 +725,19 @@ app.post('/chat', limiterChat, async (req, res) => {
         }
 
         if (parsed.profesionales) {
+          // Filtro determinístico por edad — no depende de que el modelo lo haya
+          // respetado bien en el texto: si Claude marcó una edad requerida,
+          // sacamos acá cualquier profesional cuyo campo "edades" real no la incluya.
+          if (parsed.edad_requerida) {
+            const antesDeFiltrar = parsed.profesionales.length;
+            parsed.profesionales = parsed.profesionales.filter(p =>
+              (edadesPorId[p.id] || []).includes(parsed.edad_requerida)
+            );
+            if (parsed.profesionales.length < antesDeFiltrar) {
+              console.log(`Filtro de edad (${parsed.edad_requerida}) sacó ${antesDeFiltrar - parsed.profesionales.length} profesional(es) que el modelo había incluido sin cumplir el grupo etario`);
+            }
+          }
+
           // Enriquecer con vistas_semana para la rotación equitativa
           parsed.profesionales = parsed.profesionales.map(p => ({
             ...p,
@@ -726,6 +746,11 @@ app.post('/chat', limiterChat, async (req, res) => {
           // Rotar entre profesionales premium con match cercano (empate de hasta 10 puntos)
           // priorizando al que menos apareció esta semana. Recortar a 3.
           parsed.profesionales = rotarPorEmpate(parsed.profesionales, 10).slice(0, 3);
+
+          // Si el filtro de edad dejó todo vacío, avisar en vez de mandar un array vacío mudo
+          if (parsed.profesionales.length === 0 && parsed.edad_requerida) {
+            parsed.respuesta = `Por el momento no tenemos profesionales disponibles para ese grupo etario (${parsed.edad_requerida}). Probá contándome otra necesidad, o escribinos más adelante.`;
+          }
 
           // Guardar consulta en Supabase
           supabase.from('consultas').insert({
@@ -748,6 +773,12 @@ app.post('/chat', limiterChat, async (req, res) => {
           const repairAttempt = jsonStr?.replace(/,\s*\]/g, ']').replace(/,\s*\}/g, '}');
           const parsed2 = repairAttempt ? JSON.parse(repairAttempt) : null;
           if (parsed2?.profesionales) {
+            if (parsed2.edad_requerida) {
+              parsed2.profesionales = parsed2.profesionales.filter(p =>
+                (edadesPorId[p.id] || []).includes(parsed2.edad_requerida)
+              );
+            }
+
             supabase.from('consultas').insert({
               mensaje: ultimoMensaje,
               respuesta: parsed2.respuesta || null,
