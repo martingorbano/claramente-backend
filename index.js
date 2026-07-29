@@ -136,6 +136,7 @@ Cuando tengas suficiente info (1-2 intercambios alcanza), respondé ÚNICAMENTE 
 {
   "respuesta": "Mensaje breve y cálido (1-2 oraciones)",
   "edad_requerida": "Uno de: 'Niños (4-12)', 'Adolescentes (13-17)', 'Adultos (18-60)', 'Adultos mayores (60+)' — SOLO si la persona pidió atención para alguien de ese grupo etario específico (ej: 'para mi hijo', 'tengo 70 años'). Si no mencionó edad o es ambiguo, omitir este campo o poner null. Este campo lo usa el backend para filtrar, así que sé preciso.",
+  "formato_requerido": "Uno de: 'Individual', 'Pareja', 'Familia' — SOLO si es claro quién va a asistir a la sesión. Si no es claro, omitir este campo o poner null. Este campo lo usa el backend para filtrar, así que sé preciso.",
   "profesionales": [
     {
       "id": "EXACTAMENTE el campo id (UUID) del profesional de la base de datos — este campo es OBLIGATORIO",
@@ -173,8 +174,9 @@ REGLAS:
 - MENSAJE SIN SENTIDO O SPAM: si el último mensaje del usuario es incoherente, texto aleatorio, spam, prueba/testing, o no tiene ninguna relación real con buscar apoyo psicológico (incluso después de pedir una aclaración), respondé ÚNICAMENTE con este JSON, sin nada de texto antes ni después: {"sin_sentido": true, "respuesta": "mensaje breve y amable pidiendo que cuente qué está buscando", "profesionales": []}. Esta regla tiene prioridad sobre todas las demás — evaluala primero. No confundas esto con un mensaje breve pero válido (ej: "ansiedad", "necesito ayuda", "busco terapeuta de pareja") — esos SÍ tienen sentido y siguen el flujo normal.
 - NUNCA listes todos los profesionales disponibles aunque el usuario lo pida. Si alguien pregunta "dame todos" o "quiénes son", pedile amablemente que describa qué busca para poder derivarlo correctamente. La plataforma es de derivación, no un catálogo.
 - MATCHING ESTRICTO POR ESPECIALIZACIÓN: un profesional SOLO puede aparecer en una búsqueda si tiene la especialización o tema que busca la persona marcado en su campo "especializaciones" o "enfoques" — no hace falta coincidencia textual literal, pero sí un sinónimo clínico directo y equivalente (ej: "comportamiento" = "conducta"; "ansiedad" = "trastornos de ansiedad"; "problemas para dormir" = "trastornos del sueño"). NO vale generalizar de más ni inferir por cercanía temática (ej: "ansiedad" NO habilita a alguien especializado solo en "duelo", "conducta" NO habilita a alguien especializado solo en "vínculos familiares" si no trata conducta puntualmente). Ante la duda entre incluir o no, no incluyas. Esta regla aplica para TODAS las búsquedas sin excepción. NO importa el porcentaje de match ni la experiencia general — si ni el término ni un sinónimo directo figura en sus campos, NO lo incluyas. Si ningún profesional cumple este criterio, respondé solo con texto amable avisando que no contamos con profesionales especializados en esa área por el momento, sin devolver JSON.
-- EXCEPCIÓN — MOTIVOS DE CONSULTA GENERALES EN NIÑOS/ADOLESCENTES: la mayoría de los pedidos para niños/adolescentes son motivos comunes y generales (ej: "problemas de comportamiento en la escuela", "no quiere ir al colegio", "rabietas", "se pelea con los hermanos", "bajo rendimiento escolar", "adaptación a un cambio", "celos", "miedos"), no un diagnóstico específico. Para estos casos generales, el ÚNICO requisito es que el profesional tenga el grupo etario correcto marcado en "edades" — NO exijas ninguna especialización puntual, ni siquiera "Infancia" o "Adolescentes" en especializaciones: atender esa franja etaria ya es suficiente. Reservá el matching estricto por especialización puntual para pedidos técnicos y específicos: evaluaciones/psicodiagnósticos, TDAH, TEA, fobias específicas, duelo, trastornos alimentarios, adicciones, y similares — ahí sí hace falta la especialización concreta.
-- MATCHING ESTRICTO POR EDAD/POBLACIÓN: si la persona busca atención para un niño (o menciona "mi hijo", "mi hija", "nene", "nena", etc.), adolescente, adulto mayor, o menciona la edad del paciente, el profesional SOLO puede incluirse si tiene ese grupo etario EXPLÍCITAMENTE marcado en su campo "edades" (valores posibles: "Niños (4-12)", "Adolescentes (13-17)", "Adultos (18-60)", "Adultos mayores (60+)"). El campo "edades" es la ÚNICA fuente de verdad para esto — NUNCA lo deduzcas de las especializaciones/enfoques. En particular: "Infancia" como especialización NO significa que el profesional atienda pacientes niños — casi siempre significa que trabaja temas de la infancia (apego, historia, desarrollo) CON PACIENTES ADULTOS. Mismo cuidado con "Familia" o "Vínculos tempranos": son enfoques de trabajo, no garantía de que acepten pacientes niños. Un profesional que solo tiene "Adultos (18-60)" en "edades" NUNCA debe aparecer en una búsqueda para niños o adolescentes, sin importar qué palabras tenga en sus especializaciones ni qué tan alto sea el % de match — la edad del paciente es un filtro duro sobre el campo "edades", no un factor de afinidad textual. Si nadie cumple especialización Y grupo etario a la vez, respondé solo con texto amable avisando que no contamos con profesionales para esa combinación por el momento, sin devolver JSON.
+- EXCEPCIÓN — MOTIVOS DE CONSULTA GENERALES EN NIÑOS/ADOLESCENTES: la mayoría de los pedidos para niños/adolescentes son motivos comunes y generales (ej: "problemas de comportamiento en la escuela", "no quiere ir al colegio", "rabietas", "se pelea con los hermanos", "bajo rendimiento escolar", "adaptación a un cambio", "celos", "miedos"), no un diagnóstico específico. Para estos casos generales, el ÚNICO requisito es que el profesional tenga el grupo etario correcto marcado en "edades" — NO exijas ninguna especialización puntual, ni siquiera "Infancia y Adolescentes" en especializaciones: atender esa franja etaria ya es suficiente. Reservá el matching estricto por especialización puntual para pedidos técnicos y específicos: evaluaciones/psicodiagnósticos, TDAH, TEA, fobias específicas, duelo, trastornos alimentarios, adicciones, y similares — ahí sí hace falta la especialización concreta.
+- MATCHING ESTRICTO POR EDAD/POBLACIÓN: si la persona busca atención para un niño (o menciona "mi hijo", "mi hija", "nene", "nena", etc.), adolescente, adulto mayor, o menciona la edad del paciente, el profesional SOLO puede incluirse si tiene ese grupo etario EXPLÍCITAMENTE marcado en su campo "edades" (valores posibles: "Niños (4-12)", "Adolescentes (13-17)", "Adultos (18-60)", "Adultos mayores (60+)"). El campo "edades" es la ÚNICA fuente de verdad para esto — NUNCA lo deduzcas de las especializaciones/enfoques. En particular: "Infancia y Adolescentes" como especialización NO significa que el profesional atienda pacientes niños — casi siempre significa que trabaja temas de la infancia (apego, historia, desarrollo) CON PACIENTES ADULTOS. Mismo cuidado con "Familia" o "Vínculos tempranos": son enfoques de trabajo, no garantía de que acepten pacientes niños. Un profesional que solo tiene "Adultos (18-60)" en "edades" NUNCA debe aparecer en una búsqueda para niños o adolescentes, sin importar qué palabras tenga en sus especializaciones ni qué tan alto sea el % de match — la edad del paciente es un filtro duro sobre el campo "edades", no un factor de afinidad textual. Si nadie cumple especialización Y grupo etario a la vez, respondé solo con texto amable avisando que no contamos con profesionales para esa combinación por el momento, sin devolver JSON.
+- MATCHING ESTRICTO POR FORMATO DE ATENCIÓN: distinguí quién va a asistir físicamente a la sesión, que es DISTINTO del tema de la consulta. Si la persona busca ayuda PARA SÍ MISMA sobre un tema de pareja, separación o familia (ej: "quiero terapia individual, tengo problemas con mi pareja", "necesito ayuda para procesar mi separación", "quiero ir sola/solo a terapia por temas familiares"), el formato requerido es "Individual" y el profesional debe tener "Psicoterapia individual" en especializaciones. Si busca terapia donde va a asistir junto con su pareja (ej: "queremos hacer terapia de pareja"), el formato es "Pareja" y el profesional debe tener "Terapia de pareja". Si busca terapia familiar conjunta (ej: "buscamos terapia familiar los tres"), el formato es "Familia" y el profesional debe tener "Terapia de Familia". Un profesional que tiene "Terapia de pareja" y/o "Terapia de Familia" pero NO tiene "Psicoterapia individual" en especializaciones NO debe aparecer para un pedido de terapia individual, aunque el tema de la consulta (separación, conflicto de pareja, etc.) coincida — el tema y el formato de sesión son cosas distintas.
 - EVALUACIONES Y TESTS: cuando la persona busca un test, evaluación, psicodiagnóstico, apto psicológico, o evaluación de TDAH/TEA/aprendizaje/neuropsicológica, SOLO podés incluir profesionales que tengan explícitamente "Psicodiagnósticos", "Evaluaciones", "Aptos psicológicos", "Neuropsicología" o similar en sus especializaciones. Que un profesional trate o atienda TDAH no significa que haga evaluaciones — son cosas distintas. NO los mezcles.
 - EVALUACIÓN MUY ESPECÍFICA SIN ESPECIALISTA EXACTO (ej: evaluación ADOS para autismo, evaluación vocacional puntual, etc.): esta es una EXCEPCIÓN al matching estricto de especialización (no a la de edad/población, que sigue aplicando siempre). Si buscan una evaluación puntual y ningún profesional la tiene marcada textualmente, pero SÍ hay profesionales con "Neuropsicología", "Evaluaciones" o "Psicodiagnósticos" en sus especializaciones Y que atienden el grupo etario correspondiente, mostralos igual — no dejes la búsqueda sin resultados. En el campo "respuesta" aclará que no contás con un especialista puntual en esa evaluación específica por el momento, que estos profesionales realizan evaluaciones neurocognitivas/psicodiagnósticas en general, y recomendá que la persona consulte directamente si abordan ese tipo de evaluación en particular antes de agendar.
 - Orden: premium primero, luego gratuito
@@ -620,10 +622,21 @@ app.post('/chat', limiterChat, async (req, res) => {
       bio_resumen: (p.bio || '').slice(0, 100)
     }));
 
-    // Mapa id -> edades, para poder filtrar de forma determinística la respuesta
-    // de Claude más abajo, sin depender 100% de que el modelo respete la regla.
+    // Mapa id -> edades / especializaciones, para poder filtrar de forma determinística
+    // la respuesta de Claude más abajo, sin depender 100% de que el modelo respete la regla.
     const edadesPorId = {};
-    (profesionales || []).forEach(p => { edadesPorId[p.id] = p.edades || []; });
+    const especializacionesPorId = {};
+    (profesionales || []).forEach(p => {
+      edadesPorId[p.id] = p.edades || [];
+      especializacionesPorId[p.id] = p.especializaciones || [];
+    });
+
+    // Mapea el formato de sesión que puede pedir Claude al tag real de especializaciones
+    const FORMATO_A_TAG = {
+      'Individual': 'Psicoterapia individual',
+      'Pareja': 'Terapia de pareja',
+      'Familia': 'Terapia de Familia',
+    };
 
     // Separar premium y gratuitos
     const premiumList = profesionalesLivianos.filter(p => p.plan === 'premium');
@@ -739,6 +752,20 @@ app.post('/chat', limiterChat, async (req, res) => {
             }
           }
 
+          // Filtro determinístico por formato de atención (individual/pareja/familia).
+          // Chequea el tag correspondiente dentro de especializaciones (Psicoterapia
+          // individual / Terapia de pareja / Terapia de Familia).
+          if (parsed.formato_requerido && FORMATO_A_TAG[parsed.formato_requerido]) {
+            const tagNecesario = FORMATO_A_TAG[parsed.formato_requerido];
+            const antesDeFiltrar = parsed.profesionales.length;
+            parsed.profesionales = parsed.profesionales.filter(p =>
+              (especializacionesPorId[p.id] || []).includes(tagNecesario)
+            );
+            if (parsed.profesionales.length < antesDeFiltrar) {
+              console.log(`Filtro de formato (${parsed.formato_requerido}) sacó ${antesDeFiltrar - parsed.profesionales.length} profesional(es) que el modelo había incluido sin tener "${tagNecesario}"`);
+            }
+          }
+
           // Enriquecer con vistas_semana para la rotación equitativa
           parsed.profesionales = parsed.profesionales.map(p => ({
             ...p,
@@ -748,9 +775,11 @@ app.post('/chat', limiterChat, async (req, res) => {
           // priorizando al que menos apareció esta semana. Recortar a 3.
           parsed.profesionales = rotarPorEmpate(parsed.profesionales, 10).slice(0, 3);
 
-          // Si el filtro de edad dejó todo vacío, avisar en vez de mandar un array vacío mudo
+          // Si algún filtro dejó todo vacío, avisar en vez de mandar un array vacío mudo
           if (parsed.profesionales.length === 0 && parsed.edad_requerida) {
             parsed.respuesta = `Por el momento no tenemos profesionales disponibles para ese grupo etario (${parsed.edad_requerida}). Probá contándome otra necesidad, o escribinos más adelante.`;
+          } else if (parsed.profesionales.length === 0 && parsed.formato_requerido) {
+            parsed.respuesta = `Por el momento no tenemos profesionales que ofrezcan atención en formato ${parsed.formato_requerido.toLowerCase()} para esta consulta. Probá contándome otra necesidad, o escribinos más adelante.`;
           }
 
           // Guardar consulta en Supabase
@@ -777,6 +806,12 @@ app.post('/chat', limiterChat, async (req, res) => {
             if (parsed2.edad_requerida) {
               parsed2.profesionales = parsed2.profesionales.filter(p =>
                 (edadesPorId[p.id] || []).includes(parsed2.edad_requerida)
+              );
+            }
+            if (parsed2.formato_requerido && FORMATO_A_TAG[parsed2.formato_requerido]) {
+              const tagNecesario = FORMATO_A_TAG[parsed2.formato_requerido];
+              parsed2.profesionales = parsed2.profesionales.filter(p =>
+                (especializacionesPorId[p.id] || []).includes(tagNecesario)
               );
             }
 
