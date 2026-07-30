@@ -739,6 +739,8 @@ app.post('/chat', limiterChat, async (req, res) => {
         }
 
         if (parsed.profesionales) {
+          const cantidadOriginal = parsed.profesionales.length; // antes de nuestros filtros
+
           // Filtro determinístico por edad — no depende de que el modelo lo haya
           // respetado bien en el texto: si Claude marcó una edad requerida,
           // sacamos acá cualquier profesional cuyo campo "edades" real no la incluya.
@@ -775,11 +777,16 @@ app.post('/chat', limiterChat, async (req, res) => {
           // priorizando al que menos apareció esta semana. Recortar a 3.
           parsed.profesionales = rotarPorEmpate(parsed.profesionales, 10).slice(0, 3);
 
-          // Si algún filtro dejó todo vacío, avisar en vez de mandar un array vacío mudo
-          if (parsed.profesionales.length === 0 && parsed.edad_requerida) {
-            parsed.respuesta = `Por el momento no tenemos profesionales disponibles para ese grupo etario (${parsed.edad_requerida}). Probá contándome otra necesidad, o escribinos más adelante.`;
-          } else if (parsed.profesionales.length === 0 && parsed.formato_requerido) {
-            parsed.respuesta = `Por el momento no tenemos profesionales que ofrezcan atención en formato ${parsed.formato_requerido.toLowerCase()} para esta consulta. Probá contándome otra necesidad, o escribinos más adelante.`;
+          // Solo pisamos la respuesta de Claude con nuestro mensaje sintético si HABÍA
+          // candidatos reales antes de nuestros filtros y quedaron en cero por su culpa.
+          // Si el array ya venía vacío de Claude (ej: está haciendo una pregunta
+          // aclaratoria), dejamos su propio texto — no inventamos un motivo que no fue.
+          if (cantidadOriginal > 0 && parsed.profesionales.length === 0) {
+            if (parsed.edad_requerida) {
+              parsed.respuesta = `Por el momento no tenemos profesionales disponibles para ese grupo etario (${parsed.edad_requerida}). Probá contándome otra necesidad, o escribinos más adelante.`;
+            } else if (parsed.formato_requerido) {
+              parsed.respuesta = `Por el momento no tenemos profesionales que ofrezcan atención en formato ${parsed.formato_requerido.toLowerCase()} para esta consulta. Probá contándome otra necesidad, o escribinos más adelante.`;
+            }
           }
 
           // Guardar consulta en Supabase
