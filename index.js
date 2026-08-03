@@ -11,6 +11,30 @@ const mp = new MercadoPagoConfig({ accessToken: process.env.MP_ACCESS_TOKEN });
 const PREMIUM_MONTO = 32500; // ARS/mes — plan Premium
 const SIN_SENTIDO_LIMITE = 2; // mensajes sin sentido antes de bloquear la IP
 const BLOQUEO_HORAS = 24; // duración del bloqueo
+
+// Detección de riesgo de crisis / suicidio / autolesión.
+// Es determinística (no depende de que el modelo lo detecte bien) porque acá
+// el costo de un falso negativo es demasiado alto — mejor pecar de sensible.
+// Números verificados: 911 es la línea de emergencia nacional; 0800-345-1435
+// es la línea del Centro de Asistencia al Suicida, gratuita y para todo el país
+// (NO usar 0800-999-0091, que es una línea local de San Juan, no nacional).
+const SEÑALES_CRISIS = [
+  /me quiero matar/i, /quiero matarme/i,
+  /me quiero suicidar/i, /quiero suicidarme/i, /suicidarme/i, /suicidio/i,
+  /no quiero vivir/i, /no quiero seguir viviendo/i, /no aguanto más vivir/i,
+  /quiero morir/i, /me quiero morir/i, /ganas de morir/i,
+  /quitarme la vida/i, /terminar con mi vida/i, /terminar con todo esto/i,
+  /hacerme daño/i, /lastimarme/i, /cortarme/i, /autolesion/i,
+  /no vale la pena (vivir|seguir viviendo)/i,
+];
+
+function detectarCrisis(texto) {
+  if (!texto || typeof texto !== 'string') return false;
+  return SEÑALES_CRISIS.some(regex => regex.test(texto));
+}
+
+const MENSAJE_CRISIS = 'Lo que me contás suena realmente doloroso, y quiero que sepas que no estás solo/a con esto.\n\nSi estás pensando en hacerte daño o en quitarte la vida, por favor buscá ayuda ahora mismo:\n\n📞 **911** — si es una emergencia inmediata\n📞 **0800-345-1435** — Centro de Asistencia al Suicida, línea gratuita, confidencial y las 24 horas, para todo el país\n\nHablar con alguien ahora puede ayudar. Y si querés, cuando estés listo/a también podemos ayudarte a encontrar un psicólogo para acompañarte de forma continua — contame y te ayudo a buscar.';
+
 const cors = require('cors');
 const Anthropic = require('@anthropic-ai/sdk');
 const { createClient } = require('@supabase/supabase-js');
@@ -159,6 +183,7 @@ Cuando tengas suficiente info (1-2 intercambios alcanza), respondé ÚNICAMENTE 
 }
 
 REGLAS:
+- PRIORIDAD MÁXIMA — RIESGO DE CRISIS/AUTOLESIÓN/SUICIDIO: si en cualquier momento de la conversación la persona expresa ideas de hacerse daño, de suicidio, de no querer seguir viviendo, o cualquier señal de estar en una crisis grave — esto tiene prioridad sobre TODO lo demás en este prompt, incluida la búsqueda de profesionales. Respondé con calidez genuina, tomalo en serio, y ANTES que cualquier otra cosa incluí estos dos recursos exactos (no inventes ni uses otros números): "911" para emergencia inmediata, y "0800-345-1435" (Centro de Asistencia al Suicida, gratuita, confidencial, las 24 horas, para todo el país). Nunca minimices lo que la persona dice, nunca respondas solo con el JSON de profesionales sin haber dado estos recursos primero, y nunca uses el 0800-999-0091 (es una línea local de San Juan, no nacional). Después de dar los recursos, podés ofrecerle igual ayudarla a encontrar un profesional para acompañamiento continuo, pero eso va después, nunca en lugar de los recursos de emergencia.
 - Usá SOLO profesionales de la lista que se te provee
 - El campo "id" es OBLIGATORIO — copialo exactamente del campo id de la base de datos sin modificarlo
 - El campo "plan" es OBLIGATORIO — copialo exactamente del campo plan que figura en los datos que se te proveen (puede ser "premium" o "gratuito"). Si figura "premium", copiá "premium". NUNCA lo cambies ni lo inventes.
@@ -196,7 +221,6 @@ MENSAJES FUERA DE CONTEXTO:
 - Mensajes random: respondé brevemente y redirigí a la búsqueda
 - Contención directa: reconocé lo que siente, derivá al profesional indicado
 - IA genérica: sos el asistente de Claramente, nada más
-- Crisis: mencioná el 0800-999-0091 antes que cualquier otra cosa
 - Nunca des consejos terapéuticos ni diagnósticos
 
 Si falta info clave, hacé UNA sola pregunta antes del JSON.`;
@@ -537,6 +561,21 @@ app.post('/chat', limiterChat, async (req, res) => {
   if (messages.length > 20) return res.status(400).json({ error: 'Conversación demasiado larga' });
   const lastMsg = messages[messages.length - 1]?.content || '';
   if (typeof lastMsg === 'string' && lastMsg.length > 2000) return res.status(400).json({ error: 'Mensaje demasiado largo' });
+
+  // Chequeo de crisis/riesgo de autolesión: va ANTES que cualquier otra cosa
+  // (antes del bloqueo por IP, antes del rate limit de sentido) — nunca debe
+  // quedar frenado por otra lógica del sistema. Es determinístico, no depende
+  // de que el modelo lo detecte bien.
+  const textoUltimoMensaje = typeof lastMsg === 'string'
+    ? lastMsg
+    : (Array.isArray(lastMsg) ? lastMsg.map(b => b?.text || '').join(' ') : '');
+
+  if (detectarCrisis(textoUltimoMensaje)) {
+    console.log('Mensaje de riesgo/crisis detectado, respondiendo con recursos de emergencia');
+    return res.json({
+      content: [{ type: 'text', text: JSON.stringify({ respuesta: MENSAJE_CRISIS, profesionales: [] }) }]
+    });
+  }
 
   const ip = req.ip;
 
