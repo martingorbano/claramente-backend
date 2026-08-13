@@ -350,7 +350,7 @@ async function generarLinkUpgrade(profesional) {
   const preApproval = new PreApproval(mp);
   const subscription = await preApproval.create({
     body: {
-      reason: 'Plan Premium · claramentepsi',
+      reason: 'Plan Premium - claramentepsi',
       payer_email: profesional.email,
       external_reference: `prof_${profesional.id}`,
       back_url: backUrl,
@@ -1392,7 +1392,7 @@ app.post('/registro-pendiente', async (req, res) => {
     const preApproval = new PreApproval(mp);
     const subscription = await preApproval.create({
       body: {
-        reason: 'Plan Premium · claramentepsi',
+        reason: 'Plan Premium - claramentepsi',
         payer_email: datos.email,
         external_reference: session_id,
         back_url: backUrl,
