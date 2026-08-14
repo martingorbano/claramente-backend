@@ -344,14 +344,15 @@ app.post('/activar-trial', async (req, res) => {
 // "card_token_id is required". Mandando auto_recurring completo en cambio,
 // MP crea una suscripción "sin plan asociado" con status pendiente y devuelve
 // un init_point para que el usuario complete el pago en el checkout hosteado.
-async function generarLinkUpgrade(profesional) {
+async function generarLinkUpgrade(profesional, mpEmail) {
   const backUrl = `${process.env.APP_URL || 'https://claramentepsi.com'}/panel.html?upgrade=ok`;
+  const emailParaPago = mpEmail || profesional.email; // si no se especifica, caemos al de Claramente
 
   const preApproval = new PreApproval(mp);
   const subscription = await preApproval.create({
     body: {
       reason: 'Plan Premium - claramentepsi',
-      payer_email: profesional.email,
+      payer_email: emailParaPago,
       external_reference: `prof_${profesional.id}`,
       back_url: backUrl,
       status: 'pending',
@@ -363,7 +364,7 @@ async function generarLinkUpgrade(profesional) {
       },
     }
   });
-  console.log(`Suscripción creada (upgrade existente) — email: ${profesional.email}, prof_id: ${profesional.id}, init_point: ${subscription.init_point}, mp_id: ${subscription.id}`);
+  console.log(`Suscripción creada (upgrade existente) — email Claramente: ${profesional.email}, email MP usado: ${emailParaPago}, prof_id: ${profesional.id}, init_point: ${subscription.init_point}, mp_id: ${subscription.id}`);
   return subscription.init_point;
 }
 
@@ -384,12 +385,7 @@ async function verificarTrialsVencidos() {
 
     for (const prof of vencidos) {
       const nombre = prof.nombre?.split(' ')[0] || 'Lic.';
-      let mpLink = 'https://www.mercadopago.com.ar/subscriptions/checkout?preapproval_plan_id=eefad72a6586412e8a74031b80c9ca0b';
-      try {
-        mpLink = await generarLinkUpgrade(prof); // link personalizado con external_reference
-      } catch (e) {
-        console.error(`No se pudo generar link personalizado para ${prof.email}, usando link genérico:`, e.message);
-      }
+      const linkPanel = `${process.env.APP_URL || 'https://claramentepsi.com'}/panel.html?activar=premium`;
 
       await resend.emails.send({
         from: 'Claramente <hola@claramentepsi.com>',
@@ -410,9 +406,12 @@ async function verificarTrialsVencidos() {
                 <p style="font-size:22px;font-weight:600;color:#B8860B;margin:0">$32.500/mes</p>
                 <p style="font-size:11px;color:#B8860B;font-style:italic;margin-top:4px">Precio promocional de lanzamiento</p>
               </div>
-              <a href="${mpLink}" style="display:block;text-align:center;background:#4A7C6F;color:white;padding:14px 28px;border-radius:24px;text-decoration:none;font-size:14px;font-weight:500;margin-bottom:16px">
+              <a href="${linkPanel}" style="display:block;text-align:center;background:#4A7C6F;color:white;padding:14px 28px;border-radius:24px;text-decoration:none;font-size:14px;font-weight:500;margin-bottom:16px">
                 Activar Plan Premium →
               </a>
+              <p style="font-size:12px;color:#9AAFAA;text-align:center;line-height:1.6">
+                Te vamos a pedir que confirmes el mail de tu cuenta de MercadoPago antes de generar el link de pago — así evitamos errores si usás un mail distinto ahí que acá.
+              </p>
               <p style="font-size:12px;color:#9AAFAA;text-align:center;line-height:1.6">
                 Si no activás el plan, tu perfil sigue apareciendo en los resultados sin foto ni contacto directo.<br>
                 Podés activar Premium desde tu panel cuando quieras.
@@ -1420,7 +1419,7 @@ app.post('/registro-pendiente', async (req, res) => {
 // linkear directamente al checkout de MP, para que el webhook pueda identificar
 // a qué profesional corresponde el pago.
 app.post('/generar-link-premium', async (req, res) => {
-  const { email } = req.body;
+  const { email, mp_email } = req.body;
   if (!email) return res.status(400).json({ error: 'email requerido' });
   try {
     const { data: profesional, error } = await supabase
@@ -1433,7 +1432,7 @@ app.post('/generar-link-premium', async (req, res) => {
     if (error || !profesional) return res.status(404).json({ error: 'Profesional no encontrado' });
     if (profesional.plan === 'premium') return res.status(400).json({ error: 'Ya tenés el plan Premium activo' });
 
-    const init_point = await generarLinkUpgrade(profesional);
+    const init_point = await generarLinkUpgrade(profesional, mp_email);
     res.json({ ok: true, init_point });
   } catch (e) {
     console.error('Error generando link de upgrade:', e.message);
