@@ -658,6 +658,7 @@ select { cursor: pointer; appearance: none; background-image: url("data:image/sv
 let currentStep = 0;
 let selectedPlan = null;
 let formData = {};
+let yaVerificado = false; // true si venimos del link de verificación de mail
 let _fotoFile = null; // Guardar archivo de foto globalmente
 
 // Verificar si viene de confirmacion de email
@@ -673,7 +674,11 @@ window.addEventListener('load', () => {
     try {
       const datosVerificados = JSON.parse(decodeURIComponent(params.get('datos')));
       if (datosVerificados.email) {
-        // Pre-cargar datos del paso 1
+        yaVerificado = true;
+        // Pre-cargar datos del paso 1 (la contraseña NO se restaura acá a propósito:
+        // dependía de localStorage, que no está disponible si el mail de verificación
+        // se abrió en otro dispositivo o navegador — por eso pedimos que la vuelva a
+        // escribir en este mismo paso, en vez de asumir que la vamos a poder recuperar).
         formData.nombre = datosVerificados.nombre || '';
         formData.matricula = datosVerificados.matricula || '';
         formData.email = datosVerificados.email || '';
@@ -687,44 +692,19 @@ window.addEventListener('load', () => {
         if (document.getElementById('matricula')) document.getElementById('matricula').value = formData.matricula;
         if (document.getElementById('email')) document.getElementById('email').value = formData.email;
         if (document.getElementById('whatsapp')) document.getElementById('whatsapp').value = formData.whatsapp;
-        // Cargar password guardado
-        const savedPass = localStorage.getItem('clm_reg_pass');
-        if (savedPass && document.getElementById('pass')) {
-          document.getElementById('pass').value = savedPass;
-        }
-        localStorage.removeItem('clm_reg_pass');
-        // Avanzar al paso 2
-        showStep(1);
+        localStorage.removeItem('clm_reg_pass'); // ya no se usa, por si quedó algo viejo
+        // Avisar que el mail ya está verificado y solo falta la contraseña
+        const banner = document.createElement('div');
+        banner.style.cssText = 'background:#E8F2EF;border:1px solid #A8C8C0;border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:13px;color:#2C5048';
+        banner.textContent = '✓ Tu mail ya está verificado. Solo falta que confirmes tu contraseña para continuar.';
+        const panel0 = document.getElementById('panel-0');
+        if (panel0) panel0.prepend(banner);
+        showStep(0); // nos quedamos en el paso 0 — hace falta que vuelva a escribir la contraseña
       }
     } catch(e) { console.error('Error retomando registro:', e); }
   }
   if (params.get('error')) {
     alert('El link de verificación expiró o es inválido. Por favor intenta de nuevo.');
-  }
-});
-
-// Verificar si viene de confirmación de email
-window.addEventListener('load', () => {
-  const params = new URLSearchParams(window.location.search);
-  if (params.get('retomar') === 'true') {
-    try {
-      const datosVerificados = JSON.parse(localStorage.getItem('clm_reg_verified') || '{}');
-      if (datosVerificados.email) {
-        // Pre-cargar datos del paso 1
-        formData = { ...datosVerificados };
-        document.getElementById('nombre').value = datosVerificados.nombre || '';
-        document.getElementById('matricula').value = datosVerificados.matricula || '';
-        document.getElementById('email').value = datosVerificados.email || '';
-        document.getElementById('whatsapp').value = datosVerificados.whatsapp || '';
-        // Avanzar directo al paso 2
-        showStep(1);
-        localStorage.removeItem('clm_reg_verified');
-      }
-    } catch(e) {}
-  }
-  if (params.get('error')) {
-    // Mostrar error en el formulario
-    alert('El link de verificación expiró o es inválido. Por favor intentá de nuevo.');
   }
 });
 
@@ -753,6 +733,14 @@ function prev(step) { showStep(step - 1); }
 async function next(step) {
   if (!validateStep(step)) return;
   collectStep(step);
+
+  if (step === 0 && yaVerificado) {
+    // El mail ya se verificó en una vuelta anterior — no hace falta mandar
+    // otro mail de verificación, solo seguir con lo que ya escribió (contraseña
+    // recién tipeada, el resto ya estaba precargado).
+    showStep(1);
+    return;
+  }
 
   if (step === 0) {
     const email = document.getElementById('email').value.trim();
