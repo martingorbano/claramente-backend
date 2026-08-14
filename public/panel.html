@@ -667,12 +667,22 @@ const MP_LINKS = {
 // webhook pueda identificar a este profesional y actualizar su plan al pagar.
 // Abrimos la pestaña ANTES del fetch para evitar que el navegador bloquee el popup.
 async function activarPremium() {
+  const mpEmail = prompt(
+    'Para generar tu link de pago, confirmá el mail de tu cuenta de MercadoPago (con el que iniciás sesión en MercadoPago — no necesariamente el mismo que usás acá):',
+    profesional.email
+  );
+  if (mpEmail === null) return; // canceló el diálogo
+  if (!mpEmail.trim() || !mpEmail.includes('@')) {
+    alert('Ingresá un mail válido para continuar.');
+    return;
+  }
+
   const nuevaVentana = window.open('', '_blank');
   try {
     const res = await fetch('/generar-link-premium', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: profesional.email })
+      body: JSON.stringify({ email: profesional.email, mp_email: mpEmail.trim() })
     });
     const data = await res.json();
     if (!res.ok || !data.init_point) {
@@ -719,12 +729,21 @@ function cargarPlan() {
     btns.appendChild(b);
   };
 
+  const avisoPrevio = document.getElementById('avisoMailMP');
+  if (avisoPrevio) avisoPrevio.remove();
+
   if (plan === 'gratuito') {
     const b = document.createElement('button');
     b.textContent = 'Activar Premium';
     b.style.cssText = "font-size:13px;padding:9px 18px;border-radius:20px;border:none;font-family:'DM Sans',sans-serif;font-weight:500;cursor:pointer;background:#B8860B;color:white";
     b.onclick = activarPremium;
     btns.appendChild(b);
+
+    const aviso = document.createElement('div');
+    aviso.id = 'avisoMailMP';
+    aviso.style.cssText = "font-size:11px;color:#B8860B;background:#FDF8E8;border-radius:8px;padding:8px 12px;margin-top:10px;line-height:1.5";
+    aviso.innerHTML = `⚠️ Al pagar, iniciá sesión en MercadoPago con <strong>${profesional.email}</strong> (el mismo mail de tu cuenta acá). Si tu MercadoPago usa otro mail, te va a figurar un error.`;
+    btns.parentElement.appendChild(aviso);
   } else if (plan === 'premium') {
     mkBtn('Cancelar suscripción', MP_LINKS.cancelar, 'background:transparent;color:var(--text-faint);border:1px solid var(--border)');
   }
@@ -769,6 +788,12 @@ async function inicializar() {
   cargarPerfil();
   cargarPlan();
   inicializarFoto();
+
+  // Si vino desde el mail de "tu trial terminó" con intención de activar premium
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('activar') === 'premium' && profesional.plan !== 'premium') {
+    activarPremium();
+  }
 }
 inicializar();
 
