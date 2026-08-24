@@ -672,8 +672,10 @@ async function activarPremium() {
     profesional.email
   );
   if (mpEmail === null) return; // canceló el diálogo
-  if (!mpEmail.trim() || !mpEmail.includes('@')) {
-    alert('Ingresá un mail válido para continuar.');
+  const mpEmailLimpio = mpEmail.trim();
+  const emailValido = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mpEmailLimpio);
+  if (!emailValido) {
+    alert('Ese mail no tiene un formato válido. Revisá que no haya quedado texto duplicado o de más (por ejemplo, dos "@") y volvé a intentar.');
     return;
   }
 
@@ -682,7 +684,7 @@ async function activarPremium() {
     const res = await fetch('/generar-link-premium', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: profesional.email, mp_email: mpEmail.trim() })
+      body: JSON.stringify({ email: profesional.email, mp_email: mpEmailLimpio })
     });
     const data = await res.json();
     if (!res.ok || !data.init_point) {
