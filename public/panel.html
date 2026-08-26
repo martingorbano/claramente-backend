@@ -744,7 +744,7 @@ function cargarPlan() {
     const aviso = document.createElement('div');
     aviso.id = 'avisoMailMP';
     aviso.style.cssText = "font-size:11px;color:#B8860B;background:#FDF8E8;border-radius:8px;padding:8px 12px;margin-top:10px;line-height:1.5";
-    aviso.innerHTML = `⚠️ Al pagar, iniciá sesión en MercadoPago con <strong>${profesional.email}</strong> (el mismo mail de tu cuenta acá). Si tu MercadoPago usa otro mail, te va a figurar un error.`;
+    aviso.innerHTML = `✨ Antes de generar el link, te vamos a pedir que confirmes el mail de tu cuenta de MercadoPago — puede ser distinto al que usás acá.`;
     btns.parentElement.appendChild(aviso);
   } else if (plan === 'premium') {
     mkBtn('Cancelar suscripción', MP_LINKS.cancelar, 'background:transparent;color:var(--text-faint);border:1px solid var(--border)');
