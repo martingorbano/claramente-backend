@@ -204,6 +204,7 @@ REGLAS:
 - MATCHING ESTRICTO POR FORMATO DE ATENCIÓN: distinguí quién va a asistir físicamente a la sesión, que es DISTINTO del tema de la consulta. Si la persona busca ayuda PARA SÍ MISMA sobre un tema de pareja, separación o familia (ej: "quiero terapia individual, tengo problemas con mi pareja", "necesito ayuda para procesar mi separación", "quiero ir sola/solo a terapia por temas familiares"), el formato requerido es "Individual" y el profesional debe tener "Psicoterapia individual" en especializaciones. Si busca terapia donde va a asistir junto con su pareja (ej: "queremos hacer terapia de pareja"), el formato es "Pareja" y el profesional debe tener "Terapia de pareja". Si busca terapia familiar conjunta (ej: "buscamos terapia familiar los tres"), el formato es "Familia" y el profesional debe tener "Terapia de Familia". Un profesional que tiene "Terapia de pareja" y/o "Terapia de Familia" pero NO tiene "Psicoterapia individual" en especializaciones NO debe aparecer para un pedido de terapia individual, aunque el tema de la consulta (separación, conflicto de pareja, etc.) coincida — el tema y el formato de sesión son cosas distintas.
 - EVALUACIONES Y TESTS: cuando la persona busca un test, evaluación, psicodiagnóstico, apto psicológico, o evaluación de TDAH/TEA/aprendizaje/neuropsicológica, SOLO podés incluir profesionales que tengan explícitamente "Psicodiagnósticos", "Evaluaciones", "Aptos psicológicos", "Neuropsicología" o similar en sus especializaciones. Que un profesional trate o atienda TDAH no significa que haga evaluaciones — son cosas distintas. NO los mezcles.
 - PERICIAS PSICOLÓGICAS / PROCESOS JUDICIALES: cuando la persona menciona un proceso judicial, pericia, peritaje, causa, demanda, o necesitar un informe para presentar ante la justicia — sin importar el tema de fondo (violencia de género, divorcio, custodia, laboral, daños, etc.) — el criterio es el profesional que tenga "Pericias psicológicas" en sus especializaciones. NO busques una especialización específica del tema (ej: no busques "violencia de género" como si fuera un tag aparte) — "Pericias psicológicas" es la categoría que cubre evaluaciones con fines judiciales en general, independientemente de cuál sea el motivo del proceso. Si hay un profesional con "Pericias psicológicas", mostralo, aclarando en la respuesta que hace pericias psicológicas y que puede evaluar si el caso puntual es abordable directamente con la persona.
+- "GRATIS" / "SIN COSTO" NO ES EL PLAN "GRATUITO": si la persona pregunta por un profesional "gratis", "sin costo", "que no cobre", o que trabaje "de forma gratuita", se está refiriendo a que NO PUEDE PAGAR una sesión — NO tiene relación con el campo "plan" ("gratuito"/"premium"), que es un concepto interno de la plataforma sobre si el profesional le paga o no a Claramente, y no tiene NADA que ver con cuánto cobra ese profesional al paciente. TODOS los profesionales, sean plan "premium" o "gratuito" en nuestro sistema, cobran su propio honorario al paciente — ninguno da consulta gratuita por defecto. Ante un pedido así, NUNCA uses el campo "plan" para buscar; en cambio, respondé con calidez que en Claramente los profesionales cobran su propia consulta, que podés sugerirle consultar si acepta alguna obra social (que reduce el costo), y mencionar que hospitales públicos y algunos colegios profesionales ofrecen atención psicológica gratuita o a bajo costo — sin devolver profesionales por esa razón puntual.
 - EVALUACIÓN MUY ESPECÍFICA SIN ESPECIALISTA EXACTO (ej: evaluación ADOS para autismo, evaluación vocacional puntual, etc.): esta es una EXCEPCIÓN al matching estricto de especialización (no a la de edad/población, que sigue aplicando siempre). Si buscan una evaluación puntual y ningún profesional la tiene marcada textualmente, pero SÍ hay profesionales con "Neuropsicología", "Evaluaciones" o "Psicodiagnósticos" en sus especializaciones Y que atienden el grupo etario correspondiente, mostralos igual — no dejes la búsqueda sin resultados. En el campo "respuesta" aclará que no contás con un especialista puntual en esa evaluación específica por el momento, que estos profesionales realizan evaluaciones neurocognitivas/psicodiagnósticas en general, y recomendá que la persona consulte directamente si abordan ese tipo de evaluación en particular antes de agendar.
 - Orden: premium primero, luego gratuito
 - Los profesionales "gratuito" NO tienen whatsapp — poné null en ese campo
@@ -661,13 +662,16 @@ app.post('/chat', limiterChat, async (req, res) => {
       bio_resumen: (p.bio || '').slice(0, 100)
     }));
 
-    // Mapa id -> edades / especializaciones, para poder filtrar de forma determinística
-    // la respuesta de Claude más abajo, sin depender 100% de que el modelo respete la regla.
+    // Mapa id -> edades / especializaciones / plan efectivo (ya resuelto con trial),
+    // para poder filtrar de forma determinística la respuesta de Claude más abajo,
+    // sin depender 100% de que el modelo respete la regla.
     const edadesPorId = {};
     const especializacionesPorId = {};
+    const planEfectivoPorId = {};
     (profesionales || []).forEach(p => {
       edadesPorId[p.id] = p.edades || [];
       especializacionesPorId[p.id] = p.especializaciones || [];
+      planEfectivoPorId[p.id] = p.plan; // ya viene resuelto con trial activo = premium
     });
 
     // Mapea el formato de sesión que puede pedir Claude al tag real de especializaciones
@@ -807,11 +811,21 @@ app.post('/chat', limiterChat, async (req, res) => {
             }
           }
 
-          // Enriquecer con vistas_semana para la rotación equitativa
-          parsed.profesionales = parsed.profesionales.map(p => ({
-            ...p,
-            vistas_semana: vistasPorProfesional[p.id] || 0
-          }));
+          // Enriquecer con vistas_semana para la rotación equitativa.
+          // Acá también BLOQUEAMOS contacto directo (whatsapp) y foto para cualquiera
+          // que no sea premium de verdad (plan efectivo, con trial ya resuelto) — esto
+          // es una regla de negocio innegociable, no depende de que el modelo la
+          // respete bien en el texto. Un profesional gratuito NUNCA debe filtrar su
+          // whatsapp, sin importar qué haya devuelto Claude.
+          parsed.profesionales = parsed.profesionales.map(p => {
+            const esPremiumReal = planEfectivoPorId[p.id] === 'premium';
+            return {
+              ...p,
+              vistas_semana: vistasPorProfesional[p.id] || 0,
+              whatsapp: esPremiumReal ? p.whatsapp : null,
+              foto_url: esPremiumReal ? p.foto_url : null,
+            };
+          });
           // Rotar entre profesionales premium con match cercano (empate de hasta 10 puntos)
           // priorizando al que menos apareció esta semana. Recortar a 3.
           parsed.profesionales = rotarPorEmpate(parsed.profesionales, 10).slice(0, 3);
@@ -860,6 +874,10 @@ app.post('/chat', limiterChat, async (req, res) => {
                 (especializacionesPorId[p.id] || []).includes(tagNecesario)
               );
             }
+            parsed2.profesionales = parsed2.profesionales.map(p => {
+              const esPremiumReal = planEfectivoPorId[p.id] === 'premium';
+              return { ...p, whatsapp: esPremiumReal ? p.whatsapp : null, foto_url: esPremiumReal ? p.foto_url : null };
+            });
 
             supabase.from('consultas').insert({
               mensaje: ultimoMensaje,
