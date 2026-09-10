@@ -831,7 +831,7 @@ function validateStep(step) {
     ok = validate('f-ciudad', 'ciudad', v => v.trim().length > 1 && v !== '') && ok;
     ok = validate('f-localidad', 'localidad', v => v.trim().length > 1) && ok;
     const bioVal = document.getElementById('bio')?.value || '';
-    const PATRON_TELEFONO = /\+?\d[\d\s\-.()]{6,}\d/;
+    const PATRON_TELEFONO = /\+?\d[\d\s\-.()]{5,}\d/;
     if (PATRON_TELEFONO.test(bioVal)) {
       alert('La bio no puede contener números de teléfono ni contacto directo — eso va únicamente en el campo de WhatsApp del paso anterior.');
       ok = false;
@@ -1166,7 +1166,7 @@ function addOtroEnf(e) {
   e.preventDefault();
   const val = document.getElementById('otroEnf').value.trim();
   if (!val) return;
-  if (/\+?\d[\d\s\-.()]{6,}\d/.test(val)) {
+  if (/\+?\d[\d\s\-.()]{5,}\d/.test(val)) {
     alert('No podés agregar un número de teléfono acá — el contacto va únicamente en el campo de WhatsApp.');
     return;
   }
@@ -1195,7 +1195,7 @@ function addOtroEsp(e) {
   e.preventDefault();
   const val = document.getElementById('otroEsp').value.trim();
   if (!val) return;
-  if (/\+?\d[\d\s\-.()]{6,}\d/.test(val)) {
+  if (/\+?\d[\d\s\-.()]{5,}\d/.test(val)) {
     alert('No podés agregar un número de teléfono acá — el contacto va únicamente en el campo de WhatsApp.');
     return;
   }
@@ -1224,7 +1224,7 @@ function addOtraObra(e) {
   e.preventDefault();
   const val = document.getElementById('otraObra').value.trim();
   if (!val) return;
-  if (/\+?\d[\d\s\-.()]{6,}\d/.test(val)) {
+  if (/\+?\d[\d\s\-.()]{5,}\d/.test(val)) {
     alert('No podés agregar un número de teléfono acá — el contacto va únicamente en el campo de WhatsApp.');
     return;
   }
