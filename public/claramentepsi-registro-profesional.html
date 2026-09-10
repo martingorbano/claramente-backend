@@ -1166,6 +1166,10 @@ function addOtroEnf(e) {
   e.preventDefault();
   const val = document.getElementById('otroEnf').value.trim();
   if (!val) return;
+  if (/\+?\d[\d\s\-.()]{6,}\d/.test(val)) {
+    alert('No podés agregar un número de teléfono acá — el contacto va únicamente en el campo de WhatsApp.');
+    return;
+  }
   const container = document.getElementById('enfoques');
   const existe = Array.from(container.querySelectorAll('.tag-opt')).some(t => t.textContent.trim().toLowerCase() === val.toLowerCase());
   if (existe) { document.getElementById('otroEnf').value = ''; return; }
@@ -1191,6 +1195,10 @@ function addOtroEsp(e) {
   e.preventDefault();
   const val = document.getElementById('otroEsp').value.trim();
   if (!val) return;
+  if (/\+?\d[\d\s\-.()]{6,}\d/.test(val)) {
+    alert('No podés agregar un número de teléfono acá — el contacto va únicamente en el campo de WhatsApp.');
+    return;
+  }
   const container = document.getElementById('especializaciones');
   const existe = Array.from(container.querySelectorAll('.tag-opt')).some(t => t.textContent.trim().toLowerCase() === val.toLowerCase());
   if (existe) { document.getElementById('otroEsp').value = ''; return; }
@@ -1216,6 +1224,10 @@ function addOtraObra(e) {
   e.preventDefault();
   const val = document.getElementById('otraObra').value.trim();
   if (!val) return;
+  if (/\+?\d[\d\s\-.()]{6,}\d/.test(val)) {
+    alert('No podés agregar un número de teléfono acá — el contacto va únicamente en el campo de WhatsApp.');
+    return;
+  }
   const container = document.getElementById('obrasSociales');
   // Verificar que no exista ya
   const existe = Array.from(container.querySelectorAll('.tag-opt')).some(t => t.textContent.trim().toLowerCase() === val.toLowerCase());
