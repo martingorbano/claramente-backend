@@ -519,7 +519,7 @@ function agregarTagOtro(containerId, inputId, grupo) {
   const input = document.getElementById(inputId);
   const valor = input.value.trim();
   if (!valor) return;
-  if (/\+?\d[\d\s\-.()]{6,}\d/.test(valor)) {
+  if (/\+?\d[\d\s\-.()]{5,}\d/.test(valor)) {
     alert('No podés agregar un número de teléfono acá — el contacto va únicamente en el campo de WhatsApp.');
     return;
   }
@@ -595,7 +595,7 @@ async function guardarPerfil() {
     alert('El nombre no puede contener números.');
     return;
   }
-  const PATRON_TELEFONO = /\+?\d[\d\s\-.()]{6,}\d/;
+  const PATRON_TELEFONO = /\+?\d[\d\s\-.()]{5,}\d/;
   if (PATRON_TELEFONO.test(payload.bio)) {
     alert('La bio no puede contener números de teléfono ni contacto directo — eso va únicamente en el campo de WhatsApp.');
     return;
