@@ -38,7 +38,7 @@ function detectarCrisis(texto) {
 // el bloqueo de contacto directo metiendo su whatsapp a mano en otro campo.
 function ocultarTelefonos(texto) {
   if (!texto || typeof texto !== 'string') return texto;
-  return texto.replace(/(\+?\d[\d\s\-.()]{6,}\d)/g, '[contacto oculto]');
+  return texto.replace(/(\+?\d[\d\s\-.()]{5,}\d)/g, '[contacto oculto]');
 }
 
 // Valida nombre y bio al registrarse o editar perfil, para que nadie pueda
@@ -46,7 +46,7 @@ function ocultarTelefonos(texto) {
 // no tiene sentido ningún dígito. En "bio" sí puede haber números cortos
 // legítimos ("15 años de experiencia"), así que solo bloqueamos patrones
 // que parecen teléfono, no cualquier dígito.
-const PATRON_TELEFONO = /\+?\d[\d\s\-.()]{6,}\d/;
+const PATRON_TELEFONO = /\+?\d[\d\s\-.()]{5,}\d/;
 function validarSinTelefono(nombre, bio) {
   if (nombre && /\d/.test(nombre)) {
     return 'El nombre no puede contener números.';
