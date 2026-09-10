@@ -587,6 +587,16 @@ async function guardarPerfil() {
     genero: document.getElementById('edit-genero')?.value || null,
   };
 
+  if (/\d/.test(payload.nombre)) {
+    alert('El nombre no puede contener números.');
+    return;
+  }
+  const PATRON_TELEFONO = /\+?\d[\d\s\-.()]{6,}\d/;
+  if (PATRON_TELEFONO.test(payload.bio)) {
+    alert('La bio no puede contener números de teléfono ni contacto directo — eso va únicamente en el campo de WhatsApp.');
+    return;
+  }
+
   try {
     const res = await fetch(`/profesional/${profesional.id}`, {
       method: 'PUT',
@@ -599,8 +609,14 @@ async function guardarPerfil() {
       const msg = document.getElementById('saveMsg');
       msg.classList.add('show');
       setTimeout(() => msg.classList.remove('show'), 3000);
+    } else {
+      const data = await res.json().catch(() => ({}));
+      alert(data.error || 'Error al guardar el perfil. Intentá de nuevo.');
     }
-  } catch(e) { console.error(e); }
+  } catch(e) {
+    console.error(e);
+    alert('Error de conexión. Intentá de nuevo.');
+  }
 }
 
 // Cambiar contraseña
