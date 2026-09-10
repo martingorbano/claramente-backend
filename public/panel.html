@@ -519,6 +519,10 @@ function agregarTagOtro(containerId, inputId, grupo) {
   const input = document.getElementById(inputId);
   const valor = input.value.trim();
   if (!valor) return;
+  if (/\+?\d[\d\s\-.()]{6,}\d/.test(valor)) {
+    alert('No podés agregar un número de teléfono acá — el contacto va únicamente en el campo de WhatsApp.');
+    return;
+  }
   const container = document.getElementById(containerId);
   // Verificar que no exista ya
   const existente = Array.from(container.querySelectorAll('.tag-opt')).find(t => t.textContent.trim().toLowerCase() === valor.toLowerCase());
