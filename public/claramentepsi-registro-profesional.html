@@ -812,7 +812,7 @@ async function next(step) {
 function validateStep(step) {
   let ok = true;
   if (step === 0) {
-    ok = validate('f-nombre', 'nombre', v => v.trim().length > 2) && ok;
+    ok = validate('f-nombre', 'nombre', v => v.trim().length > 2 && !/\d/.test(v)) && ok;
     ok = validate('f-matricula', 'matricula', v => v.trim().length > 2) && ok;
     ok = validate('f-email', 'email', v => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) && ok;
     ok = validate('f-whatsapp', 'whatsapp', v => v.trim().length >= 8) && ok;
@@ -830,6 +830,12 @@ function validateStep(step) {
   if (step === 1) {
     ok = validate('f-ciudad', 'ciudad', v => v.trim().length > 1 && v !== '') && ok;
     ok = validate('f-localidad', 'localidad', v => v.trim().length > 1) && ok;
+    const bioVal = document.getElementById('bio')?.value || '';
+    const PATRON_TELEFONO = /\+?\d[\d\s\-.()]{6,}\d/;
+    if (PATRON_TELEFONO.test(bioVal)) {
+      alert('La bio no puede contener números de teléfono ni contacto directo — eso va únicamente en el campo de WhatsApp del paso anterior.');
+      ok = false;
+    }
   }
   if (step === 2) {
     const enfoques = document.querySelectorAll('#enfoques .tag-opt.selected').length;
