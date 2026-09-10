@@ -57,6 +57,20 @@ function validarSinTelefono(nombre, bio) {
   return null;
 }
 
+// Mismo chequeo, pero para arrays de tags con texto libre (enfoques,
+// especializaciones, obras_sociales admiten "+ Otra/Otro" con texto a mano).
+function validarArraysSinTelefono(...arrays) {
+  for (const arr of arrays) {
+    if (!Array.isArray(arr)) continue;
+    for (const item of arr) {
+      if (typeof item === 'string' && PATRON_TELEFONO.test(item)) {
+        return 'Uno de los campos personalizados (enfoques, especializaciones u obras sociales) contiene un número de teléfono — sacalo, el contacto va únicamente en el campo de WhatsApp.';
+      }
+    }
+  }
+  return null;
+}
+
 const MENSAJE_CRISIS = 'Lo que me contás suena realmente doloroso, y quiero que sepas que no estás solo/a con esto.\n\nSi estás pensando en hacerte daño o en quitarte la vida, por favor buscá ayuda ahora mismo:\n\n📞 **911** — si es una emergencia inmediata\n📞 **0800-345-1435** — Centro de Asistencia al Suicida, línea gratuita, confidencial y las 24 horas, para todo el país\n\nHablar con alguien ahora puede ayudar. Y si querés, cuando estés listo/a también podemos ayudarte a encontrar un psicólogo para acompañarte de forma continua — contame y te ayudo a buscar.';
 
 const cors = require('cors');
@@ -1227,7 +1241,7 @@ app.post('/registro', async (req, res) => {
     return res.status(400).json({ error: 'Faltan campos requeridos' });
   }
 
-  const errorValidacion = validarSinTelefono(nombre, bio);
+  const errorValidacion = validarSinTelefono(nombre, bio) || validarArraysSinTelefono(obras_sociales, enfoques, especializaciones);
   if (errorValidacion) return res.status(400).json({ error: errorValidacion });
 
   try {
@@ -1366,7 +1380,7 @@ app.put('/profesional/:id', async (req, res) => {
   const { id } = req.params;
   const { nombre, whatsapp, ciudad, localidad, honorario, bio, enfoques, especializaciones, modalidades, obras_sociales, foto_url, genero } = req.body;
 
-  const errorValidacion = validarSinTelefono(nombre, bio);
+  const errorValidacion = validarSinTelefono(nombre, bio) || validarArraysSinTelefono(obras_sociales, enfoques, especializaciones);
   if (errorValidacion) return res.status(400).json({ error: errorValidacion });
 
   try {
@@ -1433,7 +1447,7 @@ app.post('/registro-pendiente', async (req, res) => {
   const { datos, plan } = req.body;
   if (!datos || !plan) return res.status(400).json({ error: 'Faltan datos' });
 
-  const errorValidacion = validarSinTelefono(datos.nombre, datos.bio);
+  const errorValidacion = validarSinTelefono(datos.nombre, datos.bio) || validarArraysSinTelefono(datos.obras_sociales, datos.enfoques, datos.especializaciones);
   if (errorValidacion) return res.status(400).json({ error: errorValidacion });
 
   try {
