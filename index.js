@@ -33,6 +33,30 @@ function detectarCrisis(texto) {
   return SEÑALES_CRISIS.some(regex => regex.test(texto));
 }
 
+// Oculta secuencias que parecen números de teléfono dentro de texto libre
+// (nombre, descripción) — para que un profesional gratuito no pueda esquivar
+// el bloqueo de contacto directo metiendo su whatsapp a mano en otro campo.
+function ocultarTelefonos(texto) {
+  if (!texto || typeof texto !== 'string') return texto;
+  return texto.replace(/(\+?\d[\d\s\-.()]{6,}\d)/g, '[contacto oculto]');
+}
+
+// Valida nombre y bio al registrarse o editar perfil, para que nadie pueda
+// meter un teléfono (u otro número largo) ahí desde el origen. En "nombre"
+// no tiene sentido ningún dígito. En "bio" sí puede haber números cortos
+// legítimos ("15 años de experiencia"), así que solo bloqueamos patrones
+// que parecen teléfono, no cualquier dígito.
+const PATRON_TELEFONO = /\+?\d[\d\s\-.()]{6,}\d/;
+function validarSinTelefono(nombre, bio) {
+  if (nombre && /\d/.test(nombre)) {
+    return 'El nombre no puede contener números.';
+  }
+  if (bio && PATRON_TELEFONO.test(bio)) {
+    return 'La bio no puede contener números de teléfono ni contacto directo — eso va únicamente en el campo de WhatsApp.';
+  }
+  return null;
+}
+
 const MENSAJE_CRISIS = 'Lo que me contás suena realmente doloroso, y quiero que sepas que no estás solo/a con esto.\n\nSi estás pensando en hacerte daño o en quitarte la vida, por favor buscá ayuda ahora mismo:\n\n📞 **911** — si es una emergencia inmediata\n📞 **0800-345-1435** — Centro de Asistencia al Suicida, línea gratuita, confidencial y las 24 horas, para todo el país\n\nHablar con alguien ahora puede ayudar. Y si querés, cuando estés listo/a también podemos ayudarte a encontrar un psicólogo para acompañarte de forma continua — contame y te ayudo a buscar.';
 
 const cors = require('cors');
@@ -812,11 +836,12 @@ app.post('/chat', limiterChat, async (req, res) => {
           }
 
           // Enriquecer con vistas_semana para la rotación equitativa.
-          // Acá también BLOQUEAMOS contacto directo (whatsapp) y foto para cualquiera
-          // que no sea premium de verdad (plan efectivo, con trial ya resuelto) — esto
+          // Acá también BLOQUEAMOS contacto directo (whatsapp, foto, y cualquier
+          // teléfono metido a mano en nombre/descripción) para cualquiera que no
+          // sea premium de verdad (plan efectivo, con trial ya resuelto) — esto
           // es una regla de negocio innegociable, no depende de que el modelo la
-          // respete bien en el texto. Un profesional gratuito NUNCA debe filtrar su
-          // whatsapp, sin importar qué haya devuelto Claude.
+          // respete bien en el texto. Un profesional gratuito NUNCA debe filtrar
+          // contacto directo, ni por whatsapp ni escondido en otro campo.
           parsed.profesionales = parsed.profesionales.map(p => {
             const esPremiumReal = planEfectivoPorId[p.id] === 'premium';
             return {
@@ -824,6 +849,8 @@ app.post('/chat', limiterChat, async (req, res) => {
               vistas_semana: vistasPorProfesional[p.id] || 0,
               whatsapp: esPremiumReal ? p.whatsapp : null,
               foto_url: esPremiumReal ? p.foto_url : null,
+              nombre: esPremiumReal ? p.nombre : ocultarTelefonos(p.nombre),
+              descripcion: esPremiumReal ? p.descripcion : ocultarTelefonos(p.descripcion),
             };
           });
           // Rotar entre profesionales premium con match cercano (empate de hasta 10 puntos)
@@ -876,7 +903,13 @@ app.post('/chat', limiterChat, async (req, res) => {
             }
             parsed2.profesionales = parsed2.profesionales.map(p => {
               const esPremiumReal = planEfectivoPorId[p.id] === 'premium';
-              return { ...p, whatsapp: esPremiumReal ? p.whatsapp : null, foto_url: esPremiumReal ? p.foto_url : null };
+              return {
+                ...p,
+                whatsapp: esPremiumReal ? p.whatsapp : null,
+                foto_url: esPremiumReal ? p.foto_url : null,
+                nombre: esPremiumReal ? p.nombre : ocultarTelefonos(p.nombre),
+                descripcion: esPremiumReal ? p.descripcion : ocultarTelefonos(p.descripcion),
+              };
             });
 
             supabase.from('consultas').insert({
@@ -1194,6 +1227,9 @@ app.post('/registro', async (req, res) => {
     return res.status(400).json({ error: 'Faltan campos requeridos' });
   }
 
+  const errorValidacion = validarSinTelefono(nombre, bio);
+  if (errorValidacion) return res.status(400).json({ error: errorValidacion });
+
   try {
     const password_hash = await bcrypt.hash(password, 10);
 
@@ -1329,6 +1365,10 @@ app.get('/profesional/:id', async (req, res) => {
 app.put('/profesional/:id', async (req, res) => {
   const { id } = req.params;
   const { nombre, whatsapp, ciudad, localidad, honorario, bio, enfoques, especializaciones, modalidades, obras_sociales, foto_url, genero } = req.body;
+
+  const errorValidacion = validarSinTelefono(nombre, bio);
+  if (errorValidacion) return res.status(400).json({ error: errorValidacion });
+
   try {
     const updateData = { nombre, whatsapp, ciudad, localidad, honorario, bio, enfoques, especializaciones, modalidades, obras_sociales, genero };
     if (foto_url !== undefined) updateData.foto_url = foto_url;
@@ -1392,6 +1432,10 @@ app.get('/stats/:psy_id', async (req, res) => {
 app.post('/registro-pendiente', async (req, res) => {
   const { datos, plan } = req.body;
   if (!datos || !plan) return res.status(400).json({ error: 'Faltan datos' });
+
+  const errorValidacion = validarSinTelefono(datos.nombre, datos.bio);
+  if (errorValidacion) return res.status(400).json({ error: errorValidacion });
+
   try {
     const session_id = crypto.randomUUID();
 
