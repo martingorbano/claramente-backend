@@ -47,6 +47,24 @@ function ocultarTelefonos(texto) {
 // legítimos ("15 años de experiencia"), así que solo bloqueamos patrones
 // que parecen teléfono, no cualquier dígito.
 const PATRON_TELEFONO = /\+?\d[\d\s\-.()]{5,}\d/;
+// Normaliza el nombre a Formato Título, sin importar cómo lo haya tipeado
+// el profesional (todo mayúsculas, todo minúsculas, mezclado). Maneja acentos
+// y apóstrofes (ej: "dell'oglio" -> "Dell'Oglio").
+function normalizarNombre(nombre) {
+  if (!nombre || typeof nombre !== 'string') return nombre;
+  return nombre
+    .trim()
+    .replace(/\s+/g, ' ')
+    .split(' ')
+    .map(palabra =>
+      palabra
+        .split("'")
+        .map(parte => parte.charAt(0).toLocaleUpperCase('es') + parte.slice(1).toLocaleLowerCase('es'))
+        .join("'")
+    )
+    .join(' ');
+}
+
 function validarSinTelefono(nombre, bio) {
   if (nombre && /\d/.test(nombre)) {
     return 'El nombre no puede contener números.';
@@ -543,6 +561,11 @@ async function verificarRecordatorioTrial() {
 }
 
 // Ejecutar verificación de trials cada 12 horas
+// Correr una vez apenas arranca el servidor (por ejemplo, justo después de un
+// deploy) — sin esto, setInterval solo dispara recién a las 12hs de iniciado,
+// dejando a cualquiera que venció el trial en el medio esperando sin motivo.
+verificarTrialsVencidos();
+verificarRecordatorioTrial();
 setInterval(verificarTrialsVencidos, 12 * 60 * 60 * 1000);
 setInterval(verificarRecordatorioTrial, 12 * 60 * 60 * 1000);
 
@@ -1325,7 +1348,7 @@ app.post('/registro', async (req, res) => {
     trial_hasta.setDate(trial_hasta.getDate() + 30);
 
     const { data, error } = await supabase.from('profesionales').insert({
-      nombre, matricula, email, whatsapp, password_hash, bio, ciudad, localidad, genero,
+      nombre: normalizarNombre(nombre), matricula, email, whatsapp, password_hash, bio, ciudad, localidad, genero,
       experiencia, honorario, obras_sociales, enfoques, especializaciones,
       modalidades, edades, dias, franjas,
       plan: plan || 'gratuito',
@@ -1453,7 +1476,7 @@ app.put('/profesional/:id', async (req, res) => {
   if (errorValidacion) return res.status(400).json({ error: errorValidacion });
 
   try {
-    const updateData = { nombre, whatsapp, ciudad, localidad, honorario, bio, enfoques, especializaciones, modalidades, obras_sociales, genero };
+    const updateData = { nombre: normalizarNombre(nombre), whatsapp, ciudad, localidad, honorario, bio, enfoques, especializaciones, modalidades, obras_sociales, genero };
     if (foto_url !== undefined) updateData.foto_url = foto_url;
     const { error } = await supabase
       .from('profesionales')
@@ -1644,7 +1667,7 @@ app.post('/webhook/mp', async (req, res) => {
     const d = pendiente.datos;
     const password_hash = await bcrypt.hash(d.password, 10);
     await supabase.from('profesionales').insert({
-      nombre: d.nombre, matricula: d.matricula, email: d.email,
+      nombre: normalizarNombre(d.nombre), matricula: d.matricula, email: d.email,
       whatsapp: d.whatsapp, password_hash, bio: d.bio || '',
       ciudad: d.ciudad || '', experiencia: d.experiencia || null,
       honorario: d.honorario || null, obras_sociales: d.obras_sociales || [],
@@ -1724,7 +1747,7 @@ app.post('/webhook/mp-sub', async (req, res) => {
     const d = pendiente.datos;
     const password_hash = await bcrypt.hash(d.password, 10);
     await supabase.from('profesionales').insert({
-      nombre: d.nombre, matricula: d.matricula, email: d.email,
+      nombre: normalizarNombre(d.nombre), matricula: d.matricula, email: d.email,
       whatsapp: d.whatsapp, password_hash, bio: d.bio || '',
       ciudad: d.ciudad || '', experiencia: d.experiencia || null,
       honorario: d.honorario || null, obras_sociales: d.obras_sociales || [],
