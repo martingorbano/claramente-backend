@@ -364,7 +364,7 @@ app.post('/activar-trial', async (req, res) => {
     trial_hasta.setDate(trial_hasta.getDate() + 30); // 30 días
     const { error } = await supabase
       .from('profesionales')
-      .update({ trial_hasta: trial_hasta.toISOString(), trial_mail_enviado: false })
+      .update({ trial_hasta: trial_hasta.toISOString(), trial_mail_enviado: false, recordatorio_enviado: false })
       .eq('id', id);
     if (error) throw error;
     res.json({ ok: true, trial_hasta });
@@ -474,8 +474,77 @@ async function verificarTrialsVencidos() {
   }
 }
 
+// Cuántos días esperar después del mail de "tu trial terminó" antes de mandar
+// el recordatorio — le da tiempo a la persona a reaccionar sola, sin ser invasivos.
+const DIAS_PARA_RECORDATORIO = 5;
+
+// Cron: segundo mail, más adelante, para quienes ya vieron que su trial terminó
+// pero todavía no activaron Premium — se manda una sola vez por trial, igual que
+// el primero.
+async function verificarRecordatorioTrial() {
+  try {
+    const limite = new Date();
+    limite.setDate(limite.getDate() - DIAS_PARA_RECORDATORIO);
+
+    const { data: pendientes } = await supabase
+      .from('profesionales')
+      .select('id, nombre, email, trial_hasta')
+      .eq('plan', 'gratuito')
+      .eq('trial_mail_enviado', true) // ya le llegó el primer mail
+      .eq('recordatorio_enviado', false) // todavía no el recordatorio
+      .lt('trial_hasta', limite.toISOString()); // pasaron los días de margen
+
+    if (!pendientes || pendientes.length === 0) return;
+
+    for (const prof of pendientes) {
+      const nombre = prof.nombre?.split(' ')[0] || 'Lic.';
+      const linkPanel = `${process.env.APP_URL || 'https://claramentepsi.com'}/panel.html?activar=premium`;
+
+      await resend.emails.send({
+        from: 'Claramente <hola@claramentepsi.com>',
+        to: prof.email,
+        subject: '¿Seguís interesado/a en aparecer con Premium en Claramente?',
+        html: `
+          <div style="font-family:'DM Sans',Arial,sans-serif;max-width:520px;margin:0 auto;background:#F7F3EE;padding:32px 20px">
+            <div style="background:white;border-radius:16px;padding:36px;border:1px solid #D8E8E4">
+              <div style="font-family:Georgia,serif;font-size:22px;color:#1C2B28;margin-bottom:20px">
+                clara<span style="color:#4A7C6F;font-style:italic">mente</span>
+              </div>
+              <p style="font-size:16px;color:#1C2B28;margin-bottom:8px">Hola, ${nombre}.</p>
+              <p style="font-size:14px;color:#6B847E;line-height:1.7;margin-bottom:24px">
+                Hace unos días te avisamos que tu período de prueba en Claramente terminó. Todavía podés activar el plan Premium y volver a aparecer con foto y contacto directo por WhatsApp cuando alguien te busque.
+              </p>
+              <div style="background:#F7F3EE;border-radius:12px;padding:20px;margin-bottom:24px;text-align:center">
+                <p style="font-size:13px;color:#6B847E;margin-bottom:4px">Plan Premium</p>
+                <p style="font-size:22px;font-weight:600;color:#B8860B;margin:0">$32.500/mes</p>
+                <p style="font-size:11px;color:#B8860B;font-style:italic;margin-top:4px">Precio promocional de lanzamiento</p>
+              </div>
+              <a href="${linkPanel}" style="display:block;text-align:center;background:#4A7C6F;color:white;padding:14px 28px;border-radius:24px;text-decoration:none;font-size:14px;font-weight:500;margin-bottom:16px">
+                Activar Plan Premium →
+              </a>
+              <p style="font-size:12px;color:#9AAFAA;text-align:center;line-height:1.6">
+                Si ya no te interesa, no hace falta que hagas nada — tu perfil sigue publicado en el plan gratuito, sin foto ni contacto directo, y no te vamos a volver a escribir por esto.
+              </p>
+            </div>
+          </div>
+        `
+      });
+
+      await supabase
+        .from('profesionales')
+        .update({ recordatorio_enviado: true })
+        .eq('id', prof.id);
+
+      console.log(`Mail de recordatorio de trial enviado a ${prof.email}`);
+    }
+  } catch(e) {
+    console.error('Error verificando recordatorios de trial:', e.message);
+  }
+}
+
 // Ejecutar verificación de trials cada 12 horas
 setInterval(verificarTrialsVencidos, 12 * 60 * 60 * 1000);
+setInterval(verificarRecordatorioTrial, 12 * 60 * 60 * 1000);
 
 // Formulario de soporte
 app.post('/soporte', async (req, res) => {
