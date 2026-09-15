@@ -437,7 +437,8 @@ async function verificarTrialsVencidos() {
       .lt('trial_hasta', ahora)
       .not('trial_hasta', 'is', null)
       .eq('plan', 'gratuito') // Ya están en gratuito, el trial expiró
-      .eq('trial_mail_enviado', false); // Clave: solo los que no recibieron el mail todavía
+      .eq('trial_mail_enviado', false) // Clave: solo los que no recibieron el mail todavía
+      .eq('activo', true); // No molestar a cuentas desactivadas
 
     if (!vencidos || vencidos.length === 0) return;
 
@@ -506,15 +507,27 @@ async function verificarRecordatorioTrial() {
 
     const { data: pendientes } = await supabase
       .from('profesionales')
-      .select('id, nombre, email, trial_hasta')
+      .select('id, nombre, email, plan, trial_hasta')
       .eq('plan', 'gratuito')
       .eq('trial_mail_enviado', true) // ya le llegó el primer mail
       .eq('recordatorio_enviado', false) // todavía no el recordatorio
+      .eq('activo', true) // No molestar a cuentas desactivadas
       .lt('trial_hasta', limite.toISOString()); // pasaron los días de margen
 
     if (!pendientes || pendientes.length === 0) return;
 
-    for (const prof of pendientes) {
+    // Segunda capa de seguridad, redundante a propósito: no confiamos en una
+    // sola condición para algo tan sensible como "no molestar a quien paga".
+    // Sin importar lo que haya devuelto la query, volvemos a chequear acá:
+    // plan realmente gratuito, y trial realmente vencido (no activo).
+    const ahoraCheck = new Date();
+    const aEnviar = pendientes.filter(p => {
+      const esGratuito = p.plan === 'gratuito';
+      const trialVencido = p.trial_hasta && new Date(p.trial_hasta) < ahoraCheck;
+      return esGratuito && trialVencido;
+    });
+
+    for (const prof of aEnviar) {
       const nombre = prof.nombre?.split(' ')[0] || 'Lic.';
       const linkPanel = `${process.env.APP_URL || 'https://claramentepsi.com'}/panel.html?activar=premium`;
 
