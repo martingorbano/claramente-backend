@@ -391,6 +391,23 @@ app.post('/activar-trial', async (req, res) => {
   }
 });
 
+// Bug conocido de MercadoPago (activo desde 2026-09-02, ver issue #480 en
+// mercadopago/sdk-nodejs): para suscripciones "sin plan asociado" (auto_recurring,
+// como las que creamos acá), la API devuelve el init_point con &activation=true,
+// y ESE parámetro puntual hace que la página tire "Esta página no existe" en
+// mercadopago.com.ar. Sacándolo, el mismo link funciona bien. Lo limpiamos acá
+// para no depender de que MP lo arregle de su lado.
+function limpiarInitPoint(url) {
+  if (!url) return url;
+  try {
+    const urlObj = new URL(url);
+    urlObj.searchParams.delete('activation');
+    return urlObj.toString();
+  } catch(e) {
+    return url; // si algo falla al parsear, devolvemos el original sin tocar
+  }
+}
+
 // Genera un link de pago de MP personalizado para un profesional EXISTENTE
 // (a diferencia de /registro-pendiente, que es para altas nuevas).
 // Usa el id del profesional como external_reference para que el webhook
@@ -423,7 +440,7 @@ async function generarLinkUpgrade(profesional, mpEmail) {
     }
   });
   console.log(`Suscripción creada (upgrade existente) — email Claramente: ${profesional.email}, email MP usado: ${emailParaPago}, prof_id: ${profesional.id}, init_point: ${subscription.init_point}, mp_id: ${subscription.id}`);
-  return subscription.init_point;
+  return limpiarInitPoint(subscription.init_point);
 }
 
 // Cron: verificar trials vencidos y mandar mail
@@ -1589,7 +1606,7 @@ app.post('/registro-pendiente', async (req, res) => {
 
     console.log(`Suscripción creada (alta nueva) — email: ${datos.email}, session_id: ${session_id}, init_point: ${subscription.init_point}, mp_id: ${subscription.id}`);
 
-    res.json({ ok: true, session_id, init_point: subscription.init_point });
+    res.json({ ok: true, session_id, init_point: limpiarInitPoint(subscription.init_point) });
   } catch (e) {
     console.error('Error registro pendiente:', e.message);
     res.status(500).json({ error: 'Error al generar link de pago: ' + e.message });
