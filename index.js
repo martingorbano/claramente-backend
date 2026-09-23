@@ -217,6 +217,7 @@ Cuando tengas suficiente info (1-2 intercambios alcanza), respondé ÚNICAMENTE 
   "respuesta": "Mensaje breve y cálido (1-2 oraciones)",
   "edad_requerida": "Uno de: 'Niños (4-12)', 'Adolescentes (13-17)', 'Adultos (18-60)', 'Adultos mayores (60+)' — SOLO si la persona pidió atención para alguien de ese grupo etario específico (ej: 'para mi hijo', 'tengo 70 años'). Si no mencionó edad o es ambiguo, omitir este campo o poner null. Este campo lo usa el backend para filtrar, así que sé preciso.",
   "formato_requerido": "Uno de: 'Individual', 'Pareja', 'Familia' — SOLO si es claro quién va a asistir a la sesión. Si no es claro, omitir este campo o poner null. Este campo lo usa el backend para filtrar, así que sé preciso.",
+  "tag_principal": "El tag EXACTO (copiado LITERAL, sin parafrasear, tal como aparece en el campo \"especializaciones\" o \"enfoques\" de los datos) que define quién califica para esta búsqueda — ej: si alguien busca 'psicoanalista', copiá exactamente 'Psicoanalítico'; si busca 'pareja', copiá 'Terapia de pareja'. SOLO completá este campo si la búsqueda se reduce claramente a UN tag — si es una combinación de varios criterios o es ambigua, omitilo o poné null. El backend usa este campo para buscar a TODOS los profesionales que lo tienen, no solo a los que vos ya incluiste en \"profesionales\" — así que tiene que ser el string exacto, no una paráfrasis.",
   "profesionales": [
     {
       "id": "EXACTAMENTE el campo id (UUID) del profesional de la base de datos — este campo es OBLIGATORIO",
@@ -682,6 +683,66 @@ app.get('/profesional/:id/detalle', async (req, res) => {
 // entre sí, y dentro de cada banda ordena por quien menos apareció esta
 // semana (vistas_semana) — así no es siempre el mismo el que sale primero
 // entre varios con un match similar.
+// Genera iniciales tipo "CP" a partir de un nombre completo, sacando el título
+// (Lic./Dr./Dra./Mg.) primero.
+function generarIniciales(nombre) {
+  if (!nombre) return '??';
+  const limpio = nombre.replace(/^(Lic\.|Dr\.|Dra\.|Mg\.)\s*/i, '').trim();
+  const partes = limpio.split(/\s+/).filter(Boolean);
+  if (partes.length === 0) return '??';
+  if (partes.length === 1) return partes[0].slice(0, 2).toUpperCase();
+  return (partes[0][0] + partes[partes.length - 1][0]).toUpperCase();
+}
+
+const COLORES_TARJETA = ['warm', 'sage', 'purple'];
+
+// Completa la lista de profesionales con otros que comparten el mismo
+// "tag_principal" que Claude identificó como criterio, pero que el modelo
+// no incluyó en su propia respuesta. Busca en TODOS los datos disponibles
+// (no solo en lo que Claude ya devolvió) — así no depende de que el modelo
+// haya escaneado y enumerado bien a todos los que califican, que es
+// justamente donde vimos que fallaba de forma recurrente.
+function completarConMismoTag(profesionalesIncluidos, tagPrincipal, datosCompletosPorId, planEfectivoPorId, especializacionesPorId, enfoquesPorId) {
+  if (!tagPrincipal || !Array.isArray(profesionalesIncluidos)) return profesionalesIncluidos;
+
+  const idsYaIncluidos = new Set(profesionalesIncluidos.map(p => p.id));
+  const faltantes = Object.keys(datosCompletosPorId).filter(id =>
+    !idsYaIncluidos.has(id) &&
+    planEfectivoPorId[id] === 'premium' &&
+    ((especializacionesPorId[id] || []).includes(tagPrincipal) || (enfoquesPorId[id] || []).includes(tagPrincipal))
+  );
+
+  if (faltantes.length === 0) return profesionalesIncluidos;
+
+  // Match de referencia: el más bajo que ya haya usado Claude, para que no
+  // desentonen visualmente los agregados por el backend.
+  const matchesExistentes = profesionalesIncluidos.map(p => p.match).filter(m => typeof m === 'number');
+  const matchReferencia = matchesExistentes.length > 0 ? Math.min(...matchesExistentes) : 90;
+
+  const nuevos = faltantes.map((id, i) => {
+    const p = datosCompletosPorId[id];
+    return {
+      id: p.id,
+      nombre: p.nombre,
+      especialidad: tagPrincipal,
+      enfoque: (p.enfoques || [])[0] || '',
+      modalidad: (p.modalidades || []).join(' y '),
+      obras_sociales: p.obras_sociales || [],
+      descripcion: `Trabaja con ${tagPrincipal.toLowerCase()}.`,
+      match: matchReferencia,
+      iniciales: generarIniciales(p.nombre),
+      color: COLORES_TARJETA[(profesionalesIncluidos.length + i) % COLORES_TARJETA.length],
+      plan: p.plan,
+      whatsapp: p.whatsapp,
+      ciudad: p.ciudad,
+      localidad: p.localidad,
+      foto_url: p.foto_url,
+    };
+  });
+
+  return [...profesionalesIncluidos, ...nuevos];
+}
+
 function rotarBanda(lista, rangoEmpate = 10) {
   if (!Array.isArray(lista) || lista.length <= 1) return lista;
 
@@ -849,11 +910,15 @@ app.post('/chat', limiterChat, async (req, res) => {
     // sin depender 100% de que el modelo respete la regla.
     const edadesPorId = {};
     const especializacionesPorId = {};
+    const enfoquesPorId = {};
     const planEfectivoPorId = {};
+    const datosCompletosPorId = {};
     (profesionales || []).forEach(p => {
       edadesPorId[p.id] = p.edades || [];
       especializacionesPorId[p.id] = p.especializaciones || [];
+      enfoquesPorId[p.id] = p.enfoques || [];
       planEfectivoPorId[p.id] = p.plan; // ya viene resuelto con trial activo = premium
+      datosCompletosPorId[p.id] = p;
     });
 
     // Mapea el formato de sesión que puede pedir Claude al tag real de especializaciones
@@ -996,6 +1061,20 @@ app.post('/chat', limiterChat, async (req, res) => {
             if (antesDeFiltrar > 0 && parsed.profesionales.length === 0) vacioPorFormato = true;
           }
 
+          // Completar con otros profesionales que comparten el mismo tag_principal
+          // pero que Claude no incluyó por su cuenta — no depende de que el modelo
+          // haya escaneado bien a todos los que califican.
+          if (parsed.tag_principal) {
+            const antesDeCompletar = parsed.profesionales.length;
+            parsed.profesionales = completarConMismoTag(
+              parsed.profesionales, parsed.tag_principal, datosCompletosPorId,
+              planEfectivoPorId, especializacionesPorId, enfoquesPorId
+            );
+            if (parsed.profesionales.length > antesDeCompletar) {
+              console.log(`Completado con tag_principal ("${parsed.tag_principal}"): se sumaron ${parsed.profesionales.length - antesDeCompletar} profesional(es) que el modelo no había incluido`);
+            }
+          }
+
           // Enriquecer con vistas_semana para la rotación equitativa.
           // Acá también BLOQUEAMOS contacto directo (whatsapp, foto, y cualquier
           // teléfono metido a mano en nombre/descripción) para cualquiera que no
@@ -1014,9 +1093,9 @@ app.post('/chat', limiterChat, async (req, res) => {
               descripcion: esPremiumReal ? p.descripcion : ocultarTelefonos(p.descripcion),
             };
           });
-          // Selección final: hasta 3 premium con prioridad absoluta (rotando parejo
-          // entre ellos si hay varios con %match similar), y como mucho 1 gratuito
-          // si sobra lugar. Nunca un gratuito desplaza a un premium que califica.
+          // Selección final: hasta 3 premium (rotando parejo entre ellos si hay
+          // varios con %match similar). Los gratuitos ya ni llegan hasta acá —
+          // se filtran antes de mandarle los datos a Claude.
           const antesDeSeleccion = parsed.profesionales.length;
           parsed.profesionales = seleccionarResultadoFinal(parsed.profesionales, planEfectivoPorId, 10);
           if (antesDeSeleccion > 0 && parsed.profesionales.length === 0) {
@@ -1066,6 +1145,12 @@ app.post('/chat', limiterChat, async (req, res) => {
                 (especializacionesPorId[p.id] || []).includes(tagNecesario)
               );
             }
+            if (parsed2.tag_principal) {
+              parsed2.profesionales = completarConMismoTag(
+                parsed2.profesionales, parsed2.tag_principal, datosCompletosPorId,
+                planEfectivoPorId, especializacionesPorId, enfoquesPorId
+              );
+            }
             parsed2.profesionales = parsed2.profesionales.map(p => {
               const esPremiumReal = planEfectivoPorId[p.id] === 'premium';
               return {
@@ -1077,9 +1162,10 @@ app.post('/chat', limiterChat, async (req, res) => {
                 descripcion: esPremiumReal ? p.descripcion : ocultarTelefonos(p.descripcion),
               };
             });
-            // Misma selección final que el camino principal: hasta 3 premium,
-            // como mucho 1 gratuito si sobra lugar. Este camino de reparación
-            // no la tenía antes — quedaba sin límite ni prioridad de premium.
+            // Misma selección final que el camino principal: hasta 3 premium
+            // (los gratuitos ya ni llegan a esta instancia, se filtran antes de
+            // mandarle los datos a Claude). Este camino de reparación no tenía
+            // antes ningún límite ni prioridad de premium.
             parsed2.profesionales = seleccionarResultadoFinal(parsed2.profesionales, planEfectivoPorId, 10);
 
             supabase.from('consultas').insert({
