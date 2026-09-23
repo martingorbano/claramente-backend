@@ -703,7 +703,12 @@ const COLORES_TARJETA = ['warm', 'sage', 'purple'];
 // haya escaneado y enumerado bien a todos los que califican, que es
 // justamente donde vimos que fallaba de forma recurrente.
 function completarConMismoTag(profesionalesIncluidos, tagPrincipal, datosCompletosPorId, planEfectivoPorId, especializacionesPorId, enfoquesPorId) {
-  if (!tagPrincipal || !Array.isArray(profesionalesIncluidos)) return profesionalesIncluidos;
+  if (!tagPrincipal || !Array.isArray(profesionalesIncluidos) || profesionalesIncluidos.length === 0) {
+    // Si Claude no incluyó a nadie (por ejemplo, está en medio de una pregunta
+    // aclaratoria y todavía no mostró resultados), no completamos nada — no
+    // queremos "revelar" tarjetas antes de que Claude haya decidido mostrarlas.
+    return profesionalesIncluidos;
+  }
 
   const idsYaIncluidos = new Set(profesionalesIncluidos.map(p => p.id));
   const faltantes = Object.keys(datosCompletosPorId).filter(id =>
@@ -1072,6 +1077,10 @@ app.post('/chat', limiterChat, async (req, res) => {
             );
             if (parsed.profesionales.length > antesDeCompletar) {
               console.log(`Completado con tag_principal ("${parsed.tag_principal}"): se sumaron ${parsed.profesionales.length - antesDeCompletar} profesional(es) que el modelo no había incluido`);
+              // El texto de Claude puede haber quedado desactualizado (lo escribió
+              // pensando en menos candidatos de los que terminamos mostrando) —
+              // lo reemplazamos por uno genérico pero numéricamente correcto.
+              parsed.respuesta = `Encontré varios profesionales que trabajan con ${parsed.tag_principal} y podrían acompañarte. Te muestro las opciones.`;
             }
           }
 
@@ -1146,10 +1155,14 @@ app.post('/chat', limiterChat, async (req, res) => {
               );
             }
             if (parsed2.tag_principal) {
+              const antesDeCompletar2 = parsed2.profesionales.length;
               parsed2.profesionales = completarConMismoTag(
                 parsed2.profesionales, parsed2.tag_principal, datosCompletosPorId,
                 planEfectivoPorId, especializacionesPorId, enfoquesPorId
               );
+              if (parsed2.profesionales.length > antesDeCompletar2) {
+                parsed2.respuesta = `Encontré varios profesionales que trabajan con ${parsed2.tag_principal} y podrían acompañarte. Te muestro las opciones.`;
+              }
             }
             parsed2.profesionales = parsed2.profesionales.map(p => {
               const esPremiumReal = planEfectivoPorId[p.id] === 'premium';
