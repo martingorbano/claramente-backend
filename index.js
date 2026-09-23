@@ -677,17 +677,19 @@ app.get('/profesional/:id/detalle', async (req, res) => {
 // para no mostrar siempre al mismo cuando varios son igual de afines.
 // Mantiene el orden premium > gratuito, y dentro de cada banda de empate
 // prioriza al que menos apareció en la última semana (según vistas_semana).
-function rotarPorEmpate(profesionales, rangoEmpate = 10) {
-  if (!Array.isArray(profesionales) || profesionales.length <= 1) return profesionales;
+// Rota de forma pareja dentro de un grupo (premium o gratuito por separado):
+// agrupa en "bandas" a quienes están dentro de rangoEmpate puntos de %match
+// entre sí, y dentro de cada banda ordena por quien menos apareció esta
+// semana (vistas_semana) — así no es siempre el mismo el que sale primero
+// entre varios con un match similar.
+function rotarBanda(lista, rangoEmpate = 10) {
+  if (!Array.isArray(lista) || lista.length <= 1) return lista;
 
-  const premium = profesionales.filter(p => p.plan === 'premium');
-  const otros = profesionales.filter(p => p.plan !== 'premium');
-
-  const ordenadosPorMatch = [...premium].sort((a, b) => (b.match || 0) - (a.match || 0));
+  const ordenados = [...lista].sort((a, b) => (b.match || 0) - (a.match || 0));
   const bandas = [];
   let bandaActual = [];
 
-  ordenadosPorMatch.forEach((p) => {
+  ordenados.forEach((p) => {
     if (bandaActual.length === 0) {
       bandaActual.push(p);
     } else {
@@ -702,18 +704,36 @@ function rotarPorEmpate(profesionales, rangoEmpate = 10) {
   });
   if (bandaActual.length) bandas.push(bandaActual);
 
-  // Dentro de cada banda: menos vistas esta semana = aparece primero
-  // Si hay empate exacto en vistas, mezclar aleatoriamente
-  const mezclados = bandas.flatMap(banda => {
-    return [...banda].sort((a, b) => {
+  return bandas.flatMap(banda =>
+    [...banda].sort((a, b) => {
       const vistasA = a.vistas_semana || 0;
       const vistasB = b.vistas_semana || 0;
       if (vistasA !== vistasB) return vistasA - vistasB;
       return Math.random() - 0.5;
-    });
-  });
+    })
+  );
+}
 
-  return [...mezclados, ...otros];
+// Selección final que se muestra en el chat: hasta 3 profesionales PREMIUM
+// con prioridad absoluta (rotando parejo entre ellos si hay varios con
+// %match similar) — los premium nunca ceden un lugar a un gratuito si hay
+// 3 o más premium que califican. Solo si sobra lugar (menos de 3 premium
+// calificaron), se completa con COMO MUCHO 1 gratuito — nunca más de uno,
+// aunque queden 2 lugares libres.
+function seleccionarResultadoFinal(profesionales, planEfectivoPorId, rangoEmpate = 10) {
+  if (!Array.isArray(profesionales)) return [];
+
+  const premium = profesionales.filter(p => planEfectivoPorId[p.id] === 'premium');
+  const gratuito = profesionales.filter(p => planEfectivoPorId[p.id] !== 'premium');
+
+  const premiumFinal = rotarBanda(premium, rangoEmpate).slice(0, 3);
+
+  if (premiumFinal.length < 3 && gratuito.length > 0) {
+    const gratuitoRotado = rotarBanda(gratuito, rangoEmpate);
+    return [...premiumFinal, gratuitoRotado[0]];
+  }
+
+  return premiumFinal;
 }
 
 
@@ -992,9 +1012,10 @@ app.post('/chat', limiterChat, async (req, res) => {
               descripcion: esPremiumReal ? p.descripcion : ocultarTelefonos(p.descripcion),
             };
           });
-          // Rotar entre profesionales premium con match cercano (empate de hasta 10 puntos)
-          // priorizando al que menos apareció esta semana. Recortar a 3.
-          parsed.profesionales = rotarPorEmpate(parsed.profesionales, 10).slice(0, 3);
+          // Selección final: hasta 3 premium con prioridad absoluta (rotando parejo
+          // entre ellos si hay varios con %match similar), y como mucho 1 gratuito
+          // si sobra lugar. Nunca un gratuito desplaza a un premium que califica.
+          parsed.profesionales = seleccionarResultadoFinal(parsed.profesionales, planEfectivoPorId, 10);
 
           // Solo pisamos la respuesta de Claude con nuestro mensaje sintético si HABÍA
           // candidatos reales antes de nuestros filtros y quedaron en cero por su culpa.
@@ -1044,12 +1065,17 @@ app.post('/chat', limiterChat, async (req, res) => {
               const esPremiumReal = planEfectivoPorId[p.id] === 'premium';
               return {
                 ...p,
+                vistas_semana: vistasPorProfesional[p.id] || 0,
                 whatsapp: esPremiumReal ? p.whatsapp : null,
                 foto_url: esPremiumReal ? p.foto_url : null,
                 nombre: esPremiumReal ? p.nombre : ocultarTelefonos(p.nombre),
                 descripcion: esPremiumReal ? p.descripcion : ocultarTelefonos(p.descripcion),
               };
             });
+            // Misma selección final que el camino principal: hasta 3 premium,
+            // como mucho 1 gratuito si sobra lugar. Este camino de reparación
+            // no la tenía antes — quedaba sin límite ni prioridad de premium.
+            parsed2.profesionales = seleccionarResultadoFinal(parsed2.profesionales, planEfectivoPorId, 10);
 
             supabase.from('consultas').insert({
               mensaje: ultimoMensaje,
