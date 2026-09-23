@@ -715,25 +715,16 @@ function rotarBanda(lista, rangoEmpate = 10) {
 }
 
 // Selección final que se muestra en el chat: hasta 3 profesionales PREMIUM
-// con prioridad absoluta (rotando parejo entre ellos si hay varios con
-// %match similar) — los premium nunca ceden un lugar a un gratuito si hay
-// 3 o más premium que califican. Solo si sobra lugar (menos de 3 premium
-// calificaron), se completa con COMO MUCHO 1 gratuito — nunca más de uno,
-// aunque queden 2 lugares libres.
+// (real o con trial activo), rotando parejo entre ellos si hay varios con
+// %match similar. Los profesionales en plan gratuito NUNCA aparecen — ni
+// siquiera si sobra lugar. En la práctica Claude ya ni los ve (se filtran
+// antes de mandarle los datos), pero esta función tampoco los agregaría
+// aunque se colara alguno por cualquier motivo.
 function seleccionarResultadoFinal(profesionales, planEfectivoPorId, rangoEmpate = 10) {
   if (!Array.isArray(profesionales)) return [];
 
   const premium = profesionales.filter(p => planEfectivoPorId[p.id] === 'premium');
-  const gratuito = profesionales.filter(p => planEfectivoPorId[p.id] !== 'premium');
-
-  const premiumFinal = rotarBanda(premium, rangoEmpate).slice(0, 3);
-
-  if (premiumFinal.length < 3 && gratuito.length > 0) {
-    const gratuitoRotado = rotarBanda(gratuito, rangoEmpate);
-    return [...premiumFinal, gratuitoRotado[0]];
-  }
-
-  return premiumFinal;
+  return rotarBanda(premium, rangoEmpate).slice(0, 3);
 }
 
 
@@ -827,7 +818,15 @@ app.post('/chat', limiterChat, async (req, res) => {
       vistasPorProfesional[v.psy_id] = (vistasPorProfesional[v.psy_id] || 0) + 1;
     });
 
-    const profesionalesLivianos = (profesionales || []).map(p => ({
+    // DECISIÓN DE NEGOCIO: los profesionales en plan gratuito (real, sin trial
+    // activo) ya no aparecen en ningún resultado del chat, bajo ningún criterio.
+    // Se filtran ACÁ, antes de mandarle los datos a Claude — así el modelo ni
+    // siquiera los tiene en su contexto, es imposible que los mencione o
+    // devuelva por error. p.plan ya viene resuelto más arriba (si el trial
+    // está activo, ya se pisó a 'premium'), así que este filtro alcanza solo.
+    const profesionalesLivianos = (profesionales || [])
+      .filter(p => p.plan === 'premium')
+      .map(p => ({
       id: p.id,
       nombre: p.nombre,
       whatsapp: p.whatsapp,
