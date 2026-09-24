@@ -594,14 +594,93 @@ async function verificarRecordatorioTrial() {
   }
 }
 
+// Cron: baja a gratuito a quienes cancelaron su suscripción Premium y ya se
+// les terminó el período que habían pagado (premium_hasta) — no se les corta
+// antes de tiempo, mismo criterio que con los trials. Se manda un mail
+// dedicado a esto, distinto al de "tu trial terminó" — esto es alguien que
+// pagó de verdad y canceló, no alguien que nunca pagó.
+async function verificarPremiumCancelado() {
+  try {
+    const ahora = new Date().toISOString();
+    const { data: vencidos } = await supabase
+      .from('profesionales')
+      .select('id, nombre, email, premium_hasta')
+      .eq('suscripcion_cancelada', true)
+      .eq('plan', 'premium') // todavía no lo bajamos
+      .eq('activo', true)
+      .not('premium_hasta', 'is', null)
+      .lt('premium_hasta', ahora);
+
+    if (!vencidos || vencidos.length === 0) return;
+
+    for (const prof of vencidos) {
+      const { error } = await supabase
+        .from('profesionales')
+        .update({ plan: 'gratuito' })
+        .eq('id', prof.id);
+
+      if (error) {
+        console.error(`Error bajando a gratuito a ${prof.email}:`, error.message);
+        continue; // no marcamos el mail como enviado si ni siquiera pudimos bajar el plan
+      }
+
+      const nombre = prof.nombre?.split(' ')[0] || 'Lic.';
+      const linkPanel = `${process.env.APP_URL || 'https://claramentepsi.com'}/panel.html?activar=premium`;
+
+      try {
+        await resend.emails.send({
+          from: 'Claramente <hola@claramentepsi.com>',
+          to: prof.email,
+          subject: 'Tu suscripción Premium en Claramente terminó',
+          html: `
+            <div style="font-family:'DM Sans',Arial,sans-serif;max-width:520px;margin:0 auto;background:#F7F3EE;padding:32px 20px">
+              <div style="background:white;border-radius:16px;padding:36px;border:1px solid #D8E8E4">
+                <div style="font-family:Georgia,serif;font-size:22px;color:#1C2B28;margin-bottom:20px">
+                  clara<span style="color:#4A7C6F;font-style:italic">mente</span>
+                </div>
+                <p style="font-size:16px;color:#1C2B28;margin-bottom:8px">Hola, ${nombre}.</p>
+                <p style="font-size:14px;color:#6B847E;line-height:1.7;margin-bottom:24px">
+                  Tu suscripción Premium en Claramente terminó — como cancelaste, ya no se renovó, y tu perfil dejó de mostrar foto y contacto directo por WhatsApp.
+                </p>
+                <div style="background:#F7F3EE;border-radius:12px;padding:20px;margin-bottom:24px;text-align:center">
+                  <p style="font-size:13px;color:#6B847E;margin-bottom:4px">Si en algún momento querés volver a activarlo</p>
+                  <p style="font-size:22px;font-weight:600;color:#B8860B;margin:0">$32.500/mes</p>
+                </div>
+                <a href="${linkPanel}" style="display:block;text-align:center;background:#4A7C6F;color:white;padding:14px 28px;border-radius:24px;text-decoration:none;font-size:14px;font-weight:500;margin-bottom:16px">
+                  Reactivar Plan Premium →
+                </a>
+                <p style="font-size:12px;color:#9AAFAA;text-align:center;line-height:1.6">
+                  Tu perfil sigue publicado en el plan gratuito. Si cancelaste por error o tenés alguna duda, escribinos.
+                </p>
+              </div>
+            </div>
+          `
+        });
+        console.log(`Mail de fin de suscripción (cancelada) enviado a ${prof.email}`);
+      } catch (mailError) {
+        console.error(`Error mandando mail de fin de suscripción a ${prof.email}:`, mailError.message);
+      }
+
+      await supabase
+        .from('profesionales')
+        .update({ cancelacion_mail_enviado: true })
+        .eq('id', prof.id);
+    }
+  } catch(e) {
+    console.error('Error verificando premium cancelado:', e.message);
+  }
+}
+
 // Ejecutar verificación de trials cada 12 horas
 // Correr una vez apenas arranca el servidor (por ejemplo, justo después de un
 // deploy) — sin esto, setInterval solo dispara recién a las 12hs de iniciado,
 // dejando a cualquiera que venció el trial en el medio esperando sin motivo.
 verificarTrialsVencidos();
 verificarRecordatorioTrial();
+verificarPremiumCancelado();
 setInterval(verificarTrialsVencidos, 12 * 60 * 60 * 1000);
 setInterval(verificarRecordatorioTrial, 12 * 60 * 60 * 1000);
+setInterval(verificarPremiumCancelado, 12 * 60 * 60 * 1000);
 
 // Formulario de soporte
 app.post('/soporte', async (req, res) => {
@@ -1860,6 +1939,8 @@ app.post('/webhook/mp-sub', async (req, res) => {
     if (!resourceId) return res.sendStatus(200);
 
     let external_ref = null;
+    let esCancelacion = false;
+    let fechaFinAcceso = null;
 
     if (type === 'preapproval') {
       // Suscripciones creadas con preapproval_plan_id (flujo viejo/alternativo)
@@ -1867,7 +1948,17 @@ app.post('/webhook/mp-sub', async (req, res) => {
         headers: { 'Authorization': `Bearer ${process.env.MP_ACCESS_TOKEN}` }
       });
       const sub = await mpRes.json();
-      if (sub.status === 'authorized') external_ref = sub.external_reference;
+      if (sub.status === 'authorized') {
+        external_ref = sub.external_reference;
+      } else if (sub.status === 'cancelled') {
+        // La persona canceló — NO le cortamos el acceso ahora mismo, ya pagó
+        // este período. Guardamos hasta cuándo tiene acceso (next_payment_date
+        // es la fecha del próximo cobro que YA NO va a pasar, o sea, el límite
+        // real de lo que pagó) y un cron se encarga del corte cuando corresponda.
+        external_ref = sub.external_reference;
+        esCancelacion = true;
+        fechaFinAcceso = sub.next_payment_date || null;
+      }
 
     } else if (type === 'payment') {
       // Suscripciones "sin plan asociado" (auto_recurring) — el cobro real avisa
@@ -1884,12 +1975,38 @@ app.post('/webhook/mp-sub', async (req, res) => {
 
     if (!external_ref) return res.sendStatus(200);
 
+    // Caso 0: cancelación de una suscripción existente. NO bajamos el plan acá
+    // — guardamos hasta cuándo tiene acceso pagado, y el cron
+    // verificarPremiumCancelado() se encarga de bajarlo (y avisarle por mail)
+    // recién cuando ese período termine, igual que hacemos con los trials.
+    if (esCancelacion && external_ref.startsWith('prof_')) {
+      const profesionalId = external_ref.replace('prof_', '');
+      const { error: cancelError } = await supabase
+        .from('profesionales')
+        .update({
+          suscripcion_cancelada: true,
+          premium_hasta: fechaFinAcceso,
+          cancelacion_mail_enviado: false,
+        })
+        .eq('id', profesionalId);
+      if (cancelError) console.error('Error registrando cancelación:', cancelError.message);
+      else console.log(`Cancelación registrada para ${profesionalId} — mantiene acceso hasta ${fechaFinAcceso || '(sin fecha, revisar manualmente)'}`);
+      return res.sendStatus(200);
+    }
+
     // Caso 1: upgrade de un profesional YA EXISTENTE (link generado por generarLinkUpgrade)
     if (external_ref.startsWith('prof_')) {
       const profesionalId = external_ref.replace('prof_', '');
       const { error: updateError } = await supabase
         .from('profesionales')
-        .update({ plan: 'premium', plan_activo_desde: new Date().toISOString() })
+        .update({
+          plan: 'premium',
+          plan_activo_desde: new Date().toISOString(),
+          // Si se re-suscribe después de haber cancelado antes, es un ciclo de
+          // pago nuevo — reseteamos las banderas de la cancelación anterior.
+          suscripcion_cancelada: false,
+          premium_hasta: null,
+        })
         .eq('id', profesionalId);
       if (updateError) console.error('Error actualizando plan de profesional existente:', updateError.message);
       else console.log(`Plan actualizado a premium para profesional existente (${type}): ${profesionalId}`);
