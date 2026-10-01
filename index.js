@@ -50,6 +50,16 @@ const PATRON_TELEFONO = /\+?\d[\d\s\-.()]{5,}\d/;
 // Normaliza el nombre a Formato Título, sin importar cómo lo haya tipeado
 // el profesional (todo mayúsculas, todo minúsculas, mezclado). Maneja acentos
 // y apóstrofes (ej: "dell'oglio" -> "Dell'Oglio").
+// Normaliza texto para comparar provincias (y similares) sin que mayúsculas
+// o acentos rompan la comparación — ej: "cordoba" vs "Córdoba", "CABA" vs "caba".
+function normalizarTexto(texto) {
+  return (texto || '')
+    .toString()
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .trim()
+    .toLowerCase();
+}
+
 function normalizarNombre(nombre) {
   if (!nombre || typeof nombre !== 'string') return nombre;
   return nombre
@@ -215,6 +225,7 @@ Cuando tengas suficiente info (1-2 intercambios alcanza), respondé ÚNICAMENTE 
 
 {
   "respuesta": "Mensaje breve y cálido (1-2 oraciones)",
+  "provincia_detectada": "OBLIGATORIO antes de incluir profesionales. El nombre EXACTO de la provincia en la que la persona busca atención, usando SIEMPRE uno de estos 24 valores (son los mismos que usa el formulario de registro de profesionales, tienen que coincidir tal cual): 'Buenos Aires', 'CABA', 'Catamarca', 'Chaco', 'Chubut', 'Córdoba', 'Corrientes', 'Entre Ríos', 'Formosa', 'Jujuy', 'La Pampa', 'La Rioja', 'Mendoza', 'Misiones', 'Neuquén', 'Río Negro', 'Salta', 'San Juan', 'San Luis', 'Santa Cruz', 'Santa Fe', 'Santiago del Estero', 'Tierra del Fuego', 'Tucumán'. Si la persona todavía no dijo en qué provincia busca, dejá este campo null/vacío y NO incluyas el array \"profesionales\" — ver la regla PROVINCIA OBLIGATORIA más abajo.",
   "edad_requerida": "Uno de: 'Niños (4-12)', 'Adolescentes (13-17)', 'Adultos (18-60)', 'Adultos mayores (60+)' — SOLO si la persona pidió atención para alguien de ese grupo etario específico (ej: 'para mi hijo', 'tengo 70 años'). Si no mencionó edad o es ambiguo, omitir este campo o poner null. Este campo lo usa el backend para filtrar, así que sé preciso.",
   "formato_requerido": "Uno de: 'Individual', 'Pareja', 'Familia' — SOLO si es claro quién va a asistir a la sesión. Si no es claro, omitir este campo o poner null. Este campo lo usa el backend para filtrar, así que sé preciso.",
   "tag_principal": "El tag EXACTO (copiado LITERAL, sin parafrasear, tal como aparece en el campo \"especializaciones\" o \"enfoques\" de los datos) que define quién califica para esta búsqueda — ej: si alguien busca 'psicoanalista', copiá exactamente 'Psicoanalítico'; si busca 'pareja', copiá 'Terapia de pareja'; si busca 'sexólogo' o 'sexología', copiá 'Sexualidad'. SOLO completá este campo si la búsqueda se reduce claramente a UN tag — si es una combinación de varios criterios o es ambigua, omitilo o poné null. IMPORTANTE: completalo SIEMPRE que sepas con confianza qué tag corresponde, INCLUSO si vos mismo no encontraste a nadie en la lista y estás por decir que no hay profesionales — el backend hace su propia búsqueda independiente contra los datos reales y puede encontrar a alguien que vos no viste. El único caso donde NO corresponde completarlo es cuando todavía no sabés qué tag buscar (por ejemplo, estás haciendo una pregunta aclaratoria porque la persona no dijo qué necesita) — ahí sí, dejalo vacío. El backend usa este campo para buscar a TODOS los profesionales que lo tienen, no solo a los que vos ya incluiste en \"profesionales\" — así que tiene que ser el string exacto, no una paráfrasis.",
@@ -241,6 +252,7 @@ Cuando tengas suficiente info (1-2 intercambios alcanza), respondé ÚNICAMENTE 
 
 REGLAS:
 - PRIORIDAD MÁXIMA — RIESGO DE CRISIS/AUTOLESIÓN/SUICIDIO: si en cualquier momento de la conversación la persona expresa ideas de hacerse daño, de suicidio, de no querer seguir viviendo, o cualquier señal de estar en una crisis grave — esto tiene prioridad sobre TODO lo demás en este prompt, incluida la búsqueda de profesionales. Respondé con calidez genuina, tomalo en serio, y ANTES que cualquier otra cosa incluí estos dos recursos exactos (no inventes ni uses otros números): "911" para emergencia inmediata, y "0800-345-1435" (Centro de Asistencia al Suicida, gratuita, confidencial, las 24 horas, para todo el país). Nunca minimices lo que la persona dice, nunca respondas solo con el JSON de profesionales sin haber dado estos recursos primero, y nunca uses el 0800-999-0091 (es una línea local de San Juan, no nacional). Después de dar los recursos, podés ofrecerle igual ayudarla a encontrar un profesional para acompañamiento continuo, pero eso va después, nunca en lugar de los recursos de emergencia.
+- PRIORIDAD ALTA — PROVINCIA OBLIGATORIA ANTES DE MOSTRAR PROFESIONALES: nunca armes el array "profesionales" sin saber antes en qué provincia está buscando la persona. Si todavía no lo dijo en la conversación, tu respuesta de este turno tiene que preguntarlo directamente (ej: "¿en qué provincia estás buscando un profesional?"), con "profesionales" vacío o ausente — no importa qué tan claro esté el resto de la búsqueda (especialización, edad, formato), la provincia es un requisito aparte y siempre obligatorio. Si de todas formas ibas a hacer otra pregunta aclaratoria en el mismo turno (por edad, para quién es la consulta, formato, etc.), sumale la pregunta de provincia ahí mismo, en la misma respuesta, para no multiplicar las idas y vueltas. Una vez que sepas la provincia, completá SIEMPRE el campo "provincia_detectada" con el valor exacto de la lista fija — el backend lo usa para filtrar a los profesionales de esa provincia específicamente, así que si lo dejás vacío aunque ya la sepas, no se va a mostrar a nadie. Cuidado con la interpretación: "capital federal", "caba", "ciudad de buenos aires" significan la provincia "CABA" — es un distrito propio, NO es lo mismo que la provincia "Buenos Aires". Si la persona dice solo "Buenos Aires" sin aclarar si es la Ciudad o la Provincia y no hay forma de inferirlo por el contexto, preguntá para desambiguar en vez de asumir. Si menciona una ciudad o localidad puntual (ej: "Rosario", "Mar del Plata", "Godoy Cruz", "Luján de Cuyo", "San Martín"), identificá vos a qué provincia pertenece y usá el nombre de la PROVINCIA en este campo, no el de la ciudad/localidad.
 - JUNTÁ TODOS LOS CANDIDATOS VÁLIDOS, NO TE CONFORMES CON UNO SOLO: cuando varios profesionales cumplen genuinamente los criterios de la búsqueda (especialización/enfoque, edad, formato, etc.), tu trabajo es incluir en el JSON a TODOS los que califican, hasta un máximo de 5 — NO te detengas en el primero que encontrás ni decidas vos cuál es "el mejor". El backend se encarga de rotar y priorizar a los profesionales premium entre los candidatos que le entregues, así que si vos ya le mandás solo 1 o 2 aunque haya más disponibles, el backend no tiene forma de "recuperar" a los que dejaste afuera — el resultado final para la persona depende de que vos juntes bien el conjunto completo de candidatos válidos. Esto no contradice la regla de matching estricto (seguí sin incluir a nadie que no califique de verdad) — es sobre no ser innecesariamente conservador cuando SÍ hay varios que califican genuinamente.
 - Usá SOLO profesionales de la lista que se te provee
 - El campo "id" es OBLIGATORIO — copialo exactamente del campo id de la base de datos sin modificarlo
@@ -782,13 +794,19 @@ const COLORES_TARJETA = ['warm', 'sage', 'purple'];
 // (no solo en lo que Claude ya devolvió) — así no depende de que el modelo
 // haya escaneado y enumerado bien a todos los que califican, que es
 // justamente donde vimos que fallaba de forma recurrente.
-function completarConMismoTag(profesionalesIncluidos, tagPrincipal, datosCompletosPorId, planEfectivoPorId, especializacionesPorId, enfoquesPorId) {
+function completarConMismoTag(profesionalesIncluidos, tagPrincipal, datosCompletosPorId, planEfectivoPorId, especializacionesPorId, enfoquesPorId, provinciaPorId, provinciaRequerida) {
   if (!tagPrincipal || !Array.isArray(profesionalesIncluidos)) return profesionalesIncluidos;
+
+  // Si hay una provincia requerida, la búsqueda de "faltantes" respeta ese
+  // mismo límite — si no, este completado podía traer de vuelta a alguien
+  // de otra provincia que el filtro de provincia ya había sacado.
+  const provinciaNormalizada = provinciaRequerida ? normalizarTexto(provinciaRequerida) : null;
 
   const idsYaIncluidos = new Set(profesionalesIncluidos.map(p => p.id));
   const faltantes = Object.keys(datosCompletosPorId).filter(id =>
     !idsYaIncluidos.has(id) &&
     planEfectivoPorId[id] === 'premium' &&
+    (!provinciaNormalizada || normalizarTexto(provinciaPorId?.[id]) === provinciaNormalizada) &&
     ((especializacionesPorId[id] || []).includes(tagPrincipal) || (enfoquesPorId[id] || []).includes(tagPrincipal))
   );
 
@@ -993,11 +1011,16 @@ app.post('/chat', limiterChat, async (req, res) => {
     const enfoquesPorId = {};
     const planEfectivoPorId = {};
     const datosCompletosPorId = {};
+    // El campo "ciudad" en profesionales es, en realidad, la provincia donde
+    // atiende (así está armado el select del formulario de registro) — lo
+    // usamos tal cual para el filtro obligatorio de provincia del chat.
+    const provinciaPorId = {};
     (profesionales || []).forEach(p => {
       edadesPorId[p.id] = p.edades || [];
       especializacionesPorId[p.id] = p.especializaciones || [];
       enfoquesPorId[p.id] = p.enfoques || [];
       planEfectivoPorId[p.id] = p.plan; // ya viene resuelto con trial activo = premium
+      provinciaPorId[p.id] = p.ciudad || '';
       datosCompletosPorId[p.id] = p;
     });
 
@@ -1111,6 +1134,31 @@ app.post('/chat', limiterChat, async (req, res) => {
         if (parsed.profesionales) {
           let vacioPorEdad = false;
           let vacioPorFormato = false;
+          let vacioPorProvincia = false;
+          let faltaProvincia = false;
+
+          // Filtro determinístico por provincia — el más importante de todos:
+          // si Claude no completó provincia_detectada, no mostramos a NADIE
+          // (no depende de que el modelo haya respetado la regla de preguntar
+          // primero). Si sí la completó, sacamos a cualquiera que haya incluido
+          // de otra provincia.
+          if (!parsed.provincia_detectada) {
+            if (parsed.profesionales.length > 0) {
+              console.log('Se bloquearon profesionales porque el modelo no completó provincia_detectada');
+              faltaProvincia = true;
+            }
+            parsed.profesionales = [];
+          } else {
+            const provinciaNormalizada = normalizarTexto(parsed.provincia_detectada);
+            const antesDeFiltrar = parsed.profesionales.length;
+            parsed.profesionales = parsed.profesionales.filter(p =>
+              normalizarTexto(provinciaPorId[p.id]) === provinciaNormalizada
+            );
+            if (parsed.profesionales.length < antesDeFiltrar) {
+              console.log(`Filtro de provincia (${parsed.provincia_detectada}) sacó ${antesDeFiltrar - parsed.profesionales.length} profesional(es) de otra provincia que el modelo había incluido`);
+            }
+            if (antesDeFiltrar > 0 && parsed.profesionales.length === 0) vacioPorProvincia = true;
+          }
 
           // Filtro determinístico por edad — no depende de que el modelo lo haya
           // respetado bien en el texto: si Claude marcó una edad requerida,
@@ -1144,11 +1192,12 @@ app.post('/chat', limiterChat, async (req, res) => {
           // Completar con otros profesionales que comparten el mismo tag_principal
           // pero que Claude no incluyó por su cuenta — no depende de que el modelo
           // haya escaneado bien a todos los que califican.
-          if (parsed.tag_principal) {
+          if (parsed.tag_principal && !faltaProvincia) {
             const antesDeCompletar = parsed.profesionales.length;
             parsed.profesionales = completarConMismoTag(
               parsed.profesionales, parsed.tag_principal, datosCompletosPorId,
-              planEfectivoPorId, especializacionesPorId, enfoquesPorId
+              planEfectivoPorId, especializacionesPorId, enfoquesPorId,
+              provinciaPorId, parsed.provincia_detectada
             );
             if (parsed.profesionales.length > antesDeCompletar) {
               console.log(`Completado con tag_principal ("${parsed.tag_principal}"): se sumaron ${parsed.profesionales.length - antesDeCompletar} profesional(es) que el modelo no había incluido`);
@@ -1191,7 +1240,11 @@ app.post('/chat', limiterChat, async (req, res) => {
           // Solo pisamos la respuesta de Claude con nuestro mensaje sintético si el
           // filtro correspondiente fue realmente el que vació la lista — no asumimos
           // por default que fue la edad solo porque el campo esté seteado.
-          if (vacioPorEdad) {
+          if (faltaProvincia) {
+            parsed.respuesta = '¿En qué provincia estás buscando un profesional?';
+          } else if (vacioPorProvincia && parsed.profesionales.length === 0) {
+            parsed.respuesta = `Por el momento no tenemos profesionales en ${parsed.provincia_detectada} para esta búsqueda. Probá contándome otra necesidad, o escribinos más adelante.`;
+          } else if (vacioPorEdad) {
             parsed.respuesta = `Por el momento no tenemos profesionales disponibles para ese grupo etario (${parsed.edad_requerida}). Probá contándome otra necesidad, o escribinos más adelante.`;
           } else if (vacioPorFormato) {
             parsed.respuesta = `Por el momento no tenemos profesionales que ofrezcan atención en formato ${parsed.formato_requerido.toLowerCase()} para esta consulta. Probá contándome otra necesidad, o escribinos más adelante.`;
@@ -1218,6 +1271,16 @@ app.post('/chat', limiterChat, async (req, res) => {
           const repairAttempt = jsonStr?.replace(/,\s*\]/g, ']').replace(/,\s*\}/g, '}');
           const parsed2 = repairAttempt ? JSON.parse(repairAttempt) : null;
           if (parsed2?.profesionales) {
+            let faltaProvincia2 = false;
+            if (!parsed2.provincia_detectada) {
+              faltaProvincia2 = parsed2.profesionales.length > 0;
+              parsed2.profesionales = [];
+            } else {
+              const provinciaNormalizada2 = normalizarTexto(parsed2.provincia_detectada);
+              parsed2.profesionales = parsed2.profesionales.filter(p =>
+                normalizarTexto(provinciaPorId[p.id]) === provinciaNormalizada2
+              );
+            }
             if (parsed2.edad_requerida) {
               parsed2.profesionales = parsed2.profesionales.filter(p =>
                 (edadesPorId[p.id] || []).includes(parsed2.edad_requerida)
@@ -1229,15 +1292,19 @@ app.post('/chat', limiterChat, async (req, res) => {
                 (especializacionesPorId[p.id] || []).includes(tagNecesario)
               );
             }
-            if (parsed2.tag_principal) {
+            if (parsed2.tag_principal && !faltaProvincia2) {
               const antesDeCompletar2 = parsed2.profesionales.length;
               parsed2.profesionales = completarConMismoTag(
                 parsed2.profesionales, parsed2.tag_principal, datosCompletosPorId,
-                planEfectivoPorId, especializacionesPorId, enfoquesPorId
+                planEfectivoPorId, especializacionesPorId, enfoquesPorId,
+                provinciaPorId, parsed2.provincia_detectada
               );
               if (parsed2.profesionales.length > antesDeCompletar2) {
                 parsed2.respuesta = `Encontré varios profesionales que trabajan con ${parsed2.tag_principal} y podrían acompañarte. Te muestro las opciones.`;
               }
+            }
+            if (faltaProvincia2) {
+              parsed2.respuesta = '¿En qué provincia estás buscando un profesional?';
             }
             parsed2.profesionales = parsed2.profesionales.map(p => {
               const esPremiumReal = planEfectivoPorId[p.id] === 'premium';
@@ -1871,6 +1938,26 @@ function verificarFirmaMP(req) {
   }
 }
 
+// Guarda un registro persistente de cada evento de webhook de MP que llega,
+// con el estado que devolvió la API de MP y el payload completo. Esto es
+// para poder auditar después qué pasó exactamente en un caso puntual —
+// los logs de Render no se pueden consultar más allá de cierta antigüedad,
+// así que sin esto un evento viejo queda imposible de rastrear.
+// No bloquea el webhook (no se espera con await) y nunca tira error hacia
+// afuera: si falla el insert (por ejemplo, si la tabla todavía no existe),
+// solo se loguea el error y el webhook sigue su curso normal.
+function registrarWebhookLog(tipo, resourceId, externalRef, status, payload) {
+  supabase.from('webhook_logs').insert({
+    tipo,
+    resource_id: String(resourceId),
+    external_reference: externalRef || null,
+    status: status || null,
+    payload,
+  }).then(({ error }) => {
+    if (error) console.error('Error guardando webhook_log:', error.message);
+  });
+}
+
 // Webhook de MercadoPago
 app.post('/webhook/mp', async (req, res) => {
   if (!verificarFirmaMP(req)) return res.sendStatus(401);
@@ -1944,6 +2031,7 @@ app.post('/webhook/mp-sub', async (req, res) => {
         headers: { 'Authorization': `Bearer ${process.env.MP_ACCESS_TOKEN}` }
       });
       const sub = await mpRes.json();
+      registrarWebhookLog('preapproval', resourceId, sub.external_reference, sub.status, sub);
       if (sub.status === 'authorized') {
         external_ref = sub.external_reference;
       } else if (sub.status === 'cancelled') {
@@ -1963,6 +2051,7 @@ app.post('/webhook/mp-sub', async (req, res) => {
         headers: { 'Authorization': `Bearer ${process.env.MP_ACCESS_TOKEN}` }
       });
       const pago = await mpRes.json();
+      registrarWebhookLog('payment', resourceId, pago.external_reference, pago.status, pago);
       if (pago.status === 'approved') external_ref = pago.external_reference;
 
     } else {
