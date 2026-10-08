@@ -76,7 +76,11 @@ router.post('/webhook/mp-sub', async (req, res) => {
     let esCancelacion = false;
     let fechaFinAcceso = null;
 
-    if (type === 'preapproval') {
+    // MercadoPago envía los avisos de "Planes y suscripciones" con
+    // type=subscription_preapproval (con prefijo); el nombre sin prefijo es el
+    // formato viejo. Aceptamos los dos — antes solo se aceptaba el viejo y los
+    // avisos de suscripción (incluidas las cancelaciones) se descartaban en silencio.
+    if (type === 'preapproval' || type === 'subscription_preapproval') {
       // Suscripciones creadas con preapproval_plan_id (flujo viejo/alternativo)
       const mpRes = await fetch(`https://api.mercadopago.com/preapproval/${resourceId}`, {
         headers: { 'Authorization': `Bearer ${process.env.MP_ACCESS_TOKEN}` }
@@ -106,7 +110,10 @@ router.post('/webhook/mp-sub', async (req, res) => {
       if (pago.status === 'approved') external_ref = pago.external_reference;
 
     } else {
-      return res.sendStatus(200); // otro tipo de evento, lo ignoramos
+      // Otro tipo de evento: lo ignoramos, pero dejamos registro para poder ver
+      // qué tipos nos llegan y no volver a perder avisos sin enterarnos.
+      registrarWebhookLog('ignorado:' + type, resourceId, null, null, req.body);
+      return res.sendStatus(200);
     }
 
     if (!external_ref) return res.sendStatus(200);
