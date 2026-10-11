@@ -6,7 +6,7 @@ const { SIN_SENTIDO_LIMITE, BLOQUEO_HORAS } = require('../lib/constants');
 const { detectarCrisis, MENSAJE_CRISIS } = require('../lib/crisis');
 const { ocultarTelefonos, normalizarTexto } = require('../lib/texto');
 const { SYSTEM_PROMPT } = require('../lib/systemPrompt');
-const { completarConMismoTag, seleccionarResultadoFinal } = require('../lib/matching');
+const { completarConMismoTag, buscarPorFiltros, seleccionarResultadoFinal } = require('../lib/matching');
 const { limiterChat } = require('../lib/rateLimiters');
 
 const router = express.Router();
@@ -313,10 +313,32 @@ router.post('/chat', limiterChat, async (req, res) => {
             if (antesDeFiltrar > 0 && parsed.profesionales.length === 0) vacioPorFormato = true;
           }
 
+          // Rescate: si el modelo ya definió provincia + edad y/o formato y la lista
+          // quedó vacía (porque a Claude solo le llegan 10 premium y los que cumplen
+          // pueden no estar entre ellos), buscamos en TODOS los premium.
+          let rescatado = false;
+          if (!faltaProvincia && parsed.profesionales.length === 0 && parsed.provincia_detectada) {
+            const tagFormato = parsed.formato_requerido ? FORMATO_A_TAG[parsed.formato_requerido] : null;
+            const rescate = buscarPorFiltros(
+              { provincia: parsed.provincia_detectada, edad: parsed.edad_requerida, tagFormato },
+              datosCompletosPorId, planEfectivoPorId, provinciaPorId, edadesPorId, especializacionesPorId, vistasPorProfesional
+            );
+            if (rescate.length > 0) {
+              console.log(`Rescate por filtros (${parsed.provincia_detectada} / ${parsed.edad_requerida || '-'} / ${tagFormato || '-'}): se encontraron ${rescate.length} profesional(es) que el modelo no tenía en su lista`);
+              parsed.profesionales = rescate;
+              rescatado = true;
+              const grupo = [parsed.edad_requerida, tagFormato && tagFormato.toLowerCase()].filter(Boolean).join(' · ');
+              parsed.respuesta = `Encontré profesionales en ${parsed.provincia_detectada} que atienden ${grupo} y podrían acompañarte. Te muestro las opciones.`;
+              vacioPorEdad = false;
+              vacioPorFormato = false;
+              vacioPorProvincia = false;
+            }
+          }
+
           // Completar con otros profesionales que comparten el mismo tag_principal
           // pero que Claude no incluyó por su cuenta — no depende de que el modelo
           // haya escaneado bien a todos los que califican.
-          if (parsed.tag_principal && !faltaProvincia) {
+          if (parsed.tag_principal && !faltaProvincia && !rescatado) {
             const antesDeCompletar = parsed.profesionales.length;
             parsed.profesionales = completarConMismoTag(
               parsed.profesionales, parsed.tag_principal, datosCompletosPorId,
