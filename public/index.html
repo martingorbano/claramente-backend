@@ -109,6 +109,10 @@ nav {
 .chip { font-size: 12px; padding: 7px 15px; border-radius: 20px; border: 1px solid var(--border); background: var(--white); color: var(--text-muted); cursor: pointer; transition: all 0.18s; white-space: nowrap; }
 .chip:hover { border-color: var(--sage-mid); color: var(--sage-dark); background: var(--sage-light); }
 
+/* RESPUESTAS RAPIDAS DENTRO DEL CHAT */
+.quick-replies { display: flex; flex-wrap: wrap; gap: 8px; padding-left: 40px; animation: fadeUp 0.3s ease both; }
+.quick-replies .chip { font-family: 'DM Sans', sans-serif; font-size: 13px; padding: 8px 16px; color: var(--sage-dark); border-color: var(--sage-mid); }
+
 /* RESULTADOS */
 .results-section { max-width: 640px; margin: 0 auto 60px; padding: 32px 20px 0; width: 100%; }
 .results-label { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-faint); margin-bottom: 6px; }
@@ -699,6 +703,50 @@ function renderCards(profesionales, query) {
 
 
 
+// Respuestas rápidas: botones dentro del chat que mandan el mismo mensaje que
+// escribiría la persona (el backend no se entera de la diferencia).
+const RESPUESTAS_INICIALES = [
+  { label: 'Terapia individual', text: 'Busco un psicólogo para terapia individual' },
+  { label: 'Terapia de pareja', text: 'Busco terapia de pareja' },
+  { label: 'Evaluación o psicodiagnóstico', text: 'Necesito un psicodiagnóstico' },
+  { label: 'Otra consulta', placeholder: 'Contame qué necesitás...' },
+];
+const RESPUESTAS_PROVINCIA = [
+  { label: 'Mendoza', text: 'Mendoza' },
+  { label: 'CABA', text: 'Ciudad de Buenos Aires (CABA)' },
+  { label: 'Buenos Aires', text: 'Provincia de Buenos Aires' },
+  { label: 'Otra provincia', placeholder: 'Escribí tu provincia...' },
+];
+
+function removeQuickReplies() { const q = document.getElementById('quickReplies'); if (q) q.remove(); }
+
+function showQuickReplies(opciones) {
+  removeQuickReplies();
+  const wrap = document.createElement('div');
+  wrap.className = 'quick-replies';
+  wrap.id = 'quickReplies';
+  opciones.forEach(o => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'chip';
+    b.textContent = o.label;
+    b.addEventListener('click', () => {
+      if (o.text) { inputEl.value = o.text; sendMessage(); return; }
+      removeQuickReplies();
+      if (o.placeholder) inputEl.placeholder = o.placeholder;
+      inputEl.focus();
+    });
+    wrap.appendChild(b);
+  });
+  messagesEl.appendChild(wrap);
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+}
+
+// Si el chat está preguntando la provincia, ofrecer botones para contestar
+function ofrecerProvinciaSiCorresponde(texto) {
+  if (/provincia/i.test(texto || '') && /\?/.test(texto || '')) showQuickReplies(RESPUESTAS_PROVINCIA);
+}
+
 function startSearch(text) {
   const input = document.getElementById('chatInput');
   input.value = text;
@@ -710,6 +758,8 @@ async function sendMessage() {
   const text = inputEl.value.trim();
   if (!text || isLoading) return;
   isLoading = true; sendBtn.disabled = true;
+  removeQuickReplies();
+  inputEl.placeholder = 'Escribí lo que necesitás...';
   lastQuery = text; inputEl.value = '';
   addMessage('user', text);
   history.push({ role: 'user', content: text });
@@ -754,12 +804,15 @@ async function sendMessage() {
         if (parsed.respuesta) {
           addMessage('ai', parsed.respuesta);
           history.push({ role: 'assistant', content: raw });
+          ofrecerProvinciaSiCorresponde(parsed.respuesta);
           return;
         }
       } catch(e) { console.error('JSON parse error:', e.message); }
     }
-    addMessage('ai', raw.replace(/```json\s*/gi,'').replace(/```/g,'').trim());
+    const textoPlano = raw.replace(/```json\s*/gi,'').replace(/```/g,'').trim();
+    addMessage('ai', textoPlano);
     history.push({ role: 'assistant', content: raw });
+    ofrecerProvinciaSiCorresponde(textoPlano);
   } catch(err) {
     removeTyping();
     addMessage('ai', 'Tuve un problema al conectarme. ¿Podés intentarlo de nuevo?');
@@ -767,6 +820,7 @@ async function sendMessage() {
     isLoading = false; sendBtn.disabled = false; inputEl.focus();
   }
 }
+showQuickReplies(RESPUESTAS_INICIALES);
 </script>
 <script>
 // Ocultar botones de registro si hay sesión activa (ejecutar después de cargar el DOM)
