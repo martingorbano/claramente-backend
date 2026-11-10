@@ -313,16 +313,50 @@ router.post('/chat', limiterChat, async (req, res) => {
             if (antesDeFiltrar > 0 && parsed.profesionales.length === 0) vacioPorFormato = true;
           }
 
+          // Género pedido explícitamente (psicólogo hombre / psicóloga mujer): filtro
+          // determinístico, igual que provincia/edad/formato. Si el modelo no tenía a
+          // nadie del género pedido en su lista, se busca en TODOS los premium de la
+          // provincia (con el mismo tema). Si de verdad no hay nadie, se avisa.
+          const generoPedido = ['M', 'F', 'NB'].includes(parsed.genero_requerido) ? parsed.genero_requerido : null;
+          const NOMBRE_GENERO = { M: 'psicólogos varones', F: 'psicólogas mujeres', NB: 'profesionales no binarios' };
+          const ESTOS_SON = { M: 'Estos son los', F: 'Estas son las', NB: 'Estos son los' };
+          let generoAplicado = false;
+          let sinGenero = false;
+          if (generoPedido && !faltaProvincia) {
+            const delGenero = parsed.profesionales.filter(p => datosCompletosPorId[p.id]?.genero === generoPedido);
+            if (delGenero.length > 0) {
+              parsed.profesionales = delGenero;
+              generoAplicado = true;
+            } else {
+              const tagFormatoG = parsed.formato_requerido ? FORMATO_A_TAG[parsed.formato_requerido] : null;
+              const encontrados = buscarPorFiltros(
+                { provincia: parsed.provincia_detectada, edad: parsed.edad_requerida, tagFormato: tagFormatoG, genero: generoPedido, tag: parsed.tag_principal },
+                datosCompletosPorId, planEfectivoPorId, provinciaPorId, edadesPorId, especializacionesPorId, vistasPorProfesional, enfoquesPorId
+              );
+              if (encontrados.length > 0) {
+                console.log(`Filtro de género (${generoPedido}): se encontraron ${encontrados.length} profesional(es) que el modelo no tenía en su lista`);
+                parsed.profesionales = encontrados;
+                generoAplicado = true;
+              } else {
+                sinGenero = true;
+              }
+            }
+          }
+
           // Rescate: si el modelo ya definió provincia + edad y/o formato y la lista
           // quedó vacía (porque a Claude solo le llegan 10 premium y los que cumplen
           // pueden no estar entre ellos), buscamos en TODOS los premium.
           let rescatado = false;
           if (!faltaProvincia && parsed.profesionales.length === 0 && parsed.provincia_detectada) {
             const tagFormato = parsed.formato_requerido ? FORMATO_A_TAG[parsed.formato_requerido] : null;
-            const rescate = buscarPorFiltros(
-              { provincia: parsed.provincia_detectada, edad: parsed.edad_requerida, tagFormato },
-              datosCompletosPorId, planEfectivoPorId, provinciaPorId, edadesPorId, especializacionesPorId, vistasPorProfesional
-            );
+            const filtrosRescate = { provincia: parsed.provincia_detectada, edad: parsed.edad_requerida, tagFormato };
+            // Primero respetando el tema de la consulta; si no hay nadie, solo edad/formato
+            let rescate = parsed.tag_principal
+              ? buscarPorFiltros({ ...filtrosRescate, tag: parsed.tag_principal }, datosCompletosPorId, planEfectivoPorId, provinciaPorId, edadesPorId, especializacionesPorId, vistasPorProfesional, enfoquesPorId)
+              : [];
+            if (rescate.length === 0) {
+              rescate = buscarPorFiltros(filtrosRescate, datosCompletosPorId, planEfectivoPorId, provinciaPorId, edadesPorId, especializacionesPorId, vistasPorProfesional, enfoquesPorId);
+            }
             if (rescate.length > 0) {
               console.log(`Rescate por filtros (${parsed.provincia_detectada} / ${parsed.edad_requerida || '-'} / ${tagFormato || '-'}): se encontraron ${rescate.length} profesional(es) que el modelo no tenía en su lista`);
               parsed.profesionales = rescate;
@@ -343,7 +377,7 @@ router.post('/chat', limiterChat, async (req, res) => {
             parsed.profesionales = completarConMismoTag(
               parsed.profesionales, parsed.tag_principal, datosCompletosPorId,
               planEfectivoPorId, especializacionesPorId, enfoquesPorId,
-              provinciaPorId, parsed.provincia_detectada
+              provinciaPorId, parsed.provincia_detectada, generoAplicado ? generoPedido : null
             );
             if (parsed.profesionales.length > antesDeCompletar) {
               console.log(`Completado con tag_principal ("${parsed.tag_principal}"): se sumaron ${parsed.profesionales.length - antesDeCompletar} profesional(es) que el modelo no había incluido`);
@@ -394,6 +428,19 @@ router.post('/chat', limiterChat, async (req, res) => {
             parsed.respuesta = `Por el momento no tenemos profesionales disponibles para ese grupo etario (${parsed.edad_requerida}). Probá contándome otra necesidad, o escribinos más adelante.`;
           } else if (vacioPorFormato) {
             parsed.respuesta = `Por el momento no tenemos profesionales que ofrezcan atención en formato ${parsed.formato_requerido.toLowerCase()} para esta consulta. Probá contándome otra necesidad, o escribinos más adelante.`;
+          }
+
+          // Mensajes de género: pisan a los genéricos de arriba, porque son los que
+          // reflejan lo que la persona pidió.
+          if (generoPedido && !faltaProvincia) {
+            const lugar = parsed.provincia_detectada;
+            if (generoAplicado && parsed.profesionales.length > 0) {
+              parsed.respuesta = `${ESTOS_SON[generoPedido]} ${NOMBRE_GENERO[generoPedido]} disponibles en ${lugar} que podrían acompañarte.`;
+            } else if (sinGenero) {
+              parsed.respuesta = parsed.profesionales.length > 0
+                ? `Por el momento no tenemos ${NOMBRE_GENERO[generoPedido]} disponibles en ${lugar} para esta búsqueda. Te muestro otros profesionales que podrían acompañarte.`
+                : `Por el momento no tenemos ${NOMBRE_GENERO[generoPedido]} disponibles en ${lugar} para esta búsqueda. Probá contándome otra necesidad, o escribinos más adelante.`;
+            }
           }
 
           // Guardar consulta en Supabase
