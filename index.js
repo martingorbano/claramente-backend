@@ -6,7 +6,9 @@ const { limiterGeneral } = require('./lib/rateLimiters');
 const cronTrials = require('./cron/trials');
 
 const app = express();
-app.set('trust proxy', 1); // Render usa proxy
+// Render usa proxy (1 salto). Con Cloudflare por delante son 2: Cloudflare -> Render.
+// Con 2, si solo hay un proxy, req.ip sigue siendo la IP real del cliente.
+app.set('trust proxy', 2);
 
 // Redirigir onrender.com a claramentepsi.com
 app.use((req, res, next) => {
