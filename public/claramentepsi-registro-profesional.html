@@ -1107,7 +1107,7 @@ async function submit() {
       });
       const data = await res.json();
       if (!res.ok || !data.session_id) {
-        alert('Error al procesar. Intentá de nuevo.');
+        alert(data.error || 'Error al procesar. Intentá de nuevo.');
         btn.disabled = false;
         btn.textContent = 'Publicar perfil →';
         return;

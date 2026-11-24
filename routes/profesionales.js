@@ -17,6 +17,11 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 500
 
 const router = express.Router();
 
+// Claramente cierra el 20/12/2026: se bloquea la creación de nuevos pagos.
+// Para reactivarlos (no debería hacer falta) alcanza con poner esto en false.
+const PAGOS_DESHABILITADOS = true;
+const MENSAJE_PAGOS_CERRADOS = 'Claramente está cerrando, por eso ya no se pueden activar suscripciones ni pagos.';
+
 // Registrar profesional
 router.post('/registro', async (req, res) => {
   const { nombre, matricula, email, whatsapp, password, bio, ciudad, localidad, genero, experiencia,
@@ -198,6 +203,8 @@ router.get('/stats/:psy_id', async (req, res) => {
 
 // Guardar registro pendiente y generar link de pago via API de MP
 router.post('/registro-pendiente', async (req, res) => {
+  // Plataforma en cierre: no se crean más suscripciones en MercadoPago.
+  if (PAGOS_DESHABILITADOS) return res.status(410).json({ error: MENSAJE_PAGOS_CERRADOS });
   const { datos, plan } = req.body;
   if (!datos || !plan) return res.status(400).json({ error: 'Faltan datos' });
 
@@ -250,6 +257,8 @@ router.post('/registro-pendiente', async (req, res) => {
 // linkear directamente al checkout de MP, para que el webhook pueda identificar
 // a qué profesional corresponde el pago.
 router.post('/generar-link-premium', async (req, res) => {
+  // Plataforma en cierre: no se crean más suscripciones en MercadoPago.
+  if (PAGOS_DESHABILITADOS) return res.status(410).json({ error: MENSAJE_PAGOS_CERRADOS });
   const { email, mp_email } = req.body;
   if (!email) return res.status(400).json({ error: 'email requerido' });
   try {
