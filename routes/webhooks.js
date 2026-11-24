@@ -9,6 +9,10 @@ const { verificarFirmaMP, registrarWebhookLog } = require('../lib/webhookLog');
 
 const router = express.Router();
 
+// Un aviso de pago aprobado hace más de esto se considera un reenvío de MP
+// y no se procesa (ver comentario en /webhook/mp-sub).
+const MAX_EDAD_PAGO_MS = 3 * 24 * 60 * 60 * 1000;
+
 // Webhook de MercadoPago
 router.post('/webhook/mp', async (req, res) => {
   if (!verificarFirmaMP(req)) return res.sendStatus(401);
@@ -107,7 +111,19 @@ router.post('/webhook/mp-sub', async (req, res) => {
       });
       const pago = await mpRes.json();
       registrarWebhookLog('payment', resourceId, pago.external_reference, pago.status, pago);
-      if (pago.status === 'approved') external_ref = pago.external_reference;
+      if (pago.status === 'approved') {
+        // MercadoPago reenvía avisos de pagos viejos (a veces semanas después del
+        // cobro). Si los procesáramos de nuevo, el "alta" reiniciaría una cancelación
+        // ya registrada (suscripcion_cancelada / premium_hasta) y la persona
+        // quedaría premium indefinidamente. Solo procesamos pagos recientes; si MP
+        // no informa la fecha de aprobación, se procesa como antes.
+        const aprobadoMs = pago.date_approved ? new Date(pago.date_approved).getTime() : null;
+        if (aprobadoMs && Date.now() - aprobadoMs > MAX_EDAD_PAGO_MS) {
+          registrarWebhookLog('ignorado:pago_viejo', resourceId, pago.external_reference, 'approved', { date_approved: pago.date_approved });
+          return res.sendStatus(200);
+        }
+        external_ref = pago.external_reference;
+      }
 
     } else {
       // Otro tipo de evento: lo ignoramos, pero dejamos registro para poder ver
