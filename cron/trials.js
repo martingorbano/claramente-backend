@@ -177,7 +177,6 @@ async function verificarPremiumCancelado() {
       }
 
       const nombre = prof.nombre?.split(' ')[0] || 'Lic.';
-      const linkPanel = `${process.env.APP_URL || 'https://claramentepsi.com'}/panel.html?activar=premium`;
 
       try {
         await resend.emails.send({
@@ -194,15 +193,8 @@ async function verificarPremiumCancelado() {
                 <p style="font-size:14px;color:#6B847E;line-height:1.7;margin-bottom:24px">
                   Tu suscripción Premium en Claramente terminó — como cancelaste, ya no se renovó, y tu perfil dejó de mostrar foto y contacto directo por WhatsApp.
                 </p>
-                <div style="background:#F7F3EE;border-radius:12px;padding:20px;margin-bottom:24px;text-align:center">
-                  <p style="font-size:13px;color:#6B847E;margin-bottom:4px">Si en algún momento querés volver a activarlo</p>
-                  <p style="font-size:22px;font-weight:600;color:#B8860B;margin:0">$32.500/mes</p>
-                </div>
-                <a href="${linkPanel}" style="display:block;text-align:center;background:#4A7C6F;color:white;padding:14px 28px;border-radius:24px;text-decoration:none;font-size:14px;font-weight:500;margin-bottom:16px">
-                  Reactivar Plan Premium →
-                </a>
                 <p style="font-size:12px;color:#9AAFAA;text-align:center;line-height:1.6">
-                  Tu perfil sigue publicado en el plan gratuito. Si cancelaste por error o tenés alguna duda, escribinos.
+                  Como Claramente está cerrando, ya no se pueden activar nuevas suscripciones. Gracias por haber sido parte.
                 </p>
               </div>
             </div>
@@ -228,11 +220,10 @@ async function verificarPremiumCancelado() {
 // 12hs de iniciado, dejando a cualquiera que venció el trial en el medio
 // esperando sin motivo — y después los deja corriendo cada 12 horas.
 function iniciar() {
-  verificarTrialsVencidos();
-  verificarRecordatorioTrial();
+  // Plataforma en cierre: los mails de "tu trial terminó" y su recordatorio
+  // invitan a pagar Premium, así que no se programan más. Solo queda el cron
+  // que baja a gratuito a quienes cancelaron y cumplieron su período.
   verificarPremiumCancelado();
-  setInterval(verificarTrialsVencidos, 12 * 60 * 60 * 1000);
-  setInterval(verificarRecordatorioTrial, 12 * 60 * 60 * 1000);
   setInterval(verificarPremiumCancelado, 12 * 60 * 60 * 1000);
 }
 
