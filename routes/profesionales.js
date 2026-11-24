@@ -24,6 +24,8 @@ const MENSAJE_PAGOS_CERRADOS = 'Claramente está cerrando, por eso ya no se pued
 
 // Registrar profesional
 router.post('/registro', async (req, res) => {
+  // Plataforma en cierre: no se aceptan más altas.
+  if (PAGOS_DESHABILITADOS) return res.status(410).json({ error: 'Claramente está cerrando, por eso ya no se aceptan nuevos registros.' });
   const { nombre, matricula, email, whatsapp, password, bio, ciudad, localidad, genero, experiencia,
     honorario, obras_sociales, enfoques, especializaciones, modalidades, edades,
     dias, franjas, plan } = req.body;
